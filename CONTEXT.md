@@ -17,8 +17,12 @@ One instruction within a Recipe. The smallest unit that can carry its own make-a
 _Avoid_: Instruction, stage
 
 **Ingredient**:
-A purchasable item used in a Recipe, carrying allergen and dietary tags and a default Station.
+A purchasable item used in a Recipe, carrying allergen and dietary tags and a default Station. Things bought as different products are different Ingredients (brown sugar and sugar), and an Ingredient can be known by several names (its aliases).
 _Avoid_: Product, item
+
+**Ingredient catalog**:
+The Ingredients a kitchen can use: a shared, read-only seed plus the kitchen's own Ingredients, aliases and overrides on top. Merging two Ingredients keeps one and turns the other's name into an alias.
+_Avoid_: Pantry, ingredient database
 
 **Menu**:
 A set of Courses served at one Service, with a guest count.
@@ -71,6 +75,10 @@ A named, schedulable kitchen resource (oven, burner) used by one Task at a time 
 **Quantity**:
 An amount of an Ingredient with its unit: a mass (200 g), a volume (2 cups), or a count (3 eggs).
 _Avoid_: Measure, amount (alone)
+
+**Ingredient line**:
+One use of an Ingredient (or of a sub-recipe) in a Recipe: a Quantity, the author's wording, and any preparation ("2 onions, diced"). Every Ingredient line links to one Ingredient, and lines add up on the Shopping list by that Ingredient. Preparation and size belong to the line, not the Ingredient.
+_Avoid_: Line item, ingredient (for the line)
 
 **Original unit**:
 The unit a Recipe's author wrote a Quantity in.

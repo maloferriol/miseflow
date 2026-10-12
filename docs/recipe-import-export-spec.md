@@ -91,7 +91,7 @@ Every import is shown first as an **Import preview**. Nothing changes until the 
 ([#37](https://github.com/maloferriol/miseflow/issues/37))
 
 - **Changed values in `ingredients.yaml`**, such as tags, Station, aliases or Conversions, are offered as **kitchen overrides** in the preview, and the cook accepts each one. The shared reference values never change. An override that equals the reference value is skipped.
-- **An Ingredient line whose name matches no Ingredient or alias** (`@shiso{5}`) is listed as a new Ingredient. By default it's created as one of the kitchen's own Ingredients. The cook can instead match it to an existing Ingredient, and the name becomes an alias.
+- **An Ingredient line whose name matches no Ingredient or alias** (`@shiso{5}`) gets an action chosen in advance, which the cook confirms like everything else in the preview ([#39](https://github.com/maloferriol/miseflow/issues/39)). If there's a near match ("scallion" → Green onion), the action is "link to" it, and the name becomes a kitchen alias. If there's no plausible suggestion, the action is "create new" as one of the kitchen's own Ingredients. The cook can switch either. A new Ingredient takes its preferred kind of measure from the line's unit, and its tags, Conversions and pack sizes from `ingredients.yaml` when it's described there. Otherwise it's marked **tags not checked** (see the [units spec](units-and-quantities-spec.md) §2).
 
 ### Matching Steps
 

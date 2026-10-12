@@ -44,7 +44,12 @@ Every Quantity's unit falls into one of three tiers:
   1. Split the line into quantity, unit, name, size and preparation. Cooklang lines already keep the name separate. Which parser to use depends on the tech stack ([#35](https://github.com/maloferriol/miseflow/issues/35) compares `ingredient-parser` and `parse-ingredient`).
   2. Normalise the name: case, plurals, size words and preparation words. Look for preparation words ("packed", "chopped") in both the name and the parser's comment.
   3. An exact name or alias match links automatically. Seed aliases can carry a region, and the kitchen's region chooses ("cornflour" is cornstarch in the UK). A kitchen alias always wins.
-  4. Otherwise the cook picks from suggestions, and that wording becomes a kitchen alias. New Ingredients are never created automatically. Unmatched lines appear in the import preview ([#18](https://github.com/maloferriol/miseflow/issues/18)). _See the open question in §8._
+  4. Otherwise an action is chosen in advance, and the cook confirms it ([#39](https://github.com/maloferriol/miseflow/issues/39)):
+     - With a near match, "link to" that Ingredient. The wording becomes a kitchen alias.
+     - With no plausible suggestion, "create new" as a kitchen Ingredient.
+
+     **New Ingredients are never created without the cook confirming.** This happens in the import preview ([#18](https://github.com/maloferriol/miseflow/issues/18)) or next to the line as it's typed, under the same rule.
+- **A new Ingredient** takes its preferred kind of measure from the line's unit (5 leaves → counted). It takes its tags, Conversions and pack sizes from the import's `ingredients.yaml` when that describes it. Otherwise it's marked **tags not checked**, and any Dish using it shows its allergen summary as incomplete. A missing tag never reads as "allergen-free".
 - **Merging two Ingredients.** One survives, and the other's name becomes an alias of it. Every Ingredient line, alias and override is relinked to the survivor. Where tags, the default Station or Conversion overrides conflict, the cook chooses; allergen tags are combined, never dropped. A merge can be undone until the next Shopping list is built from it.
 
 ## 3. Conversions
@@ -118,10 +123,6 @@ Every Quantity's unit falls into one of three tiers:
 
 - **≈** stays on the amount it qualifies.
 - Exports always write each line's own wording and Original unit, never the Main unit ([recipe import/export spec](recipe-import-export-spec.md)).
-
-## 8. Open question
-
-- **Unmatched Ingredient names on import.** The [recipe import/export spec](recipe-import-export-spec.md) says an Ingredient line on import that matches no Ingredient or alias is created as a new kitchen Ingredient by default. §2 says new Ingredients are never created automatically. Tracked in [Import: create or pick for an unmatched Ingredient name?](https://github.com/maloferriol/miseflow/issues/39).
 
 ## Not in this spec
 

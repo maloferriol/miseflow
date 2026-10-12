@@ -9,7 +9,7 @@ A reusable template of ingredients and steps that produces a yield. A sub-recipe
 _Avoid_: Formula
 
 **Recipe file**:
-A portable plain-text (Cooklang) copy of one Recipe, which MiseFlow exports and re-imports. Never the source of truth: re-importing one updates the Recipe it was exported from.
+A portable plain-text (Cooklang) snapshot of one Recipe, which MiseFlow exports and re-imports. Never the source of truth: re-importing one updates the Recipe it was exported from. A **Menu file** is the same for a Menu.
 _Avoid_: Recipe source, cook file
 
 **Step**:

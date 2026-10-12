@@ -83,6 +83,14 @@ _Avoid_: Leftover (that's food), overflow
 **Re-plan**:
 Fitting the Plan again after a change. While planning, it happens live after every edit, and only what must move moves. On Service day, it happens only when the cook asks. "Re-plan from scratch" ignores the previous Plan but keeps pins.
 
+**Service day**:
+The stretch from the first Task planned on the Service date until Service, or from earlier if the cook presses "Start Service day". Re-planning is on request from then on.
+_Avoid_: Day-of (alone), event day
+
+**Board**:
+The view where progress is tracked: one card per Task in To do, In progress or Done, with one lane per Cook plus Unassigned. A card's column comes from its Steps, so moving a card, ticking it in the Prep view and tapping it done in the Service view all record the same progress. Moving a card never pins it. A Task in passive time stays In progress until the cook confirms its passive time is over.
+_Avoid_: Kanban (in the app), tracker
+
 **Prep view**:
 The view the cook works from on the days before Service, to do the Plan rather than edit it. On a phone it shows one day at a time. On desktop it shows the prep days side by side per Cook, with a "By component" tab. A Task that is behind shows which later Tasks it holds up.
 _Avoid_: Prep list (that's per Station), to-do list

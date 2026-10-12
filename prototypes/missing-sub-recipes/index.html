@@ -1,0 +1,622 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Answers #36: "How should the list of missing sub-recipes look and behave?"
+  Three structurally different variants, switchable via ?variant=A|B|C and the bottom bar (or ← →).
+  State is in memory only; every action re-renders the state panel at the bottom-right.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PROTOTYPE · Missing sub-recipes</title>
+    <style>
+      :root {
+        --bg: #faf8f5;
+        --fg: #1d1b18;
+        --muted: #6f6a62;
+        --line: #e4dfd7;
+        --card: #fff;
+        --warn: #b54708;
+        --warnbg: #fff4e5;
+        --ok: #067647;
+        --okbg: #ecfdf3;
+        --accent: #2f5bd3;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          15px/1.45 system-ui,
+          sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        padding-bottom: 90px;
+      }
+      header.app {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--line);
+        background: #fff;
+      }
+      header.app b {
+        font-size: 17px;
+      }
+      header.app nav a {
+        color: var(--muted);
+        text-decoration: none;
+        margin-right: 16px;
+      }
+      header.app nav a.on {
+        color: var(--fg);
+        font-weight: 600;
+      }
+      .badge {
+        display: inline-block;
+        min-width: 20px;
+        padding: 0 6px;
+        border-radius: 10px;
+        background: var(--warn);
+        color: #fff;
+        font-size: 12px;
+        text-align: center;
+      }
+      main {
+        max-width: 980px;
+        margin: 24px auto;
+        padding: 0 20px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 0 0 8px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .small {
+        font-size: 13px;
+      }
+      button {
+        font: inherit;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      button.link {
+        border: none;
+        background: none;
+        color: var(--accent);
+        padding: 0;
+      }
+      input,
+      select {
+        font: inherit;
+        padding: 5px 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      code {
+        background: #f1ede6;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      .pill {
+        font-size: 12px;
+        padding: 1px 8px;
+        border-radius: 10px;
+        background: #f1ede6;
+      }
+      .pill.urgent {
+        background: var(--warnbg);
+        color: var(--warn);
+        font-weight: 600;
+      }
+      .pill.ok {
+        background: var(--okbg);
+        color: var(--ok);
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      /* A: inbox table */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border: 1px solid var(--line);
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        background: #fbfaf7;
+      }
+      tr.fixed td {
+        opacity: 0.5;
+      }
+      .drawer {
+        background: #fbfaf7;
+      }
+      /* B: recipe page */
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 24px;
+      }
+      .banner {
+        background: var(--warnbg);
+        color: var(--warn);
+        border: 1px solid #f5c38b;
+        padding: 10px 14px;
+        border-radius: 8px;
+        margin: 12px 0;
+      }
+      .ing {
+        padding: 6px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .ing.missing {
+        background: var(--warnbg);
+        margin: 0 -8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+      }
+      .pop {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      }
+      aside .card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      /* C: wizard */
+      .wiz {
+        max-width: 560px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 28px;
+      }
+      .progress {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 20px;
+      }
+      .progress i {
+        flex: 1;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--line);
+      }
+      .progress i.done {
+        background: var(--ok);
+      }
+      .progress i.cur {
+        background: var(--accent);
+      }
+      .choice {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 12px 14px;
+        margin: 8px 0;
+        border-radius: 8px;
+      }
+      .choice:hover {
+        border-color: var(--accent);
+      }
+      .drop {
+        border: 2px dashed var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        text-align: center;
+        color: var(--muted);
+        margin: 8px 0;
+      }
+      /* shared chrome */
+      #state {
+        position: fixed;
+        right: 12px;
+        bottom: 70px;
+        width: 330px;
+        max-height: 42vh;
+        overflow: auto;
+        background: #111;
+        color: #b8f5c8;
+        font:
+          11px/1.4 ui-monospace,
+          monospace;
+        padding: 10px;
+        border-radius: 8px;
+        opacity: 0.92;
+        white-space: pre;
+      }
+      #state summary {
+        color: #fff;
+        cursor: pointer;
+      }
+      #switcher {
+        position: fixed;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        background: #111;
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 999px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        z-index: 10;
+      }
+      #switcher button {
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+      }
+      #toast {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--ok);
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 8px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="toast"></div>
+    <details id="state">
+      <summary>state (prototype)</summary>
+      <div id="stateBody"></div>
+    </details>
+    <div id="switcher">
+      <button id="prev" aria-label="Previous variant">←</button
+      ><span id="label"></span
+      ><button id="next" aria-label="Next variant">→</button>
+    </div>
+
+    <script>
+      // ---------- mock data (in memory) ----------
+      const initial = () => ({
+        recipes: [
+          {
+            id: "r_risotto",
+            name: "Mushroom risotto",
+            lines: [
+              "@arborio rice{300%g}",
+              "@./stocks/chicken-stock{1.2%l}",
+              "@parmesan{80%g}",
+            ],
+          },
+          {
+            id: "r_veloute",
+            name: "Chicken velouté",
+            lines: [
+              "@butter{40%g}",
+              "@flour{40%g}",
+              "@./stocks/chicken-stock{1%l}",
+            ],
+          },
+          {
+            id: "r_tart",
+            name: "Lemon tart",
+            lines: [
+              "@./pastry/pate-sucree{1}",
+              "@lemons{4}",
+              "@eggs{4}",
+              "@sugar{150%g}",
+            ],
+          },
+          {
+            id: "r_noodles",
+            name: "XO noodles",
+            lines: [
+              "@egg noodles{400%g}",
+              "@./sauces/xo-sauce{3%tbsp}",
+              "@spring onions{4}",
+            ],
+          },
+          { id: "r_stock_b", name: "Brown chicken stock", lines: [] },
+          { id: "r_veal", name: "Veal stock", lines: [] },
+          { id: "r_shortc", name: "Sweet shortcrust", lines: [] },
+        ],
+        // one missing sub-recipe per referenced path; fixing it fixes every Recipe that uses it
+        missing: [
+          {
+            path: "./stocks/chicken-stock",
+            why: "Path matched nothing in the import; no id in refs",
+            usedBy: ["r_risotto", "r_veloute"],
+            service: "Sat 17 Oct · Dinner for 12",
+            suggest: ["r_stock_b", "r_veal"],
+            status: "open",
+          },
+          {
+            path: "./pastry/pate-sucree",
+            why: "File without ids (imported from outside MiseFlow)",
+            usedBy: ["r_tart"],
+            service: null,
+            suggest: ["r_shortc"],
+            status: "open",
+          },
+          {
+            path: "./sauces/xo-sauce",
+            why: "Referenced Recipe r_9c2 was deleted",
+            usedBy: ["r_noodles"],
+            service: "Thu 22 Oct · Staff meal",
+            suggest: [],
+            status: "open",
+          },
+        ],
+        log: [],
+      });
+      let S = initial();
+      const R = (id) => S.recipes.find((r) => r.id === id);
+      const open = () => S.missing.filter((m) => m.status === "open");
+      const nice = (p) => p.split("/").pop().replace(/-/g, " ");
+
+      // ---------- actions (stubbed, same for every variant) ----------
+      function fix(path, how, detail) {
+        const m = S.missing.find((x) => x.path === path);
+        m.status = "fixed";
+        m.fix = { how, detail };
+        S.log.push(
+          `${path} → ${how}${detail ? " (" + detail + ")" : ""}; resolves ${m.usedBy.length} Recipe(s)`,
+        );
+        toast(`Fixed in ${m.usedBy.map((id) => R(id).name).join(", ")}`);
+        render();
+      }
+      const link = (p, rid) => fix(p, "linked", R(rid).name);
+      const plain = (p, name) => fix(p, "plain Ingredient", name || nice(p));
+      const remove = (p) => fix(p, "line removed");
+      function importFile(p) {
+        // stands in for: pick file → normal Import preview → confirm
+        const name = nice(p).replace(/^./, (c) => c.toUpperCase());
+        if (
+          !confirm(
+            `Import preview (stub)\n\n• creates "${name}" from ${p.split("/").pop()}.cook\n• resolves ${p}\n\nConfirm import?`,
+          )
+        )
+          return;
+        S.recipes.push({ id: "r_new_" + S.recipes.length, name, lines: [] });
+        fix(p, "imported file", name + ".cook");
+      }
+      function toast(t) {
+        const el = document.getElementById("toast");
+        el.textContent = t;
+        el.style.display = "block";
+        clearTimeout(toast.t);
+        toast.t = setTimeout(() => (el.style.display = "none"), 1800);
+      }
+
+      // ---------- shared bits ----------
+      const appHeader = (on) => `<header class="app"><b>MiseFlow</b><nav>
+  <a href="#" class="${on === "recipes" ? "on" : ""}">Recipes ${on !== "recipes" && open().length ? "" : ""}</a><a href="#">Menus</a><a href="#">Services</a><a href="#">Shopping</a>
+  ${on === "fix" ? '<a href="#" class="on">Needs fixing <span class="badge">' + open().length + "</span></a>" : '<a href="#">Needs fixing <span class="badge">' + open().length + "</span></a>"}
+  </nav></header>`;
+      function linkPicker(m, id) {
+        const opts = S.recipes
+          .filter((r) => !m.usedBy.includes(r.id))
+          .map(
+            (r) =>
+              `<option value="${r.id}" ${m.suggest[0] === r.id ? "selected" : ""}>${m.suggest.includes(r.id) ? "★ " : ""}${r.name}</option>`,
+          )
+          .join("");
+        return `<select id="${id}">${opts}</select> <button onclick="link('${m.path}', document.getElementById('${id}').value)">Link</button>`;
+      }
+
+      // ---------- Variant A: kitchen-wide "Needs fixing" inbox ----------
+      let openRow = null;
+      function VariantA() {
+        const rows = S.missing
+          .map((m, i) => {
+            const fixed = m.status === "fixed";
+            return `<tr class="${fixed ? "fixed" : ""}">
+      <td><code>${m.path}</code><div class="small muted">${m.why}</div></td>
+      <td>${m.usedBy.map((id) => R(id).name).join("<br>")}</td>
+      <td>${m.service ? `<span class="pill urgent">${m.service}</span>` : '<span class="muted small">no upcoming Service</span>'}</td>
+      <td>${fixed ? `<span class="pill ok">${m.fix.how}</span>` : `<button onclick="openRow=${openRow === i ? "null" : i};render()">${openRow === i ? "Close" : "Fix…"}</button>`}</td></tr>
+      ${
+        openRow === i && !fixed
+          ? `<tr class="drawer"><td colspan="4"><div class="row">
+        <b>Link to</b> ${linkPicker(m, "a" + i)} <span class="muted">or</span>
+        <button onclick="importFile('${m.path}')">Import a Recipe file…</button>
+        <button onclick="plain('${m.path}', prompt('Plain Ingredient name', '${nice(m.path)}'))">Make plain Ingredient</button>
+        <button onclick="remove('${m.path}')">Remove line</button></div>
+        <div class="small muted" style="margin-top:6px">One fix applies to all ${m.usedBy.length} Recipe(s) using this path.</div></td></tr>`
+          : ""
+      }`;
+          })
+          .join("");
+        return (
+          appHeader("fix") +
+          `<main>
+    <h1>Needs fixing</h1><p class="muted">Missing sub-recipes across the kitchen, most urgent first. Scaling and Shopping lists skip these lines until fixed.</p>
+    <table><thead><tr><th>Missing sub-recipe</th><th>Used by</th><th>Needed for</th><th></th></tr></thead><tbody>${rows}</tbody></table></main>`
+        );
+      }
+      VariantA.label = "Kitchen inbox";
+
+      // ---------- Variant B: fix in place on the Recipe; list is a side panel ----------
+      let curRecipe = "r_risotto",
+        popFor = null;
+      function VariantB() {
+        const r = R(curRecipe);
+        const miss = (path) =>
+          S.missing.find((m) => m.path === path && m.status === "open");
+        const lines =
+          r.lines
+            .map((l) => {
+              const path = (l.match(/@(\.\/[^{]+)/) || [])[1];
+              const m = path && miss(path);
+              if (!m) {
+                const f = path && S.missing.find((x) => x.path === path);
+                return `<div class="ing">${l}${f ? ` <span class="pill ok">${f.fix.how}${f.fix.detail ? ": " + f.fix.detail : ""}</span>` : ""}</div>`;
+              }
+              return `<div class="ing missing">⚠ <b>${nice(path)}</b> <span class="small">— missing sub-recipe <code>${path}</code></span>
+      <button class="link" onclick="popFor=popFor==='${path}'?null:'${path}';render()">Fix</button>
+      ${
+        popFor === path
+          ? `<div class="pop"><div class="small muted">${m.why}</div>
+        ${m.suggest.length ? `<div style="margin:8px 0"><b>Did you mean</b> ${m.suggest.map((id) => `<button onclick="link('${path}','${id}')">${R(id).name}</button>`).join(" ")}</div>` : ""}
+        <div class="row">${linkPicker(m, "b")}</div>
+        <div class="row" style="margin-top:8px"><button onclick="importFile('${path}')">Import file…</button><button onclick="plain('${path}')">Use as plain Ingredient</button><button onclick="remove('${path}')">Remove</button></div>
+        ${
+          m.usedBy.length > 1
+            ? `<div class="small muted" style="margin-top:6px">Also fixes: ${m.usedBy
+                .filter((id) => id !== curRecipe)
+                .map((id) => R(id).name)
+                .join(", ")}</div>`
+            : ""
+        }</div>`
+          : ""
+      }</div>`;
+            })
+            .join("") || '<div class="muted">No Ingredient lines</div>';
+        const mine = S.missing.filter(
+          (m) => m.usedBy.includes(curRecipe) && m.status === "open",
+        );
+        const side =
+          open()
+            .map(
+              (m) =>
+                `<div style="margin-bottom:10px"><code>${nice(m.path)}</code><br>${m.usedBy.map((id) => `<button class="link small" onclick="curRecipe='${id}';popFor='${m.path}';render()">${R(id).name}</button>`).join(", ")}${m.service ? `<br><span class="pill urgent">${m.service}</span>` : ""}</div>`,
+            )
+            .join("") || '<span class="pill ok">All fixed</span>';
+        return (
+          appHeader("recipes") +
+          `<main><div class="split"><div>
+    <div class="small muted">Recipes ›</div><h1>${r.name}</h1>
+    ${mine.length ? `<div class="banner">⚠ ${mine.length} missing sub-recipe${mine.length > 1 ? "s" : ""}. Scaling and the Shopping list skip ${mine.length > 1 ? "these lines" : "this line"} until fixed.</div>` : ""}
+    <h2 style="margin-top:16px">Ingredients</h2>${lines}
+    <h2 style="margin-top:20px">Steps</h2><p class="muted small">(steps omitted in prototype)</p></div>
+    <aside><div class="card"><h2>Missing sub-recipes <span class="badge">${open().length}</span></h2>${side}</div></aside></div></main>`
+        );
+      }
+      VariantB.label = "Fix on the Recipe";
+
+      // ---------- Variant C: guided resolver right after an import ----------
+      let wizIdx = 0;
+      function VariantC() {
+        const todo = S.missing;
+        const pending = open();
+        if (!pending.length)
+          return (
+            appHeader("recipes") +
+            `<main><div class="wiz"><h1>All references fixed ✓</h1><p class="muted">Your import is complete. Every Recipe scales and shops normally.</p><button onclick="S=initial();wizIdx=0;render()">Restart demo</button></div></main>`
+          );
+        if (wizIdx >= todo.length || todo[wizIdx].status !== "open")
+          wizIdx = todo.findIndex((m) => m.status === "open");
+        const m = todo[wizIdx];
+        const prog = todo
+          .map(
+            (x, i) =>
+              `<i class="${x.status === "fixed" ? "done" : i === wizIdx ? "cur" : ""}"></i>`,
+          )
+          .join("");
+        return (
+          appHeader("recipes") +
+          `<main><div class="wiz">
+    <div class="progress">${prog}</div>
+    <div class="small muted">Import finished · ${pending.length} reference${pending.length > 1 ? "s" : ""} to fix</div>
+    <h1 style="margin-top:6px">Where's “${nice(m.path)}”?</h1>
+    <p class="muted">${m.usedBy.map((id) => R(id).name).join(" and ")} ${m.usedBy.length > 1 ? "use" : "uses"} <code>${m.path}</code>, but MiseFlow can't find it. ${m.service ? `<br><span class="pill urgent">Needed for ${m.service}</span>` : ""}</p>
+    ${m.suggest.map((id) => `<button class="choice" onclick="link('${m.path}','${id}')">It's my <b>${R(id).name}</b> recipe</button>`).join("")}
+    <button class="choice" onclick="this.nextElementSibling.style.display='block'">It's another recipe in MiseFlow…</button>
+    <div style="display:none;margin:-2px 0 8px 14px">${linkPicker(m, "c")}</div>
+    <div class="drop" onclick="importFile('${m.path}')">I have the file — <b>drop ${m.path.split("/").pop()}.cook here</b> or click to choose</div>
+    <button class="choice" onclick="plain('${m.path}')">I buy it ready-made — treat it as a plain Ingredient</button>
+    <div class="row" style="justify-content:space-between;margin-top:12px">
+      <button class="link" onclick="remove('${m.path}')">Remove the line</button>
+      <button onclick="wizIdx=(wizIdx+1)%S.missing.length;render()">Skip for now →</button></div>
+    <p class="small muted" style="margin-top:16px">Skipped references stay in <b>Needs fixing</b> in the menu bar.</p>
+  </div></main>`
+        );
+      }
+      VariantC.label = "Guided after import";
+
+      // ---------- switcher ----------
+      const VARIANTS = { A: VariantA, B: VariantB, C: VariantC };
+      const keys = Object.keys(VARIANTS);
+      let variant = new URLSearchParams(location.search).get("variant");
+      if (!VARIANTS[variant]) variant = "A";
+      function go(d) {
+        variant = keys[(keys.indexOf(variant) + d + keys.length) % keys.length];
+        const u = new URL(location);
+        u.searchParams.set("variant", variant);
+        history.replaceState(null, "", u);
+        render();
+      }
+      document.getElementById("prev").onclick = () => go(-1);
+      document.getElementById("next").onclick = () => go(1);
+      addEventListener("keydown", (e) => {
+        if (e.target.closest("input,textarea,select,[contenteditable]")) return;
+        if (e.key === "ArrowLeft") go(-1);
+        if (e.key === "ArrowRight") go(1);
+      });
+      function render() {
+        document.getElementById("app").innerHTML = VARIANTS[variant]();
+        document.getElementById("label").textContent =
+          `${variant} (${VARIANTS[variant].label})`;
+        document.getElementById("stateBody").textContent = JSON.stringify(
+          {
+            variant,
+            openCount: open().length,
+            missing: S.missing.map((m) => ({
+              path: m.path,
+              status: m.status,
+              usedBy: m.usedBy,
+              fix: m.fix,
+            })),
+            log: S.log,
+          },
+          null,
+          2,
+        );
+      }
+      render();
+    </script>
+  </body>
+</html>

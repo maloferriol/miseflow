@@ -8,6 +8,10 @@ A menu planner for cooks: plan a multi-course service, break its recipes into ta
 A reusable template of ingredients and steps that produces a yield. A sub-recipe (meringue, stock, sauce) is also a Recipe, referenced as a component by other Recipes.
 _Avoid_: Formula
 
+**Recipe file**:
+A portable plain-text (Cooklang) copy of one Recipe, which MiseFlow exports and re-imports. Never the source of truth: re-importing one updates the Recipe it was exported from.
+_Avoid_: Recipe source, cook file
+
 **Step**:
 One instruction within a Recipe. The smallest unit that can carry its own make-ahead window and be marked done.
 _Avoid_: Instruction, stage
@@ -61,6 +65,23 @@ An area of the kitchen (pastry, garde manger, hot line) that a Task belongs to.
 
 **Equipment**:
 A named, schedulable kitchen resource (oven, burner) used by one Task at a time per unit.
+
+## Quantities
+
+**Quantity**:
+An amount of an Ingredient with its unit: a mass (200 g), a volume (2 cups), or a count (3 eggs).
+_Avoid_: Measure, amount (alone)
+
+**Original unit**:
+The unit a Recipe's author wrote a Quantity in.
+
+**Main unit**:
+The unit a Quantity is shown and totalled in: a kitchen-wide default for each kind of measure (grams for mass, millilitres for volume), which an Ingredient can override (milk in litres, eggs by count).
+_Avoid_: Base unit, default unit
+
+**Conversion**:
+How a Quantity of one Ingredient turns into a different kind of measure, such as the grams in a cup of flour or the weight of one onion. Accepted reference values come first, and an Ingredient can override them.
+_Avoid_: Density (unless it's specifically weight per volume)
 
 ## Shopping
 

@@ -107,6 +107,14 @@ _Avoid_: Send, call (for a Course)
 A flag on a Step for work that can't wait between finishing and the plate (soufflé, fries, slicing the duck). Its Tasks stay locked until their Course is fired.
 _Avoid_: À la minute (in the app)
 
+**Handoff**:
+The moment a finished Task unblocks a Task belonging to a different Cook. The chef is told who can start what next ("Stock done → Sam can start the velouté").
+_Avoid_: Pass-off, relay
+
+**Prep briefing**:
+A morning summary of the day's Tasks for the whole kitchen, grouped by Cook, sent on each prep day when Availability starts.
+_Avoid_: Digest, daily notification
+
 **Availability**:
 The hours a Cook is free to cook, defaulting to a kitchen-wide schedule.
 

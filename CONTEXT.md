@@ -12,6 +12,17 @@ _Avoid_: Formula
 A portable plain-text (Cooklang) snapshot of one Recipe, which MiseFlow exports and re-imports. Never the source of truth: re-importing one updates the Recipe it was exported from. A **Menu file** is the same for a Menu.
 _Avoid_: Recipe source, cook file
 
+**Revision**:
+One saved state of a Recipe. Every edit makes a new Revision; past Revisions are kept, and a Recipe file records the Revision it was exported from.
+_Avoid_: Version (alone)
+
+**Import preview**:
+What a re-import will do, shown before anything changes: which Recipes it updates or creates, which Step planning data is lost, and any conflicts for the cook to settle.
+
+**Missing sub-recipe**:
+An Ingredient line that refers to a sub-recipe MiseFlow can't find (deleted, or never imported). The Recipe still works, but scaling and the Shopping list skip that line until the cook links, imports, or replaces it.
+_Avoid_: Broken link, dangling reference
+
 **Step**:
 One instruction within a Recipe. The smallest unit that can carry its own make-ahead window and be marked done.
 _Avoid_: Instruction, stage

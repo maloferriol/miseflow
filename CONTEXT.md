@@ -83,6 +83,14 @@ _Avoid_: Leftover (that's food), overflow
 **Re-plan**:
 Fitting the Plan again after a change. While planning, it happens live after every edit, and only what must move moves. On Service day, it happens only when the cook asks. "Re-plan from scratch" ignores the previous Plan but keeps pins.
 
+**Prep view**:
+The view the cook works from on the days before Service, to do the Plan rather than edit it. On a phone it shows one day at a time. On desktop it shows the prep days side by side per Cook, with a "By component" tab. A Task that is behind shows which later Tasks it holds up.
+_Avoid_: Prep list (that's per Station), to-do list
+
+**Make-ahead shelf**:
+Everything made ahead for a Service, each item shown from when it's made to when it expires, measured against Service time.
+_Avoid_: Fridge, inventory
+
 **Fire**:
 To start a Course during Service. The cook fires Courses by hand, one at a time, in order. A Course is **waiting**, **fired**, or **served**. Its **lead time** is about how long it takes from fire to pass.
 _Avoid_: Send, call (for a Course)

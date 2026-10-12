@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Units Display Prototype</title>
+    <style>
+      :root {
+        --bg: #fbfaf7;
+        --panel: #ffffff;
+        --ink: #1f1d1a;
+        --muted: #6b665e;
+        --line: #e6e1d8;
+        --accent: #b5532b;
+        --accent-soft: #f6e6dd;
+        --warn: #9a6a00;
+        --warn-soft: #fbf1d6;
+        --changed: #fff3b0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #1a1917;
+          --panel: #24221f;
+          --ink: #eeeae3;
+          --muted: #a39d93;
+          --line: #3a3732;
+          --accent: #e08a62;
+          --accent-soft: #3a2a22;
+          --warn: #e3b64a;
+          --warn-soft: #3a3020;
+          --changed: #4a4320;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 16px;
+        margin: 0 0 10px;
+      }
+      h3 {
+        font-size: 14px;
+        margin: 14px 0 6px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .proto {
+        display: inline-block;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 99px;
+        margin-bottom: 8px;
+      }
+      .intro {
+        color: var(--muted);
+        max-width: 760px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+      @media (max-width: 820px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .label {
+        font-size: 13px;
+        color: var(--muted);
+        width: 100%;
+      }
+      button {
+        font: inherit;
+        font-size: 13px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink);
+        padding: 5px 10px;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      .state dl {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 2px 12px;
+        margin: 0;
+        font-size: 13px;
+      }
+      .state dt {
+        color: var(--muted);
+      }
+      .state dd {
+        margin: 0;
+      }
+      .changed {
+        background: var(--changed);
+        border-radius: 4px;
+      }
+      .msg {
+        font-size: 13px;
+        padding: 8px 10px;
+        background: var(--accent-soft);
+        border-radius: 7px;
+        margin-top: 10px;
+      }
+      .views {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .modebar {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .dish {
+        margin-bottom: 14px;
+      }
+      .dish-h {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 4px;
+        margin-bottom: 4px;
+      }
+      .dish-h span {
+        font-weight: 400;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .line {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        gap: 10px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .line:hover {
+        background: var(--bg);
+      }
+      .line.sel {
+        outline: 2px solid var(--accent);
+      }
+      .qty {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+      }
+      .peek {
+        display: block;
+        font-weight: 400;
+        color: var(--accent);
+        font-size: 12px;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .tag {
+        font-size: 11px;
+        padding: 1px 6px;
+        border-radius: 99px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        margin-left: 4px;
+      }
+      .warn {
+        background: var(--warn-soft);
+        color: var(--warn);
+        border-color: transparent;
+      }
+      .shop {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2px;
+      }
+      .shop .line {
+        grid-template-columns: 130px 1fr;
+      }
+      .buy {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+      }
+      .steps button.done {
+        opacity: 0.5;
+      }
+      .steps button.next {
+        border-color: var(--accent);
+      }
+      table.why {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      table.why td {
+        border-top: 1px solid var(--line);
+        padding: 3px 6px 3px 0;
+        vertical-align: top;
+      }
+      table.why td:first-child {
+        color: var(--muted);
+        width: 120px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="proto">PROTOTYPE · throwaway · ticket #33</span>
+      <h1>Main unit or Original unit: what should the cook see?</h1>
+      <p class="intro">
+        Every view can show amounts in the kitchen's <b>Main unit</b> (grams,
+        millilitres) or in the <b>Original unit</b> the recipe was written in.
+        This demo answers two questions:
+        <b>how far should the switch reach</b> (everything, each view on its
+        own, or a tap on one amount), and
+        <b>how should scaled and converted amounts be rounded for display</b>
+        (236.6 g, ⅓ cup doubled, 1½ eggs, 2400 g). Nothing here is rounded in
+        the data. The panel on the left always shows the exact value behind what
+        you see.
+      </p>
+
+      <div class="grid">
+        <div>
+          <div class="card state">
+            <h2>Current state</h2>
+            <dl id="state"></dl>
+            <div class="msg" id="msg">
+              Pick a walkthrough below, or play with the controls.
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 16px">
+            <h2>Controls</h2>
+            <div class="row">
+              <span class="label">Guests: <b id="guestsOut"></b></span>
+              <input type="range" id="guests" min="1" max="60" step="1" />
+            </div>
+            <div class="row">
+              <span class="label">How far the switch reaches</span>
+              <button data-scope="global">Everywhere at once</button>
+              <button data-scope="perView">Each view on its own</button>
+              <button data-scope="peek">Tap an amount to peek</button>
+            </div>
+            <div class="row">
+              <span class="label">Kitchen's Main units</span>
+              <button data-units="metric">Metric (g, ml)</button>
+              <button data-units="us">US (oz, lb, cups)</button>
+            </div>
+            <div class="row">
+              <span class="label"
+                >Original unit, when scaling makes it awkward (9 tbsp)</span
+              >
+              <button data-tidy="keep">Keep the written unit</button>
+              <button data-tidy="tidy">Tidy into a nicer unit</button>
+            </div>
+            <div class="row">
+              <span class="label">Small metric volumes</span>
+              <button data-spoons="ml">Always ml</button>
+              <button data-spoons="spoons">tsp / tbsp under 30 ml</button>
+            </div>
+            <div class="row">
+              <span class="label">Shopping list in Original mode</span>
+              <button data-shoporig="total">Total in Main unit only</button>
+              <button data-shoporig="breakdown">
+                Total + what it's made of
+              </button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 16px">
+            <h2>Walkthroughs</h2>
+            <div class="tabs" id="tabs"></div>
+            <p class="note" id="scDesc"></p>
+            <div class="steps" id="steps"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="views">
+            <button data-view="recipe">Recipes (as written)</button>
+            <button data-view="dish">Dishes (scaled)</button>
+            <button data-view="shop">Shopping list</button>
+            <div class="modebar" id="modebar"></div>
+          </div>
+          <div id="view"></div>
+          <h3>Behind the selected amount</h3>
+          <table class="why" id="why"></table>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      /* ===================================================================
+   Pure module: unit display. No DOM in here. Liftable into the app.
+   =================================================================== */
+      const Units = (() => {
+        const VOL = {
+          // ml
+          ml: { us: 1, uk: 1, metric: 1 },
+          L: { us: 1000, uk: 1000, metric: 1000 },
+          tsp: { us: 4.929, uk: 5, metric: 5 },
+          tbsp: { us: 14.787, uk: 15, metric: 15 },
+          cup: { us: 236.588, uk: 250, metric: 250 },
+          "fl oz": { us: 29.574, uk: 28.413, metric: 29.574 },
+          pint: { us: 473.176, uk: 568.261, metric: 568.261 },
+        };
+        const MASS = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+        const VAGUE = ["pinch", "dash", "handful", "to taste"];
+
+        function unitKind(unit) {
+          if (unit in VOL) return "volume";
+          if (unit in MASS) return "mass";
+          if (VAGUE.includes(unit)) return "vague";
+          return "count"; // piece (""), clove, stick, bunch, thumb… Ingredient units
+        }
+        const toBase = (amount, unit, region) =>
+          unit in VOL
+            ? amount * VOL[unit][region]
+            : unit in MASS
+              ? amount * MASS[unit]
+              : amount;
+
+        // Scale a line; ranges scale both ends; fixed quantities don't scale.
+        function scaled(line, factor) {
+          const f = line.fixed ? 1 : factor;
+          if (line.qty == null) return null;
+          return Array.isArray(line.qty)
+            ? line.qty.map((q) => q * f)
+            : line.qty * f;
+        }
+
+        // Convert an amount in the line's unit into the Ingredient's preferred kind.
+        // Returns { value, approx, rule } or null when no Conversion exists.
+        function toPreferred(amount, line, ing) {
+          const k = unitKind(line.unit);
+          const base = toBase(amount, line.unit, line.region);
+          if (k === ing.kind && k !== "count")
+            return { value: base, approx: false, rule: "fixed unit" };
+          if (
+            k === "count" &&
+            ing.kind === "count" &&
+            (line.unit || "") === (ing.countUnit || "")
+          )
+            return {
+              value: amount,
+              approx: false,
+              rule: "same Ingredient unit",
+            };
+          if (k === "volume" && ing.kind === "mass" && ing.gPerMl)
+            return {
+              value: base * ing.gPerMl.v,
+              approx: ing.gPerMl.ref,
+              rule: `${(ing.gPerMl.v * 236.588).toFixed(0)} g per US cup (${ing.gPerMl.ref ? "USDA reference" : "kitchen value"})`,
+            };
+          if (
+            k === "count" &&
+            ing.kind === "mass" &&
+            ing.perPiece &&
+            ing.perPiece[line.unit || ""]
+          ) {
+            const p = ing.perPiece[line.unit || ""];
+            return {
+              value: amount * p.g,
+              approx: p.ref,
+              rule: `${p.g} g per ${line.unit || "piece"} (${p.ref ? "reference" : "kitchen value"})`,
+            };
+          }
+          if (
+            k === "mass" &&
+            ing.kind === "count" &&
+            ing.perPiece &&
+            ing.perPiece[""]
+          ) {
+            const p = ing.perPiece[""];
+            return {
+              value: base / p.g,
+              approx: p.ref,
+              rule: `${p.g} g per piece (${p.ref ? "default size" : "kitchen value"})`,
+            };
+          }
+          return null;
+        }
+
+        // ---------- number formatting ----------
+        const GLYPH = {
+          "1/2": "½",
+          "1/3": "⅓",
+          "2/3": "⅔",
+          "1/4": "¼",
+          "3/4": "¾",
+          "1/8": "⅛",
+          "3/8": "⅜",
+          "5/8": "⅝",
+          "7/8": "⅞",
+        };
+        function fraction(x, dens) {
+          let best = { err: Infinity };
+          const whole = Math.floor(x + 1e-9);
+          for (const d of dens)
+            for (let n = 0; n <= d; n++) {
+              const v = whole + n / d,
+                err = Math.abs(v - x);
+              if (err < best.err - 1e-9) best = { v, n, d, err };
+            }
+          let w = whole,
+            n = best.n,
+            d = best.d;
+          if (n === d) {
+            w += 1;
+            n = 0;
+          }
+          const g = (a, b) => (b ? g(b, a % b) : a);
+          const k = n ? g(n, d) : 1;
+          const frac = n
+            ? GLYPH[`${n / k}/${d / k}`] || `${n / k}/${d / k}`
+            : "";
+          const text = (w ? String(w) : "") + frac || "0";
+          return { text, value: best.v, relErr: x ? best.err / x : 0 };
+        }
+        const trim = (x, dp) => String(+x.toFixed(dp));
+        function metricNumber(x) {
+          return x < 10 ? trim(x, 1) : String(Math.round(x));
+        }
+        function fmtMetric(base, kind, spoons) {
+          if (kind === "mass")
+            return base >= 1000
+              ? `${trim(base / 1000, 2)} kg`
+              : `${metricNumber(base)} g`;
+          if (spoons && base < 30)
+            return base < 15
+              ? `${fraction(base / 5, [2, 4]).text} tsp`
+              : `${fraction(base / 15, [2]).text} tbsp`;
+          return base >= 1000
+            ? `${trim(base / 1000, 2)} L`
+            : `${metricNumber(base)} ml`;
+        }
+        function fmtUSVolume(ml) {
+          if (ml < 14.787 * 0.95)
+            return `${fraction(ml / 4.929, [2, 4, 8]).text} tsp`;
+          if (ml < 59.147 * 0.95)
+            return `${fraction(ml / 14.787, [2]).text} tbsp`;
+          const cups = ml / 236.588,
+            f = fraction(cups, [2, 3, 4, 8]);
+          if (f.relErr <= 0.04) return `${f.text} cup${f.value > 1 ? "s" : ""}`;
+          const c = fraction(Math.floor(cups * 4) / 4, [4]); // cups + tbsp
+          const rest = (cups - Math.floor(cups * 4) / 4) * 16;
+          return `${c.text} cup + ${fraction(rest, [2]).text} tbsp`;
+        }
+        function fmtUSMass(g) {
+          const oz = g / 28.3495;
+          if (oz < 16)
+            return `${oz < 2 ? fraction(oz, [2, 4]).text : trim(oz, oz < 10 ? 1 : 0)} oz`;
+          return `${trim(oz / 16, 2)} lb`;
+        }
+        // "6 cloves" + "9 cloves" → "6–9 cloves"
+        function joinRange(a, b) {
+          const unitOf = (t) => t.replace(/^[\d.½⅓⅔¼¾⅛⅜⅝⅞/]+/, "").trim();
+          const ua = unitOf(a),
+            ub = unitOf(b);
+          if (ua && ua.replace(/s$/, "") === ub.replace(/s$/, ""))
+            return `${a.slice(0, a.length - ua.length).trim()}–${b}`;
+          return `${a}–${b}`;
+        }
+        const plural = (u, v) =>
+          !u
+            ? ""
+            : u === "leaf" && v > 1
+              ? " leaves"
+              : v > 1 &&
+                  ![
+                    "tsp",
+                    "tbsp",
+                    "ml",
+                    "g",
+                    "kg",
+                    "oz",
+                    "lb",
+                    "L",
+                    "fl oz",
+                  ].includes(u)
+                ? ` ${u}s`
+                : ` ${u}`;
+        function fmtCount(x, unit) {
+          const f = fraction(x, [2, 3, 4]);
+          return `${f.text}${plural(unit, f.value)}`;
+        }
+
+        // Original unit: scaled, in the unit as written ("keep") or tidied within its family ("tidy").
+        function fmtOriginal(amount, line, tidy, spoons) {
+          const k = unitKind(line.unit);
+          const one = (x) => {
+            if (k === "count") return fmtCount(x, line.unit);
+            if (tidy === "tidy") {
+              const base = toBase(x, line.unit, line.region);
+              if (k === "mass")
+                return ["oz", "lb"].includes(line.unit)
+                  ? fmtUSMass(base)
+                  : fmtMetric(base, "mass");
+              if (
+                ["tsp", "tbsp", "cup", "fl oz", "pint"].includes(line.unit) &&
+                line.region === "us"
+              )
+                return fmtUSVolume(base);
+              return fmtMetric(base, "volume", spoons);
+            }
+            const spoonish = [
+              "tsp",
+              "tbsp",
+              "cup",
+              "pint",
+              "fl oz",
+              "oz",
+              "lb",
+            ].includes(line.unit);
+            const f = spoonish
+              ? fraction(x, [2, 3, 4, 8])
+              : { text: metricNumber(x), value: x };
+            return `${f.text}${plural(line.unit, f.value)}`;
+          };
+          if (Array.isArray(amount)) return joinRange(...amount.map(one));
+          return one(amount);
+        }
+
+        // Main unit for an Ingredient's preferred kind.
+        function fmtMain(value, ing, units, spoons) {
+          if (ing.kind === "count") return fmtCount(value, ing.countUnit || "");
+          if (units === "metric") return fmtMetric(value, ing.kind, spoons);
+          return ing.kind === "mass" ? fmtUSMass(value) : fmtUSVolume(value);
+        }
+
+        // One Ingredient line for display. Returns { text, approx, needsConversion, rule, exact }.
+        function displayLine(line, ing, factor, mode, opts) {
+          const k = unitKind(line.unit);
+          if (k === "vague" || line.qty == null)
+            return {
+              text: `${line.unit || "to taste"}${factor !== 1 ? ` (×${trim(factor, 2)})` : ""}`,
+              rule: "Vague amount: shown as written with the Scale factor, never totalled",
+              exact: "—",
+            };
+          const amt = scaled(line, factor);
+          const exact = Array.isArray(amt)
+            ? amt.map((a) => trim(a, 3)).join("–") +
+              " " +
+              (line.unit || "pieces")
+            : `${trim(amt, 4)} ${line.unit || "pieces"}`;
+          if (mode === "original")
+            return {
+              text: fmtOriginal(amt, line, opts.tidy, opts.spoons),
+              rule:
+                opts.tidy === "tidy"
+                  ? "Original unit, tidied within its family"
+                  : "Original unit, kept as written",
+              exact,
+            };
+          const conv = (a) => toPreferred(a, line, ing);
+          const parts = Array.isArray(amt) ? amt.map(conv) : [conv(amt)];
+          if (parts.some((p) => !p))
+            return {
+              text: fmtOriginal(amt, line, "keep"),
+              needsConversion: true,
+              rule: "No Conversion: stays in its Original unit",
+              exact,
+            };
+          const text =
+            parts.length === 2
+              ? joinRange(
+                  fmtMain(parts[0].value, ing, opts.units, opts.spoons),
+                  fmtMain(parts[1].value, ing, opts.units, opts.spoons),
+                )
+              : fmtMain(parts[0].value, ing, opts.units, opts.spoons);
+          return {
+            text,
+            approx: parts.some((p) => p.approx),
+            rule: `Main unit · ${parts[0].rule}`,
+            exact:
+              exact +
+              `  →  ${parts.map((p) => trim(p.value, 2)).join("–")} ${ing.kind === "mass" ? "g" : ing.kind === "volume" ? "ml" : "pieces"}`,
+          };
+        }
+
+        // Least left over, then fewest packs.
+        function choosePacks(need, sizes) {
+          let best = null;
+          const max = Math.ceil(need / Math.min(...sizes)) + 1;
+          const walk = (i, total, combo) => {
+            if (total >= need - 1e-9) {
+              const over = total - need,
+                n = combo.reduce((a, b) => a + b, 0);
+              if (
+                !best ||
+                over < best.over - 1e-9 ||
+                (Math.abs(over - best.over) < 1e-9 && n < best.n)
+              )
+                best = { over, n, combo: [...combo] };
+              return;
+            }
+            if (i >= sizes.length) return;
+            for (let c = 0; c <= max; c++) {
+              combo[i] = c;
+              walk(i + 1, total + c * sizes[i], combo);
+              combo[i] = 0;
+              if (total + c * sizes[i] >= need) break;
+            }
+          };
+          walk(
+            0,
+            0,
+            sizes.map(() => 0),
+          );
+          return best;
+        }
+
+        // Shopping list: one row per Ingredient, across every Dish.
+        function shoppingList(dishes, ingredients, opts) {
+          const rows = {};
+          for (const d of dishes)
+            for (const line of d.lines) {
+              const ing = ingredients[line.ingredient];
+              const r = (rows[line.ingredient] ||= {
+                ing,
+                total: 0,
+                approx: false,
+                leftovers: [],
+                vague: [],
+                parts: [],
+              });
+              const k = unitKind(line.unit);
+              if (k === "vague" || line.qty == null) {
+                r.vague.push(line.unit || "to taste");
+                continue;
+              }
+              let amt = scaled(line, d.factor);
+              if (Array.isArray(amt)) amt = amt[1]; // ranges: upper end
+              const p = toPreferred(amt, line, ing);
+              r.parts.push(`${fmtOriginal(amt, line, "keep")} (${d.name})`);
+              if (!p) {
+                r.leftovers.push(fmtOriginal(amt, line, "keep"));
+                continue;
+              }
+              r.total += p.value;
+              r.approx ||= p.approx;
+            }
+          return Object.entries(rows).map(([name, r]) => {
+            const need = r.total
+              ? fmtMain(r.total, r.ing, opts.units, false)
+              : "";
+            let buy = "",
+              trimmed = r.total,
+              approx = r.approx;
+            if (r.ing.trim && r.total) {
+              trimmed = r.total / (1 - r.ing.trim); // buy line says ≈; the need stays exact
+            }
+            if (r.ing.packs && r.total) {
+              const b = choosePacks(trimmed, r.ing.packs);
+              buy =
+                "buy " +
+                b.combo
+                  .map((c, i) =>
+                    c ? `${c} × ${r.ing.packLabel(r.ing.packs[i])}` : "",
+                  )
+                  .filter(Boolean)
+                  .join(" + ") +
+                (b.over > 0.5
+                  ? ` (${fmtMain(b.over, r.ing, opts.units, false)} spare)`
+                  : "");
+            } else if (r.total) {
+              buy =
+                r.ing.kind === "count"
+                  ? `buy ${Math.ceil(trimmed - 1e-9)}${plural(r.ing.countUnit || "", Math.ceil(trimmed - 1e-9))}`
+                  : r.ing.trim
+                    ? `buy ≈ ${fmtMain(trimmed, r.ing, opts.units, false)} as bought (loose)`
+                    : "loose";
+            }
+            return {
+              name,
+              need,
+              approx,
+              leftovers: r.leftovers,
+              vague: r.vague,
+              buy,
+              parts: r.parts,
+              exact: `${trim(r.total, 2)} ${r.ing.kind === "mass" ? "g" : r.ing.kind === "volume" ? "ml" : "pieces"}`,
+            };
+          });
+        }
+
+        return { displayLine, shoppingList, unitKind };
+      })();
+
+      /* ===================================================================
+   Throwaway page shell below.
+   =================================================================== */
+      const pc = (n) => `${n}`;
+      const ING = {
+        sugar: {
+          kind: "mass",
+          gPerMl: { v: 200 / 236.588, ref: true },
+          packs: [1000],
+          packLabel: (g) => `${g / 1000} kg bag`,
+        },
+        eggs: {
+          kind: "count",
+          perPiece: { "": { g: 50, ref: true } },
+          packs: [6, 12],
+          packLabel: (n) => `box of ${n}`,
+        },
+        cream: {
+          kind: "volume",
+          packs: [250, 500, 1000],
+          packLabel: (ml) => (ml >= 1000 ? `${ml / 1000} L` : `${ml} ml`),
+        },
+        vanilla: { kind: "volume" },
+        salt: { kind: "mass" },
+        flour: {
+          kind: "mass",
+          gPerMl: { v: 125 / 236.588, ref: true },
+          packs: [1000, 2000],
+          packLabel: (g) => `${g / 1000} kg bag`,
+        },
+        butter: {
+          kind: "mass",
+          perPiece: { stick: { g: 113, ref: false } },
+          packs: [250],
+          packLabel: (g) => `${g} g block`,
+        },
+        honey: { kind: "mass", gPerMl: { v: 339 / 236.588, ref: true } },
+        ginger: { kind: "mass" },
+        milk: {
+          kind: "volume",
+          packs: [1000, 2000],
+          packLabel: (ml) => `${ml / 1000} L`,
+        },
+        carrots: { kind: "mass", trim: 0.11 },
+        garlic: {
+          kind: "count",
+          countUnit: "clove",
+          perPiece: { "": { g: 3, ref: true } },
+        },
+        "bay leaf": { kind: "count", countUnit: "leaf" },
+      };
+      const RECIPES = [
+        {
+          name: "Pavlova",
+          servings: 6,
+          region: "us",
+          lines: [
+            { ingredient: "sugar", qty: 1 / 3, unit: "cup" },
+            { ingredient: "eggs", qty: 3, unit: "", prep: "whites only" },
+            { ingredient: "cream", qty: 1, unit: "cup" },
+            { ingredient: "vanilla", qty: 1, unit: "tsp" },
+            { ingredient: "salt", qty: null, unit: "pinch" },
+          ],
+        },
+        {
+          name: "Honey cake",
+          servings: 8,
+          region: "us",
+          lines: [
+            { ingredient: "flour", qty: 2, unit: "cup" },
+            { ingredient: "butter", qty: 1, unit: "stick", prep: "softened" },
+            { ingredient: "honey", qty: 1.5, unit: "tbsp" },
+            { ingredient: "eggs", qty: 2, unit: "" },
+            { ingredient: "ginger", qty: 2, unit: "thumb", prep: "grated" },
+          ],
+        },
+        {
+          name: "Carrot soup",
+          servings: 4,
+          region: "uk",
+          lines: [
+            { ingredient: "milk", qty: 1, unit: "pint" },
+            { ingredient: "carrots", qty: 300, unit: "g", prep: "diced" },
+            { ingredient: "garlic", qty: [2, 3], unit: "clove" },
+            { ingredient: "bay leaf", qty: 1, unit: "leaf", fixed: true },
+            { ingredient: "ginger", qty: 40, unit: "g" },
+            { ingredient: "cream", qty: 150, unit: "ml" },
+          ],
+        },
+      ];
+      RECIPES.forEach((r) => r.lines.forEach((l) => (l.region = r.region)));
+
+      const INITIAL = () => ({
+        guests: 6,
+        scope: "global",
+        units: "metric",
+        tidy: "keep",
+        spoons: "ml",
+        shopOrig: "total",
+        view: "dish",
+        modeGlobal: "main",
+        modeByView: { recipe: "original", dish: "main", shop: "main" },
+        peeks: new Set(),
+        sel: null,
+      });
+      let S = INITIAL(),
+        prev = null,
+        lastMsg = "";
+
+      const mode = (view) =>
+        S.scope === "perView" ? S.modeByView[view] : S.modeGlobal;
+      const dishes = () =>
+        RECIPES.map((r) => ({
+          ...r,
+          factor: S.view === "recipe" ? 1 : S.guests / r.servings,
+        }));
+      const opts = () => ({
+        units: S.units,
+        tidy: S.tidy,
+        spoons: S.spoons === "spoons",
+      });
+
+      const ACTIONS = {
+        guests: (n) => {
+          S.guests = n;
+          return `Guests set to ${n}.`;
+        },
+        view: (v) => {
+          S.view = v;
+          S.sel = null;
+          return `Switched to the ${{ recipe: "Recipes", dish: "Dishes", shop: "Shopping list" }[v]} view. Mode here: ${mode(v) === "main" ? "Main unit" : "Original unit"}.`;
+        },
+        mode: (m) => {
+          if (S.scope === "perView") S.modeByView[S.view] = m;
+          else S.modeGlobal = m;
+          S.peeks.clear();
+          return S.scope === "perView"
+            ? `Only this view switched to ${m === "main" ? "Main" : "Original"} unit; the others keep their own setting.`
+            : `Every view switched to ${m === "main" ? "Main" : "Original"} unit.`;
+        },
+        scope: (s) => {
+          S.scope = s;
+          S.peeks.clear();
+          return {
+            global: "One switch for every view.",
+            perView: "Each view remembers its own setting.",
+            peek: "One switch for everything, and tapping an amount shows the other unit underneath, for that amount only.",
+          }[s];
+        },
+        units: (u) => {
+          S.units = u;
+          return `Kitchen's Main units: ${u === "metric" ? "grams and millilitres" : "ounces, pounds and cups"}.`;
+        },
+        tidy: (t) => {
+          S.tidy = t;
+          return t === "tidy"
+            ? "Original units are tidied within their family (9 tbsp → ½ cup + 1 tbsp)."
+            : "Original units stay exactly as written, just scaled (9 tbsp).";
+        },
+        spoons: (s) => {
+          S.spoons = s;
+          return s === "spoons"
+            ? "Small metric volumes show as tsp/tbsp."
+            : "Small metric volumes show in ml.";
+        },
+        shopOrig: (s) => {
+          S.shopOrig = s;
+          return s === "breakdown"
+            ? "In Original mode, each Shopping list row also lists the amounts it's made of."
+            : "In Original mode, the Shopping list still shows only the total.";
+        },
+        select: (key) => {
+          S.sel = key;
+          if (S.scope === "peek") {
+            S.peeks.has(key) ? S.peeks.delete(key) : S.peeks.add(key);
+          }
+          return "Selected an amount: see 'Behind the selected amount'.";
+        },
+      };
+      function dispatch(type, arg) {
+        prev = snapshot();
+        lastMsg = ACTIONS[type](arg);
+        render();
+      }
+      function snapshot() {
+        return {
+          guests: S.guests,
+          scope: S.scope,
+          units: S.units,
+          tidy: S.tidy,
+          spoons: S.spoons,
+          shopOrig: S.shopOrig,
+          view: S.view,
+          mode: mode(S.view),
+        };
+      }
+
+      const $ = (s) => document.querySelector(s);
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
+        );
+
+      function render() {
+        $("#guests").value = S.guests;
+        $("#guestsOut").textContent = S.guests;
+        document
+          .querySelectorAll("[data-scope]")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.scope === S.scope),
+          );
+        document
+          .querySelectorAll("[data-units]")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.units === S.units),
+          );
+        document
+          .querySelectorAll("[data-tidy]")
+          .forEach((b) => b.classList.toggle("on", b.dataset.tidy === S.tidy));
+        document
+          .querySelectorAll("[data-spoons]")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.spoons === S.spoons),
+          );
+        document
+          .querySelectorAll("[data-shoporig]")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.shoporig === S.shopOrig),
+          );
+        document
+          .querySelectorAll("[data-view]")
+          .forEach((b) => b.classList.toggle("on", b.dataset.view === S.view));
+        const m = mode(S.view);
+        $("#modebar").innerHTML =
+          `Show amounts in <button data-mode="main" class="${m === "main" ? "on" : ""}">Main unit</button><button data-mode="original" class="${m === "original" ? "on" : ""}">Original unit</button>`;
+        $("#modebar")
+          .querySelectorAll("[data-mode]")
+          .forEach((b) => (b.onclick = () => dispatch("mode", b.dataset.mode)));
+
+        const now = snapshot(),
+          ch = (k) => (prev && prev[k] !== now[k] ? "changed" : "");
+        const sc = {
+          global: "Everywhere at once",
+          perView: "Each view on its own",
+          peek: "Tap to peek",
+        }[S.scope];
+        const per =
+          S.scope === "perView"
+            ? ` (Recipes: ${S.modeByView.recipe}, Dishes: ${S.modeByView.dish}, Shopping: ${S.modeByView.shop})`
+            : "";
+        $("#state").innerHTML = `
+    <dt>View</dt><dd class="${ch("view")}">${{ recipe: "Recipes", dish: "Dishes", shop: "Shopping list" }[S.view]}</dd>
+    <dt>Showing</dt><dd class="${ch("mode")}">${m === "main" ? "Main unit" : "Original unit"}${per}</dd>
+    <dt>Guests</dt><dd class="${ch("guests")}">${S.guests} → ${RECIPES.map((r) => `${r.name} ×${+(S.guests / r.servings).toFixed(2)}`).join(", ")}</dd>
+    <dt>Switch reach</dt><dd class="${ch("scope")}">${sc}</dd>
+    <dt>Main units</dt><dd class="${ch("units")}">${S.units === "metric" ? "g · ml" : "oz/lb · cups"}</dd>
+    <dt>Awkward originals</dt><dd class="${ch("tidy")}">${S.tidy === "tidy" ? "tidied" : "kept as written"}</dd>
+    <dt>Small metric</dt><dd class="${ch("spoons")}">${S.spoons === "spoons" ? "tsp / tbsp" : "ml"}</dd>
+    <dt>Shopping (Original)</dt><dd class="${ch("shopOrig")}">${S.shopOrig === "breakdown" ? "total + parts" : "total only"}</dd>`;
+        $("#msg").textContent =
+          lastMsg || "Pick a walkthrough below, or play with the controls.";
+
+        const why = [];
+        let html = "";
+        if (S.view === "shop") {
+          const rows = Units.shoppingList(
+            dishes().map((d) => ({ ...d, factor: S.guests / d.servings })),
+            ING,
+            opts(),
+          );
+          html =
+            `<div class="shop">` +
+            rows
+              .map((r) => {
+                const key = "shop:" + r.name,
+                  sel = S.sel === key;
+                const total = [
+                  r.need && `${r.approx ? "≈ " : ""}${r.need}`,
+                  ...r.leftovers,
+                ]
+                  .filter(Boolean)
+                  .join(" + ");
+                const warn = r.leftovers.length
+                  ? `<span class="tag warn">needs conversion</span>`
+                  : "";
+                const vague = r.vague.length
+                  ? `<span class="note"> + ${r.vague.join(", ")}</span>`
+                  : "";
+                const parts =
+                  r.parts.length &&
+                  ((m === "original" && S.shopOrig === "breakdown") ||
+                    (S.scope === "peek" && S.peeks.has(key)))
+                    ? `<span class="peek">from ${r.parts.join(", ")}</span>`
+                    : "";
+                if (sel)
+                  why.push(
+                    ["Exact total", r.exact],
+                    ["Shown", total || "—"],
+                    [
+                      "Rule",
+                      "Totals are always in the Main unit; ranges count at the upper end; vague amounts are listed",
+                    ],
+                    ["Buy", r.buy || "—"],
+                  );
+                return `<div class="line ${sel ? "sel" : ""}" data-sel="${esc(key)}"><div>${esc(r.name)}</div><div><span class="qty">${esc(total)}</span>${total ? vague : `<span class="note">${esc(r.vague.join(", "))}</span>`} ${warn}${parts}<div class="buy">${esc(r.buy)}</div></div></div>`;
+              })
+              .join("") +
+            `</div>`;
+        } else {
+          for (const d of dishes()) {
+            html += `<div class="dish"><div class="dish-h">${d.name}<span>${S.view === "recipe" ? `serves ${d.servings} · written in ${d.region.toUpperCase()} units` : `×${+d.factor.toFixed(2)} for ${S.guests} guests`}</span></div>`;
+            d.lines.forEach((l, i) => {
+              const key = `${S.view}:${d.name}:${i}`,
+                sel = S.sel === key;
+              const r = Units.displayLine(
+                l,
+                ING[l.ingredient],
+                d.factor,
+                m,
+                opts(),
+              );
+              const other =
+                S.scope === "peek" && S.peeks.has(key)
+                  ? Units.displayLine(
+                      l,
+                      ING[l.ingredient],
+                      d.factor,
+                      m === "main" ? "original" : "main",
+                      opts(),
+                    )
+                  : null;
+              const tags =
+                (r.approx ? `<span class="tag">≈ reference</span>` : "") +
+                (r.needsConversion
+                  ? `<span class="tag warn">needs conversion</span>`
+                  : "") +
+                (l.fixed ? `<span class="tag">fixed</span>` : "");
+              if (sel)
+                why.push(
+                  [
+                    "Written",
+                    `${Array.isArray(l.qty) ? l.qty.join("–") : (l.qty ?? "")} ${l.unit || "pieces"} (${l.region.toUpperCase()})`,
+                  ],
+                  ["Exact scaled", r.exact],
+                  ["Shown", (r.approx ? "≈ " : "") + r.text],
+                  ["Rule", r.rule],
+                );
+              html += `<div class="line ${sel ? "sel" : ""}" data-sel="${esc(key)}"><div class="qty">${r.approx ? "≈ " : ""}${esc(r.text)}${other ? `<span class="peek">${other.approx ? "≈ " : ""}${esc(other.text)}</span>` : ""}</div><div>${esc(l.ingredient)}${l.prep ? `, <span class="note">${esc(l.prep)}</span>` : ""} ${tags}</div></div>`;
+            });
+            html += `</div>`;
+          }
+        }
+        $("#view").innerHTML = html;
+        $("#view")
+          .querySelectorAll("[data-sel]")
+          .forEach(
+            (el) => (el.onclick = () => dispatch("select", el.dataset.sel)),
+          );
+        $("#why").innerHTML = why.length
+          ? why
+              .map(([a, b]) => `<tr><td>${a}</td><td>${esc(b)}</td></tr>`)
+              .join("")
+          : `<tr><td colspan="2" class="note">Click any amount to see the exact value and the rule that produced what's shown.</td></tr>`;
+      }
+
+      // ---------- walkthroughs ----------
+      const SCENARIOS = [
+        {
+          name: "⅓ cup doubled",
+          desc: "The Pavlova serves 6. At 12 guests it's ×2, so ⅓ cup of sugar becomes ⅔ cup. Watch what the Main unit makes of it: the USDA reference turns cups into grams, so it's marked ≈.",
+          steps: [
+            ["Set 12 guests", "guests", 12],
+            ["Show Dishes", "view", "dish"],
+            ["Show Original unit", "mode", "original"],
+            ["Show Main unit", "mode", "main"],
+          ],
+        },
+        {
+          name: "9 tablespoons",
+          desc: "The Honey cake uses 1½ tbsp of honey. At 48 guests (×6) that's 9 tbsp. Do you want '9 tbsp', or tidied into '½ cup + 1 tbsp'?",
+          steps: [
+            ["Set 48 guests", "guests", 48],
+            ["Show Dishes", "view", "dish"],
+            ["Show Original unit", "mode", "original"],
+            ["Tidy awkward originals", "tidy", "tidy"],
+            ["Keep as written", "tidy", "keep"],
+          ],
+        },
+        {
+          name: "1½ eggs",
+          desc: "Eggs aren't rounded in the data. At 9 guests the Pavlova needs 4½ eggs and the cake 2¼. The Dish shows fractions; only the Shopping list rounds up to boxes.",
+          steps: [
+            ["Set 9 guests", "guests", 9],
+            ["Show Dishes", "view", "dish"],
+            ["Show Shopping list", "view", "shop"],
+          ],
+        },
+        {
+          name: "Big batch",
+          desc: "At 60 guests the cake needs 15 cups of flour. In Main units that's about 1.9 kg (switching from g to kg at 1000 g). Try US Main units too.",
+          steps: [
+            ["Set 60 guests", "guests", 60],
+            ["Show Dishes", "view", "dish"],
+            ["Show Main unit", "mode", "main"],
+            ["US Main units", "units", "us"],
+            ["Metric Main units", "units", "metric"],
+          ],
+        },
+        {
+          name: "Which views switch?",
+          desc: "Switch to 'each view on its own', set the Recipes view to Original and the Shopping list to Main, then move between them. Then try 'tap to peek' and tap a few amounts.",
+          steps: [
+            ["Each view on its own", "scope", "perView"],
+            ["Show Recipes", "view", "recipe"],
+            ["Show Original unit", "mode", "original"],
+            ["Show Shopping list", "view", "shop"],
+            ["Show Main unit", "mode", "main"],
+            ["Back to Recipes", "view", "recipe"],
+            ["Tap to peek instead", "scope", "peek"],
+            ["Show Dishes", "view", "dish"],
+          ],
+        },
+        {
+          name: "Original on the list",
+          desc: "A Shopping list total can't be in an Original unit when the parts were written differently (2 cups + 300 g). See what Original mode does there, with and without the breakdown.",
+          steps: [
+            ["Set 12 guests", "guests", 12],
+            ["Show Shopping list", "view", "shop"],
+            ["Show Original unit", "mode", "original"],
+            ["Show the breakdown", "shopOrig", "breakdown"],
+          ],
+        },
+        {
+          name: "Small amounts",
+          desc: "1 tsp of vanilla in a metric kitchen is 4.9 ml. Is '4.9 ml' useful, or should small volumes show as spoons?",
+          steps: [
+            ["Set 6 guests", "guests", 6],
+            ["Show Dishes", "view", "dish"],
+            ["Show Main unit", "mode", "main"],
+            ["Spoons under 30 ml", "spoons", "spoons"],
+          ],
+        },
+      ];
+      let active = 0,
+        stepAt = 0;
+      function renderTabs() {
+        $("#tabs").innerHTML = SCENARIOS.map(
+          (s, i) =>
+            `<button class="${i === active ? "on" : ""}" data-tab="${i}">${s.name}</button>`,
+        ).join("");
+        $("#tabs")
+          .querySelectorAll("[data-tab]")
+          .forEach((b) => (b.onclick = () => startScenario(+b.dataset.tab)));
+        const sc = SCENARIOS[active];
+        $("#scDesc").textContent = sc.desc;
+        $("#steps").innerHTML = sc.steps
+          .map(
+            (st, i) =>
+              `<button class="${i < stepAt ? "done" : i === stepAt ? "next" : ""}" data-step="${i}">${i + 1}. ${st[0]}</button>`,
+          )
+          .join("");
+        $("#steps")
+          .querySelectorAll("[data-step]")
+          .forEach(
+            (b) =>
+              (b.onclick = () => {
+                const i = +b.dataset.step,
+                  st = sc.steps[i];
+                dispatch(st[1], st[2]);
+                stepAt = i + 1;
+                renderTabs();
+              }),
+          );
+      }
+      function startScenario(i) {
+        active = i;
+        stepAt = 0;
+        S = INITIAL();
+        prev = null;
+        lastMsg = `Started "${SCENARIOS[i].name}". Everything is reset.`;
+        render();
+        renderTabs();
+      }
+
+      $("#guests").oninput = (e) => dispatch("guests", +e.target.value);
+      document
+        .querySelectorAll("[data-scope]")
+        .forEach((b) => (b.onclick = () => dispatch("scope", b.dataset.scope)));
+      document
+        .querySelectorAll("[data-units]")
+        .forEach((b) => (b.onclick = () => dispatch("units", b.dataset.units)));
+      document
+        .querySelectorAll("[data-tidy]")
+        .forEach((b) => (b.onclick = () => dispatch("tidy", b.dataset.tidy)));
+      document
+        .querySelectorAll("[data-spoons]")
+        .forEach(
+          (b) => (b.onclick = () => dispatch("spoons", b.dataset.spoons)),
+        );
+      document
+        .querySelectorAll("[data-shoporig]")
+        .forEach(
+          (b) => (b.onclick = () => dispatch("shopOrig", b.dataset.shoporig)),
+        );
+      document
+        .querySelectorAll("[data-view]")
+        .forEach((b) => (b.onclick = () => dispatch("view", b.dataset.view)));
+      render();
+      renderTabs();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1516 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PROTOTYPE — Plan editing &amp; overflow</title>
+    <style>
+      :root {
+        --accent: #c2410c;
+        --ink: #1c1917;
+        --mute: #78716c;
+        --line: #e7e5e4;
+        --bg: #fafaf9;
+        --card: #fff;
+        --me: #2563eb;
+        --ana: #059669;
+        --oven: #a16207;
+        --bad: #b91c1c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.45 system-ui,
+          -apple-system,
+          Segoe UI,
+          sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+      }
+      h3 {
+        font-size: 13px;
+        margin: 12px 0 6px;
+        color: var(--mute);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .proto {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+      }
+      .intro {
+        color: #44403c;
+        max-width: 820px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-top: 16px;
+      }
+      .row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      @media (max-width: 860px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+      button {
+        font: inherit;
+        border: 1px solid #d6d3d1;
+        background: #fff;
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      select {
+        font: inherit;
+        padding: 4px 6px;
+        border-radius: 6px;
+        border: 1px solid #d6d3d1;
+      }
+      label {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .muted {
+        color: var(--mute);
+      }
+      .bad {
+        color: var(--bad);
+      }
+      .small {
+        font-size: 12px;
+      }
+      .banner {
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        margin-top: 10px;
+      }
+      .banner.ok {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+      }
+      .lane {
+        position: relative;
+        height: 30px;
+        border-bottom: 1px solid var(--line);
+      }
+      .lanes {
+        position: relative;
+      }
+      .lanelabel {
+        position: absolute;
+        left: 0;
+        width: 70px;
+        font-size: 12px;
+        line-height: 30px;
+        color: var(--mute);
+      }
+      .track {
+        position: absolute;
+        left: 74px;
+        right: 0;
+        top: 0;
+        bottom: 0;
+      }
+      .avail {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        background: #f5f5f4;
+        border-radius: 3px;
+      }
+      .bar {
+        position: absolute;
+        top: 5px;
+        bottom: 5px;
+        border-radius: 3px;
+        font-size: 10.5px;
+        color: #fff;
+        overflow: hidden;
+        white-space: nowrap;
+        padding: 0 3px;
+        line-height: 20px;
+      }
+      .bar.passive {
+        background-image: repeating-linear-gradient(
+          45deg,
+          rgba(255, 255, 255, 0.45) 0 4px,
+          transparent 4px 8px
+        );
+        opacity: 0.75;
+      }
+      .bar.changed {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .bar.conflict {
+        outline: 2px dashed var(--bad);
+        outline-offset: 1px;
+      }
+      .ticks {
+        position: relative;
+        height: 16px;
+        margin-left: 74px;
+        font-size: 10px;
+        color: var(--mute);
+      }
+      .ticks span {
+        position: absolute;
+        transform: translateX(-50%);
+      }
+      .service {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--bad);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 4px 6px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--mute);
+        font-weight: 500;
+        font-size: 12px;
+      }
+      tr.changed td {
+        background: #fff7ed;
+      }
+      .pill {
+        display: inline-block;
+        padding: 0 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        background: #f5f5f4;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        border-bottom: 1px solid var(--line);
+      }
+      .tab {
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        background: none;
+        padding: 6px 10px;
+      }
+      .tab.active {
+        border-bottom-color: var(--accent);
+        color: var(--accent);
+      }
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .steps button {
+        text-align: left;
+      }
+      .steps button.done {
+        opacity: 0.5;
+      }
+      .steps button.next {
+        border-color: var(--accent);
+      }
+      ul.log {
+        margin: 0;
+        padding-left: 18px;
+      }
+      ul.log li {
+        margin: 2px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="proto">PROTOTYPE · throwaway · wayfinder ticket #8</span>
+      <h1>
+        How should the suggested Plan behave when it's edited, or when it can't
+        fit everything?
+      </h1>
+      <p class="intro">
+        A small Saturday dinner (duck, tart, salad) with two Cooks and one Oven.
+        The Plan is drawn by a backward scheduler that follows the rules already
+        decided: Tasks go as late as possible, active time needs a free Cook,
+        passive time (simmer, chill, bake) holds Equipment but not a Cook,
+        make-ahead windows and shelf life apply, last-minute Tasks happen on
+        Service day, and pins never move.
+        <br /><br />
+        <b>The open question is the policy.</b> Use the switches to compare
+        <b>Live</b> (every edit re-fits the rest of the Plan right away) with
+        <b>On request</b> (your edit lands alone, conflicts are flagged, and you
+        press Re-plan). Then check whether moving a Task should pin it. Watch
+        how Tasks that don't fit are reported, and which fixes make sense.
+      </p>
+
+      <div class="card">
+        <div class="row">
+          <b>Policy:</b>
+          <label
+            ><input type="radio" name="mode" value="live" /> Live: re-fit the
+            rest after every edit</label
+          >
+          <label
+            ><input type="radio" name="mode" value="manual" /> On request: flag
+            conflicts, Re-plan when asked</label
+          >
+          <label
+            ><input type="checkbox" id="pinOnMove" /> Moving a Task pins
+            it</label
+          >
+        </div>
+        <div id="banner"></div>
+      </div>
+
+      <div class="card">
+        <h2>The Plan</h2>
+        <div id="gantt"></div>
+        <div class="small muted" style="margin-top: 6px">
+          Solid = active time (needs the Cook). Hatched = passive time (no Cook,
+          holds Equipment). 📌 = pinned time, 🔒 = Cook chosen by you, ≈ =
+          placeholder. Orange outline = moved by the last action. Red dashes =
+          in conflict. Red line = Service, Sat 19:00.
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>Free play</h2>
+          <h3>Edit a Task</h3>
+          <div class="row">
+            <select id="taskSel"></select>
+            <button data-move="-60">← 1h</button
+            ><button data-move="-15">← 15m</button>
+            <button data-move="15">15m →</button
+            ><button data-move="60">1h →</button>
+            <button id="pinBtn">Pin / unpin</button>
+          </div>
+          <div class="row" style="margin-top: 6px">
+            Give it to
+            <select id="cookSel"></select>
+            <button id="assignBtn">Assign</button>
+            <button id="unlockBtn">Let the Plan choose the Cook</button>
+          </div>
+          <h3>Change the situation</h3>
+          <div class="row">
+            <button data-avail="anaNone">Ana can't come</button>
+            <button data-avail="anaEarly">Ana leaves at 17:00</button>
+            <button data-avail="meFriLong">I'm free Fri from 15:00</button>
+            <button data-avail="reset">Normal Availability</button>
+          </div>
+          <div class="row" style="margin-top: 6px">
+            <button data-dish="souffle">Add / remove Dish: Soufflé</button>
+            <button data-dish="salad">Add / remove Dish: Salad</button>
+            <button id="ovenBtn">
+              Oven count: <span id="ovenN"></span> (+1 / reset)
+            </button>
+          </div>
+          <h3>Re-plan</h3>
+          <div class="row">
+            <button class="primary" id="replanStable">
+              Re-plan: keep what still works
+            </button>
+            <button id="replanFresh">Re-plan from scratch</button>
+            <button id="resetBtn">Reset everything</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Guided walkthroughs</h2>
+          <div class="small muted">
+            Each one starts from a fresh Plan under the policy you picked above.
+            Run each walkthrough once per policy.
+          </div>
+          <div class="tabs" id="tabs"></div>
+          <div id="scenario"></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>Didn't fit</h2>
+          <div id="leftovers"></div>
+        </div>
+        <div class="card">
+          <h2>Conflicts</h2>
+          <div id="conflicts"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tasks</h2>
+        <div id="table"></div>
+      </div>
+      <div class="card">
+        <h2>What just happened</h2>
+        <ul class="log" id="log"></ul>
+      </div>
+    </main>
+
+    <!-- ============================================================
+     PURE MODEL — no DOM. Liftable into the real scheduler module.
+     ============================================================ -->
+    <script id="model">
+      const Plan = (() => {
+        const DAY = 1440,
+          STEP = 5;
+        const SERVICE = DAY + 19 * 60; // Sat 19:00, minutes since Fri 00:00
+        const SERVICE_DAY_START = DAY; // last-minute Tasks happen on Service day
+        const H = (h) => h * 60;
+
+        const fmt = (m) =>
+          (m < DAY ? "Fri " : m < 2 * DAY ? "Sat " : "Sun ") +
+          String(Math.floor((m % DAY) / 60)).padStart(2, "0") +
+          ":" +
+          String(m % 60).padStart(2, "0");
+        const dur = (m) =>
+          m >= 60
+            ? Math.floor(m / 60) +
+              "h" +
+              (m % 60 ? String(m % 60).padStart(2, "0") : "")
+            : m + "m";
+
+        // window: null = last-minute; else { earliest: minutes before Service it may start, shelf: minutes it keeps }
+        const TASKS = [
+          {
+            id: "stock",
+            dish: "duck",
+            name: "Make duck stock",
+            station: "Sauce",
+            active: 30,
+            passive: 180,
+            equip: null,
+            deps: [],
+            window: { earliest: H(48), shelf: H(72) },
+          },
+          {
+            id: "sauce",
+            dish: "duck",
+            name: "Reduce sauce",
+            station: "Sauce",
+            active: 40,
+            passive: 0,
+            equip: null,
+            deps: ["stock"],
+            window: { earliest: H(24), shelf: H(24) },
+          },
+          {
+            id: "sear",
+            dish: "duck",
+            name: "Sear duck",
+            station: "Meat",
+            active: 30,
+            passive: 0,
+            equip: null,
+            deps: [],
+            window: null,
+          },
+          {
+            id: "roast",
+            dish: "duck",
+            name: "Roast duck",
+            station: "Meat",
+            active: 5,
+            passive: 25,
+            equip: "oven",
+            deps: ["sear"],
+            window: null,
+          },
+          {
+            id: "dough",
+            dish: "tart",
+            name: "Make pastry dough",
+            station: "Pastry",
+            active: 20,
+            passive: 60,
+            equip: null,
+            deps: [],
+            window: { earliest: H(48), shelf: H(48) },
+          },
+          {
+            id: "blind",
+            dish: "tart",
+            name: "Blind-bake shell",
+            station: "Pastry",
+            active: 10,
+            passive: 25,
+            equip: "oven",
+            deps: ["dough"],
+            window: { earliest: H(30), shelf: H(24) },
+          },
+          {
+            id: "tart",
+            dish: "tart",
+            name: "Fill & bake tart",
+            station: "Pastry",
+            active: 15,
+            passive: 40,
+            equip: "oven",
+            deps: ["blind"],
+            window: { earliest: H(12), shelf: H(6) },
+          },
+          {
+            id: "greens",
+            dish: "salad",
+            name: "Wash & dry greens",
+            station: "Garnish",
+            active: 25,
+            passive: 0,
+            equip: null,
+            deps: [],
+            window: { earliest: H(24), shelf: H(24) },
+          },
+          {
+            id: "vinai",
+            dish: "salad",
+            name: "Make vinaigrette",
+            station: "Garnish",
+            active: 10,
+            passive: 0,
+            equip: null,
+            deps: [],
+            window: { earliest: H(72), shelf: H(168) },
+            approx: true,
+          },
+          {
+            id: "dress",
+            dish: "salad",
+            name: "Dress salad",
+            station: "Garnish",
+            active: 5,
+            passive: 0,
+            equip: null,
+            deps: ["greens", "vinai"],
+            window: null,
+          },
+          {
+            id: "sbase",
+            dish: "souffle",
+            name: "Make soufflé base",
+            station: "Pastry",
+            active: 45,
+            passive: 0,
+            equip: null,
+            deps: [],
+            window: null,
+          },
+          {
+            id: "sbake",
+            dish: "souffle",
+            name: "Bake soufflés",
+            station: "Pastry",
+            active: 5,
+            passive: 20,
+            equip: "oven",
+            deps: ["sbase"],
+            window: null,
+          },
+        ];
+        const DISHES = {
+          duck: "Duck",
+          tart: "Tart",
+          salad: "Salad",
+          souffle: "Soufflé",
+        };
+
+        const AVAIL = {
+          normal: {
+            me: [
+              [H(20), H(21) + 30],
+              [DAY + H(17), DAY + H(19)],
+            ],
+            ana: [[DAY + H(15), DAY + H(19)]],
+          },
+        };
+        const COOKS = [
+          { id: "me", name: "Me" },
+          { id: "ana", name: "Ana" },
+        ];
+
+        const byId = (id) => TASKS.find((t) => t.id === id);
+        const end = (t, p) => p.start + t.active + t.passive;
+
+        function initialState() {
+          const s = {
+            mode: "live",
+            pinOnMove: true,
+            dishes: { duck: true, tart: true, salad: true, souffle: false },
+            avail: JSON.parse(JSON.stringify(AVAIL.normal)),
+            ovens: 1,
+            pins: {},
+            locks: {},
+            placements: {},
+            leftovers: {}, // leftovers: id -> reason
+            changed: [],
+            log: ["Started with a fresh Plan."],
+          };
+          const r = schedule(s, { fresh: true });
+          s.placements = r.placements;
+          s.leftovers = r.leftovers;
+          return s;
+        }
+
+        const activeTasks = (s) => TASKS.filter((t) => s.dishes[t.dish]);
+        const succsOf = (s, id) =>
+          activeTasks(s).filter((t) => t.deps.includes(id));
+
+        // ---- feasibility of one placement against everything already placed ----
+        function cookFree(s, placed, t, cook, start) {
+          const a0 = start,
+            a1 = start + t.active;
+          const inBlock = (s.avail[cook] || []).some(
+            ([b0, b1]) => a0 >= b0 && a1 <= b1,
+          );
+          if (!inBlock) return false;
+          for (const [id, p] of Object.entries(placed)) {
+            if (id === t.id || p.cook !== cook) continue;
+            const o = byId(id);
+            if (a0 < p.start + o.active && p.start < a1) return false;
+          }
+          return true;
+        }
+        function equipFree(s, placed, t, start) {
+          if (!t.equip) return true;
+          const e0 = start,
+            e1 = start + t.active + t.passive;
+          let overlapping = 0;
+          for (const [id, p] of Object.entries(placed)) {
+            const o = byId(id);
+            if (id === t.id || o.equip !== t.equip) continue;
+            if (e0 < end(o, p) && p.start < e1) overlapping++;
+          }
+          return overlapping < s.ovens;
+        }
+
+        // Time bounds for a Task given what's placed. Each bound remembers why.
+        function bounds(s, placed, t) {
+          let latestEnd = SERVICE,
+            latestWhy = "Service at " + fmt(SERVICE);
+          let earliest = t.window
+            ? Math.max(0, SERVICE - t.window.earliest)
+            : SERVICE_DAY_START;
+          let earliestWhy = t.window
+            ? `its make-ahead window opens ${fmt(earliest)}`
+            : `it's last-minute (Service day only)`;
+          let latestStartCap = Infinity,
+            capWhy = "";
+          const succs = succsOf(s, t.id).filter((o) => placed[o.id]);
+          for (const o of succs) {
+            if (placed[o.id].start < latestEnd) {
+              latestEnd = placed[o.id].start;
+              latestWhy = `${o.name} starts ${fmt(latestEnd)}${s.pins[o.id] ? " (pinned)" : ""}`;
+            }
+          }
+          if (t.window) {
+            // shelf life: still good when last used
+            const lastUse = succs.length
+              ? Math.max(...succs.map((o) => placed[o.id].start))
+              : SERVICE;
+            const minEnd = lastUse - t.window.shelf;
+            if (minEnd - t.active - t.passive > earliest) {
+              earliest = minEnd - t.active - t.passive;
+              earliestWhy = `it only keeps ${dur(t.window.shelf)}`;
+            }
+          }
+          for (const pid of t.deps) {
+            const pt = byId(pid),
+              pp = placed[pid];
+            if (!pp || !s.dishes[pt.dish]) continue;
+            if (end(pt, pp) > earliest) {
+              earliest = end(pt, pp);
+              earliestWhy = `${pt.name} finishes ${fmt(earliest)}${s.pins[pid] ? " (pinned)" : ""}`;
+            }
+            if (pt.window && end(pt, pp) + pt.window.shelf < latestStartCap) {
+              latestStartCap = end(pt, pp) + pt.window.shelf;
+              capWhy = `${pt.name} only keeps ${dur(pt.window.shelf)}`;
+            }
+          }
+          let latestStart = latestEnd - t.active - t.passive;
+          if (latestStartCap < latestStart) {
+            latestStart = latestStartCap;
+            latestWhy = capWhy;
+          }
+          earliest = Math.ceil(earliest / STEP) * STEP;
+          latestStart = Math.floor(latestStart / STEP) * STEP;
+          return { earliest, earliestWhy, latestStart, latestWhy, latestEnd };
+        }
+
+        function cookOrder(s, placed, t, prevCook) {
+          if (s.locks[t.id]) return [s.locks[t.id]];
+          const load = (c) =>
+            Object.entries(placed)
+              .filter(([, p]) => p.cook === c)
+              .reduce((n, [id]) => n + byId(id).active, 0);
+          const affinity = (c) =>
+            Object.entries(placed).some(
+              ([id, p]) => p.cook === c && byId(id).station === t.station,
+            )
+              ? 0
+              : 1;
+          return COOKS.map((c) => c.id).sort(
+            (a, b) =>
+              (a === prevCook ? -1 : 0) - (b === prevCook ? -1 : 0) ||
+              affinity(a) - affinity(b) ||
+              load(a) - load(b),
+          );
+        }
+
+        // Try to place t. prev = previous placement (stability hint), or null for latest-first.
+        function place(s, placed, t, prev) {
+          const b = bounds(s, placed, t);
+          if (b.earliest > b.latestStart) {
+            return {
+              reason: {
+                kind: "window",
+                text: `Must finish by ${fmt(b.latestStart + t.active + t.passive)} because ${b.latestWhy}, but can't start before ${fmt(b.earliest)} because ${b.earliestWhy}.`,
+              },
+            };
+          }
+          const starts = [];
+          if (prev) {
+            // nearest to where it was
+            const p0 = Math.min(
+              Math.max(prev.start, b.earliest),
+              b.latestStart,
+            );
+            for (
+              let d = 0;
+              p0 - d >= b.earliest || p0 + d <= b.latestStart;
+              d += STEP
+            ) {
+              if (p0 - d >= b.earliest) starts.push(p0 - d);
+              if (d && p0 + d <= b.latestStart) starts.push(p0 + d);
+            }
+          } else
+            for (let st = b.latestStart; st >= b.earliest; st -= STEP)
+              starts.push(st);
+          let cookEverFree = false;
+          for (const st of starts)
+            for (const c of cookOrder(s, placed, t, prev && prev.cook)) {
+              if (!cookFree(s, placed, t, c, st)) continue;
+              cookEverFree = true;
+              if (equipFree(s, placed, t, st))
+                return { placement: { start: st, cook: c } };
+            }
+          const who = s.locks[t.id]
+            ? COOKS.find((c) => c.id === s.locks[t.id]).name
+            : "No Cook";
+          return {
+            reason: cookEverFree
+              ? {
+                  kind: "equip",
+                  text: `The Oven is busy every time a Cook is free between ${fmt(b.earliest)} and ${fmt(b.latestStart)}.`,
+                }
+              : {
+                  kind: "cook",
+                  cook: s.locks[t.id] || null,
+                  by: b.latestStart,
+                  text: `${who} has ${t.active} free minutes between ${fmt(b.earliest)} and ${fmt(b.latestStart + t.active)}.`
+                    .replace(/^No Cook has/, "No Cook has")
+                    .replace(/^(\w+) has/, (m, n) =>
+                      n === "No" ? m : `${n} doesn't have`,
+                    ),
+                },
+          };
+        }
+
+        // Backward greedy. opts.fresh ignores the previous Plan (except pins). opts.first = Task the user just touched.
+        function schedule(s, opts = {}) {
+          const tasks = activeTasks(s);
+          const placed = {},
+            leftovers = {};
+          for (const t of tasks)
+            if (s.pins[t.id] && s.placements[t.id])
+              placed[t.id] = { ...s.placements[t.id] };
+          const remaining = tasks.filter((t) => !placed[t.id]);
+          // reverse-topological: successors before predecessors
+          const order = [];
+          const visit = (t, seen = new Set()) => {
+            if (order.includes(t) || seen.has(t.id)) return;
+            seen.add(t.id);
+            for (const o of succsOf(s, t.id))
+              if (remaining.includes(o)) visit(o, seen);
+            order.push(t);
+          };
+          // latest-deadline-ish first: Service-day work first so it gets the late slots
+          [...remaining]
+            .sort((a, b) => (a.window ? 1 : 0) - (b.window ? 1 : 0))
+            .forEach((t) => visit(t));
+          if (opts.first) {
+            const f = order.find((t) => t.id === opts.first);
+            if (f) {
+              order.splice(order.indexOf(f), 1);
+              order.unshift(f);
+            }
+          }
+          for (const t of order) {
+            const prev = opts.fresh ? null : s.placements[t.id] || null;
+            const r = place(s, placed, t, prev);
+            if (r.placement) placed[t.id] = r.placement;
+            else leftovers[t.id] = r.reason;
+          }
+          return { placements: placed, leftovers };
+        }
+
+        // Every rule broken by the current placements (used in On-request mode, and as a sanity check).
+        function conflicts(s) {
+          const out = [],
+            P = s.placements,
+            tasks = activeTasks(s).filter((t) => P[t.id]);
+          for (const t of tasks) {
+            const p = P[t.id];
+            if (
+              !(s.avail[p.cook] || []).some(
+                ([b0, b1]) => p.start >= b0 && p.start + t.active <= b1,
+              )
+            )
+              out.push({
+                ids: [t.id],
+                text: `${t.name}: ${COOKS.find((c) => c.id === p.cook).name} isn't available ${fmt(p.start)}–${fmt(p.start + t.active)}.`,
+              });
+            if (end(t, p) > SERVICE)
+              out.push({
+                ids: [t.id],
+                text: `${t.name} finishes after Service.`,
+              });
+            if (!t.window && p.start < SERVICE_DAY_START)
+              out.push({
+                ids: [t.id],
+                text: `${t.name} is last-minute but placed before Service day.`,
+              });
+            if (t.window && p.start < SERVICE - t.window.earliest)
+              out.push({
+                ids: [t.id],
+                text: `${t.name} starts before its make-ahead window opens.`,
+              });
+            if (t.locks) {
+            }
+            for (const pid of t.deps) {
+              const pt = byId(pid),
+                pp = P[pid];
+              if (!pp) continue;
+              if (end(pt, pp) > p.start)
+                out.push({
+                  ids: [pid, t.id],
+                  text: `${t.name} starts before ${pt.name} is finished.`,
+                });
+              else if (pt.window && end(pt, pp) + pt.window.shelf < p.start)
+                out.push({
+                  ids: [pid, t.id],
+                  text: `${pt.name} is past its shelf life by the time ${t.name} uses it.`,
+                });
+            }
+            if (
+              t.window &&
+              !succsOf(s, t.id).length &&
+              end(t, p) + t.window.shelf < SERVICE
+            )
+              out.push({
+                ids: [t.id],
+                text: `${t.name} is past its shelf life at Service.`,
+              });
+            for (const o of tasks) {
+              if (o.id <= t.id) continue;
+              const q = P[o.id];
+              if (
+                q.cook === p.cook &&
+                p.start < q.start + o.active &&
+                q.start < p.start + t.active
+              )
+                out.push({
+                  ids: [t.id, o.id],
+                  text: `${COOKS.find((c) => c.id === p.cook).name} is doing ${t.name} and ${o.name} at the same time.`,
+                });
+            }
+          }
+          if (s.ovens) {
+            // equipment over capacity
+            const ov = tasks.filter((t) => t.equip === "oven");
+            for (const t of ov) {
+              const at = P[t.id].start;
+              const using = ov.filter(
+                (o) => P[o.id].start <= at && at < end(o, P[o.id]),
+              );
+              if (using.length > s.ovens)
+                out.push({
+                  ids: using.map((o) => o.id),
+                  text: `The Oven is needed by ${using.map((o) => o.name).join(" and ")} at ${fmt(at)}.`,
+                });
+            }
+          }
+          return out;
+        }
+
+        const AVAIL_PRESETS = {
+          anaNone: (s) => ({ ...s.avail, ana: [] }),
+          anaEarly: (s) => ({ ...s.avail, ana: [[DAY + H(15), DAY + H(17)]] }),
+          meFriLong: (s) => ({
+            ...s.avail,
+            me: [[H(15), H(22)], ...s.avail.me.filter(([a]) => a >= DAY)],
+          }),
+          reset: () => JSON.parse(JSON.stringify(AVAIL.normal)),
+        };
+
+        // After an edit: Live re-fits everything else (keeping what still works); On request leaves the Plan as edited.
+        function afterEdit(prev, s, text, touched) {
+          if (s.mode === "live") {
+            const r = schedule(s, { first: touched });
+            s.placements = r.placements;
+            s.leftovers = r.leftovers;
+          } else {
+            // removed dishes drop out; new Tasks wait for a re-plan
+            for (const id of Object.keys(s.placements))
+              if (!s.dishes[byId(id).dish]) delete s.placements[id];
+            for (const id of Object.keys(s.leftovers))
+              if (!s.dishes[byId(id).dish]) delete s.leftovers[id];
+            for (const t of activeTasks(s))
+              if (!s.placements[t.id] && !s.leftovers[t.id])
+                s.leftovers[t.id] = {
+                  kind: "new",
+                  text: "Added since the last re-plan.",
+                };
+          }
+          s.changed = diff(prev.placements, s.placements, touched);
+          const moved = s.changed
+            .filter((id) => id !== touched)
+            .map((id) => byId(id).name);
+          const newlyOut = Object.keys(s.leftovers)
+            .filter((id) => !prev.leftovers[id])
+            .map((id) => byId(id).name);
+          const back = Object.keys(prev.leftovers)
+            .filter((id) => s.placements[id])
+            .map((id) => byId(id).name);
+          s.log = [
+            text +
+              (moved.length
+                ? ` → also moved: ${moved.join(", ")}.`
+                : " → nothing else moved.") +
+              (newlyOut.length
+                ? ` No longer fits: ${newlyOut.join(", ")}.`
+                : "") +
+              (back.length ? ` Fits again: ${back.join(", ")}.` : ""),
+            ...prev.log,
+          ].slice(0, 30);
+          return s;
+        }
+        function diff(a, b, touched) {
+          const ids = new Set([...Object.keys(a), ...Object.keys(b)]);
+          return [...ids].filter(
+            (id) =>
+              !a[id] ||
+              !b[id] ||
+              a[id].start !== b[id].start ||
+              a[id].cook !== b[id].cook ||
+              (id === touched && b[id]),
+          );
+        }
+
+        function reduce(state, action) {
+          const s = JSON.parse(JSON.stringify(state));
+          const t = action.id && byId(action.id);
+          switch (action.type) {
+            case "MOVE": {
+              const p = s.placements[action.id];
+              if (!p)
+                return {
+                  ...state,
+                  log: [
+                    `${t.name} isn't in the Plan, so there's nothing to move.`,
+                    ...state.log,
+                  ],
+                };
+              p.start += action.by;
+              if (s.pinOnMove) s.pins[action.id] = true;
+              return afterEdit(
+                state,
+                s,
+                `Moved ${t.name} to ${fmt(p.start)}${s.pinOnMove ? " and pinned it" : ""}.`,
+                action.id,
+              );
+            }
+            case "PIN": {
+              if (!s.placements[action.id])
+                return {
+                  ...state,
+                  log: [
+                    `${t.name} isn't in the Plan, so it can't be pinned.`,
+                    ...state.log,
+                  ],
+                };
+              s.pins[action.id] = !s.pins[action.id];
+              return afterEdit(
+                state,
+                s,
+                `${s.pins[action.id] ? "Pinned" : "Unpinned"} ${t.name}.`,
+                action.id,
+              );
+            }
+            case "ASSIGN": {
+              s.locks[action.id] = action.cook;
+              if (s.placements[action.id])
+                s.placements[action.id].cook = action.cook;
+              return afterEdit(
+                state,
+                s,
+                `Gave ${t.name} to ${COOKS.find((c) => c.id === action.cook).name}.`,
+                action.id,
+              );
+            }
+            case "UNLOCK":
+              delete s.locks[action.id];
+              return afterEdit(
+                state,
+                s,
+                `Let the Plan choose the Cook for ${t.name}.`,
+                action.id,
+              );
+            case "AVAIL":
+              s.avail = AVAIL_PRESETS[action.preset](s);
+              return afterEdit(state, s, action.label + ".");
+            case "EXTEND": {
+              // give a Cook one more hour, before their block on the day the Task is due
+              const day = action.by >= DAY ? 1 : 0;
+              const blocks = s.avail[action.cook];
+              const blk = blocks.find(([a]) => Math.floor(a / DAY) === day);
+              if (blk) blk[0] -= 60;
+              else
+                blocks.push([
+                  day * DAY + H(day ? 15 : 19),
+                  day * DAY + H(day ? 16 : 20),
+                ]);
+              return afterEdit(
+                state,
+                s,
+                `${COOKS.find((c) => c.id === action.cook).name} is free one hour earlier on ${day ? "Sat" : "Fri"}.`,
+              );
+            }
+            case "DISH":
+              s.dishes[action.dish] = !s.dishes[action.dish];
+              if (!s.dishes[action.dish])
+                TASKS.filter((x) => x.dish === action.dish).forEach((x) => {
+                  delete s.pins[x.id];
+                  delete s.locks[x.id];
+                });
+              return afterEdit(
+                state,
+                s,
+                `${s.dishes[action.dish] ? "Added" : "Removed"} the ${DISHES[action.dish]}.`,
+              );
+            case "OVEN":
+              s.ovens = s.ovens >= 2 ? 1 : s.ovens + 1;
+              return afterEdit(
+                state,
+                s,
+                `Now ${s.ovens} Oven${s.ovens > 1 ? "s" : ""}.`,
+              );
+            case "REPLAN": {
+              const r = schedule(s, { fresh: action.fresh });
+              s.placements = r.placements;
+              s.leftovers = r.leftovers;
+              const mode = s.mode;
+              s.mode = "manual"; // reuse logging without a second re-plan
+              const out = afterEdit(
+                state,
+                s,
+                action.fresh
+                  ? "Re-planned from scratch (pins kept)."
+                  : "Re-planned, keeping what still works.",
+              );
+              out.mode = mode;
+              return out;
+            }
+            case "MODE":
+              s.mode = action.mode;
+              s.log = [
+                `Policy: ${action.mode === "live" ? "Live" : "On request"}.`,
+                ...s.log,
+              ];
+              return s;
+            case "PIN_ON_MOVE":
+              s.pinOnMove = action.on;
+              return s;
+            case "RESET": {
+              const n = initialState();
+              n.mode = state.mode;
+              n.pinOnMove = state.pinOnMove;
+              return n;
+            }
+          }
+          return state;
+        }
+
+        // What would Re-plan change? (for the On-request banner)
+        function preview(s) {
+          const r = schedule(s, {});
+          const moved = diff(s.placements, r.placements).filter(
+            (id) => s.placements[id] && r.placements[id],
+          ).length;
+          const fixed = Object.keys(s.leftovers).filter(
+            (id) => r.placements[id],
+          ).length;
+          const dropped = Object.keys(r.leftovers).filter(
+            (id) => s.placements[id],
+          ).length;
+          return {
+            moved,
+            fixed,
+            dropped,
+            leftovers: Object.keys(r.leftovers).length,
+          };
+        }
+
+        return {
+          TASKS,
+          COOKS,
+          DISHES,
+          SERVICE,
+          DAY,
+          fmt,
+          dur,
+          byId,
+          end,
+          initialState,
+          reduce,
+          conflicts,
+          preview,
+          activeTasks,
+        };
+      })();
+      if (typeof module !== "undefined") module.exports = Plan;
+    </script>
+
+    <!-- ============================================================
+     THROWAWAY PAGE SHELL
+     ============================================================ -->
+    <script>
+      let state = Plan.initialState();
+      const $ = (sel) => document.querySelector(sel);
+      const dispatch = (a) => {
+        state = Plan.reduce(state, a);
+        render();
+      };
+
+      const SCENARIOS = [
+        {
+          title: "Nudge one Task",
+          text: "The cook wants the sauce done earlier, out of the way before the last rush. Watch what else moves (Ana was busy at that time, so other Tasks shuffle), and whether the sauce stays where it was put. Under On request, the clash is flagged instead of fixed. Which do you want while you are dragging things around?",
+          steps: [
+            [
+              'Move "Reduce sauce" 1h earlier',
+              { type: "MOVE", id: "sauce", by: -60 },
+            ],
+            [
+              "Move it 1h earlier again (into the stock)",
+              { type: "MOVE", id: "sauce", by: -60 },
+            ],
+            ["Re-plan: keep what still works", { type: "REPLAN" }],
+          ],
+        },
+        {
+          title: "Ana can't come",
+          text: 'Without Ana, Saturday afternoon has fewer Cook-hours than the Plan needs. The scheduler still fits as much as it can. Look at the "Didn\'t fit" list: is the reason clear enough, and is the suggested fix the one a cook would reach for? Note: Friday evening actually has enough minutes for the dough if the Tasks are ordered differently. The quick greedy pass misses that (the case CP-SAT on the server was meant for).',
+          steps: [
+            [
+              "Ana can't come",
+              { type: "AVAIL", preset: "anaNone", label: "Ana can't come" },
+            ],
+            ["Re-plan from scratch", { type: "REPLAN", fresh: true }],
+            ["Apply the first suggested fix", "FIX"],
+          ],
+        },
+        {
+          title: "Soufflé fights the duck for the Oven",
+          text: "A last-minute Soufflé has to fit around the duck's roast in the one Oven. Look at when the soufflés come out of the Oven compared with Service: nothing in the rules says a soufflé must be served the moment it's baked. Then add a second Oven and remove the Soufflé. Does the Plan go back to how it was?",
+          steps: [
+            ["Add the Soufflé", { type: "DISH", dish: "souffle" }],
+            ["Add a 2nd Oven", { type: "OVEN" }],
+            ["Remove the Soufflé", { type: "DISH", dish: "souffle" }],
+            ["Re-plan from scratch", { type: "REPLAN", fresh: true }],
+          ],
+        },
+        {
+          title: "A pin that breaks the chain",
+          text: 'The cook drags the blind-baked shell earlier, three times, and each move pins it. The dough must finish first, so it gets pushed back to Friday night. On the third move, the shell lands at 14:00, before Ana arrives. Pins never move, so the Plan keeps it there and flags a conflict. Should a pin be allowed into time when nobody is available, or be refused? Then unpin it and see where it goes.',
+          steps: [
+            [
+              'Move "Blind-bake shell" 1h earlier',
+              { type: "MOVE", id: "blind", by: -60 },
+            ],
+            ["…and another 1h", { type: "MOVE", id: "blind", by: -60 }],
+            ["…and another 1h", { type: "MOVE", id: "blind", by: -60 }],
+            ["Unpin it", { type: "PIN", id: "blind" }],
+          ],
+        },
+        {
+          title: "Hand a Task to Ana",
+          text: "Reassigning is the most common edit on the day. Give the salad dressing to Ana, then give Ana the duck searing as well. Does anything else get shuffled to make room? Should it?",
+          steps: [
+            [
+              'Give "Dress salad" to Ana',
+              { type: "ASSIGN", id: "dress", cook: "ana" },
+            ],
+            [
+              'Give "Sear duck" to Ana',
+              { type: "ASSIGN", id: "sear", cook: "ana" },
+            ],
+            [
+              "Ana leaves at 17:00",
+              {
+                type: "AVAIL",
+                preset: "anaEarly",
+                label: "Ana leaves at 17:00",
+              },
+            ],
+          ],
+        },
+        {
+          title: "More time appears",
+          text: "Ana can't come, so the dough doesn't fit. Then the cook frees up Friday afternoon. Live pulls the dough back in and leaves everything else where it was. Re-plan from scratch moves more Tasks, still as late as possible. Should extra time only ever be used for the Tasks that didn't fit, unless you ask for more?",
+          steps: [
+            [
+              "Ana can't come",
+              { type: "AVAIL", preset: "anaNone", label: "Ana can't come" },
+            ],
+            [
+              "I'm free Fri from 15:00",
+              {
+                type: "AVAIL",
+                preset: "meFriLong",
+                label: "I'm free Fri from 15:00",
+              },
+            ],
+            ["Re-plan: keep what still works", { type: "REPLAN" }],
+            ["Re-plan from scratch", { type: "REPLAN", fresh: true }],
+          ],
+        },
+      ];
+      let tab = 0,
+        stepIdx = 0;
+
+      function firstFix() {
+        for (const [id, r] of Object.entries(state.leftovers)) {
+          const f = fixesFor(id, r)[0];
+          if (f) return f[1];
+        }
+        return { type: "REPLAN" };
+      }
+      function fixesFor(id, r) {
+        const t = Plan.byId(id),
+          out = [];
+        if (r.kind === "cook") {
+          const cooks = r.cook ? [r.cook] : Plan.COOKS.map((c) => c.id);
+          for (const c of cooks)
+            out.push([
+              `Give ${Plan.COOKS.find((x) => x.id === c).name} 1h more`,
+              { type: "EXTEND", cook: c, by: r.by },
+            ]);
+          if (state.locks[id])
+            out.push(["Let the Plan choose the Cook", { type: "UNLOCK", id }]);
+        }
+        if (r.kind === "equip") out.push(["Add a 2nd Oven", { type: "OVEN" }]);
+        if (r.kind === "window") {
+          for (const o of Plan.TASKS)
+            if (
+              state.pins[o.id] &&
+              (o.deps.includes(id) || t.deps.includes(o.id))
+            )
+              out.push([`Unpin ${o.name}`, { type: "PIN", id: o.id }]);
+        }
+        if (r.kind === "new" || state.mode === "manual")
+          out.push(["Re-plan", { type: "REPLAN" }]);
+        out.push([
+          `Remove the ${Plan.DISHES[t.dish]}`,
+          { type: "DISH", dish: t.dish },
+        ]);
+        return out;
+      }
+
+      function renderTabs() {
+        $("#tabs").innerHTML = SCENARIOS.map(
+          (sc, i) =>
+            `<button class="tab ${i === tab ? "active" : ""}" data-tab="${i}">${sc.title}</button>`,
+        ).join("");
+        const sc = SCENARIOS[tab];
+        $("#scenario").innerHTML = `<p>${sc.text}</p><div class="steps">
+    <button data-start="1">↺ Start this walkthrough (fresh Plan, ${state.mode === "live" ? "Live" : "On request"})</button>
+    ${sc.steps.map(([label], i) => `<button data-step="${i}" class="${i < stepIdx ? "done" : i === stepIdx ? "next" : ""}" ${i !== stepIdx ? "disabled" : ""}>${i + 1}. ${label}</button>`).join("")}
+  </div>`;
+      }
+
+      function render() {
+        document
+          .querySelectorAll("input[name=mode]")
+          .forEach((r) => (r.checked = r.value === state.mode));
+        $("#pinOnMove").checked = state.pinOnMove;
+        $("#ovenN").textContent = state.ovens;
+        const conf = Plan.conflicts(state),
+          confIds = new Set(conf.flatMap((c) => c.ids));
+
+        // banner
+        const left = Object.keys(state.leftovers).length;
+        if (state.mode === "manual") {
+          const pv = Plan.preview(state);
+          const bits = [];
+          if (conf.length)
+            bits.push(`${conf.length} conflict${conf.length > 1 ? "s" : ""}`);
+          if (left)
+            bits.push(`${left} Task${left > 1 ? "s" : ""} not in the Plan`);
+          $("#banner").innerHTML =
+            bits.length || pv.moved
+              ? `<div class="banner">The Plan is out of date: ${bits.join(", ") || "it could be tidier"}. Re-plan would move ${pv.moved} Task${pv.moved === 1 ? "" : "s"}, fit ${pv.fixed}${pv.dropped ? `, and push ${pv.dropped} out` : ""}${pv.leftovers ? ` (${pv.leftovers} still won't fit)` : ""}. <button class="primary" id="bannerReplan">Re-plan</button></div>`
+              : `<div class="banner ok">Plan is up to date.</div>`;
+        } else {
+          $("#banner").innerHTML = left
+            ? `<div class="banner">The Plan fits ${Object.keys(state.placements).length} of ${Plan.activeTasks(state).length} Tasks. See "Didn't fit".</div>`
+            : `<div class="banner ok">Everything fits.</div>`;
+        }
+
+        // gantt: Fri 14:00–24:00, Sat 12:00–20:00
+        const days = [
+          { label: "Friday", from: 14 * 60, to: 24 * 60 },
+          {
+            label: "Saturday",
+            from: Plan.DAY + 12 * 60,
+            to: Plan.DAY + 20 * 60,
+          },
+        ];
+        const colors = { me: "var(--me)", ana: "var(--ana)" };
+        $("#gantt").innerHTML = days
+          .map((d) => {
+            const pct = (m) =>
+              ((Math.min(Math.max(m, d.from), d.to) - d.from) /
+                (d.to - d.from)) *
+              100;
+            const span = (a, b) =>
+              `left:${pct(a)}%;width:${Math.max(pct(b) - pct(a), 0)}%`;
+            const ticks = [];
+            for (let m = d.from; m <= d.to; m += 60)
+              ticks.push(
+                `<span style="left:${pct(m)}%">${Plan.fmt(m).slice(4, 6)}h</span>`,
+              );
+            const bar = (t, p, laneCook) => {
+              const a0 = p.start,
+                a1 = p.start + t.active,
+                e1 = Plan.end(t, p);
+              const cls = `${state.changed.includes(t.id) ? "changed" : ""} ${confIds.has(t.id) ? "conflict" : ""}`;
+              const bg = laneCook ? colors[p.cook] : "var(--oven)";
+              const tag = `${state.pins[t.id] ? "📌" : ""}${state.locks[t.id] ? "🔒" : ""}${t.approx ? "≈" : ""}`;
+              const title = `${t.name} · ${Plan.fmt(a0)}–${Plan.fmt(e1)}`;
+              if (e1 <= d.from || a0 >= d.to) return "";
+              return (
+                (laneCook
+                  ? `<div class="bar ${cls}" title="${title}" style="${span(a0, a1)};background:${bg}">${tag}${t.name}</div>`
+                  : "") +
+                (laneCook && t.passive
+                  ? `<div class="bar passive ${cls}" title="${title} (passive)" style="${span(a1, e1)};background:${bg}">${t.passive >= 30 ? t.name : ""}</div>`
+                  : "") +
+                (!laneCook
+                  ? `<div class="bar ${cls}" title="${title}" style="${span(a0, e1)};background:${bg}">${t.name}</div>`
+                  : "")
+              );
+            };
+            const lanes =
+              Plan.COOKS.map(
+                (
+                  c,
+                ) => `<div class="lane"><div class="lanelabel">${c.name}</div><div class="track">
+        ${(state.avail[c.id] || []).map(([a, b]) => (b > d.from && a < d.to ? `<div class="avail" style="${span(a, b)}"></div>` : "")).join("")}
+        ${Object.entries(state.placements)
+          .filter(([, p]) => p.cook === c.id)
+          .map(([id, p]) => bar(Plan.byId(id), p, true))
+          .join("")}
+        ${Plan.SERVICE > d.from && Plan.SERVICE < d.to ? `<div class="service" style="left:${pct(Plan.SERVICE)}%"></div>` : ""}
+      </div></div>`,
+              ).join("") +
+              `<div class="lane"><div class="lanelabel">Oven${state.ovens > 1 ? " ×" + state.ovens : ""}</div><div class="track">
+        ${Object.entries(state.placements)
+          .filter(([id]) => Plan.byId(id).equip === "oven")
+          .map(([id, p]) => bar(Plan.byId(id), p, false))
+          .join("")}
+        ${Plan.SERVICE > d.from && Plan.SERVICE < d.to ? `<div class="service" style="left:${pct(Plan.SERVICE)}%"></div>` : ""}
+      </div></div>`;
+            return `<h3>${d.label}</h3><div class="ticks">${ticks.join("")}</div><div class="lanes">${lanes}</div>`;
+          })
+          .join("");
+
+        // leftovers
+        const lo = Object.entries(state.leftovers);
+        $("#leftovers").innerHTML = lo.length
+          ? lo
+              .map(([id, r]) => {
+                const t = Plan.byId(id);
+                return `<div style="margin-bottom:10px"><b>${t.name}</b> <span class="pill">${Plan.DISHES[t.dish]}</span> <span class="muted small">${t.active}m active${t.passive ? " + " + t.passive + "m passive" : ""}</span>
+      <div class="small">${r.text}</div>
+      <div class="row small" style="gap:6px;margin-top:4px">${fixesFor(id, r)
+        .map(
+          ([l, a]) => `<button data-fix='${JSON.stringify(a)}'>${l}</button>`,
+        )
+        .join("")}</div></div>`;
+              })
+              .join("")
+          : '<span class="muted">Everything is in the Plan.</span>';
+
+        $("#conflicts").innerHTML = conf.length
+          ? `<ul class="log">${conf.map((c) => `<li class="bad">${c.text}</li>`).join("")}</ul>`
+          : '<span class="muted">None.</span>';
+
+        // table
+        const rows = Plan.activeTasks(state)
+          .map((t) => ({ t, p: state.placements[t.id] }))
+          .sort((a, b) => (a.p ? a.p.start : 1e9) - (b.p ? b.p.start : 1e9));
+        $("#table").innerHTML =
+          `<table><tr><th>Task</th><th>Dish</th><th>Station</th><th>Cook</th><th>Start</th><th>Done</th><th></th></tr>${rows
+            .map(
+              ({ t, p }) =>
+                `<tr class="${state.changed.includes(t.id) ? "changed" : ""}"><td>${t.approx ? "≈ " : ""}${t.name}</td><td>${Plan.DISHES[t.dish]}</td><td>${t.station}</td>
+      <td>${p ? Plan.COOKS.find((c) => c.id === p.cook).name : "—"}${state.locks[t.id] ? " 🔒" : ""}</td>
+      <td>${p ? Plan.fmt(p.start) : '<span class="bad">didn\'t fit</span>'}</td><td>${p ? Plan.fmt(Plan.end(t, p)) : ""}</td>
+      <td>${state.pins[t.id] ? "📌 pinned" : ""}${confIds.has(t.id) ? ' <span class="bad">conflict</span>' : ""}</td></tr>`,
+            )
+            .join("")}</table>`;
+
+        $("#log").innerHTML = state.log
+          .map((l, i) => `<li class="${i ? "muted" : ""}">${l}</li>`)
+          .join("");
+        renderTabs();
+      }
+
+      // wiring
+      const tsel = $("#taskSel");
+      tsel.innerHTML = Plan.TASKS.map(
+        (t) =>
+          `<option value="${t.id}">${t.name} (${Plan.DISHES[t.dish]})</option>`,
+      ).join("");
+      $("#cookSel").innerHTML = Plan.COOKS.map(
+        (c) => `<option value="${c.id}">${c.name}</option>`,
+      ).join("");
+      document
+        .querySelectorAll("input[name=mode]")
+        .forEach(
+          (r) => (r.onchange = () => dispatch({ type: "MODE", mode: r.value })),
+        );
+      $("#pinOnMove").onchange = (e) =>
+        dispatch({ type: "PIN_ON_MOVE", on: e.target.checked });
+      document
+        .querySelectorAll("[data-move]")
+        .forEach(
+          (b) =>
+            (b.onclick = () =>
+              dispatch({ type: "MOVE", id: tsel.value, by: +b.dataset.move })),
+        );
+      $("#pinBtn").onclick = () => dispatch({ type: "PIN", id: tsel.value });
+      $("#assignBtn").onclick = () =>
+        dispatch({ type: "ASSIGN", id: tsel.value, cook: $("#cookSel").value });
+      $("#unlockBtn").onclick = () =>
+        dispatch({ type: "UNLOCK", id: tsel.value });
+      document
+        .querySelectorAll("[data-avail]")
+        .forEach(
+          (b) =>
+            (b.onclick = () =>
+              dispatch({
+                type: "AVAIL",
+                preset: b.dataset.avail,
+                label: b.textContent,
+              })),
+        );
+      document
+        .querySelectorAll("[data-dish]")
+        .forEach(
+          (b) =>
+            (b.onclick = () =>
+              dispatch({ type: "DISH", dish: b.dataset.dish })),
+        );
+      $("#ovenBtn").onclick = () => dispatch({ type: "OVEN" });
+      $("#replanStable").onclick = () => dispatch({ type: "REPLAN" });
+      $("#replanFresh").onclick = () =>
+        dispatch({ type: "REPLAN", fresh: true });
+      $("#resetBtn").onclick = () => {
+        stepIdx = 0;
+        dispatch({ type: "RESET" });
+      };
+      document.addEventListener("click", (e) => {
+        const el = e.target.closest("button");
+        if (!el) return;
+        if (el.id === "bannerReplan") dispatch({ type: "REPLAN" });
+        if (el.dataset.fix) dispatch(JSON.parse(el.dataset.fix));
+        if (el.dataset.tab) {
+          tab = +el.dataset.tab;
+          stepIdx = 0;
+          renderTabs();
+        }
+        if (el.dataset.start) {
+          stepIdx = 0;
+          dispatch({ type: "RESET" });
+        }
+        if (el.dataset.step) {
+          const a = SCENARIOS[tab].steps[+el.dataset.step][1];
+          stepIdx++;
+          dispatch(a === "FIX" ? firstFix() : a);
+        }
+      });
+      render();
+    </script>
+  </body>
+</html>

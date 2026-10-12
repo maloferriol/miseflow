@@ -83,6 +83,14 @@ _Avoid_: Leftover (that's food), overflow
 **Re-plan**:
 Fitting the Plan again after a change. While planning, it happens live after every edit, and only what must move moves. On Service day, it happens only when the cook asks. "Re-plan from scratch" ignores the previous Plan but keeps pins.
 
+**Fire**:
+To start a Course during Service. The cook fires Courses by hand, one at a time, in order. A Course is **waiting**, **fired**, or **served**. Its **lead time** is about how long it takes from fire to pass.
+_Avoid_: Send, call (for a Course)
+
+**Serve straight away**:
+A flag on a Step for work that can't wait between finishing and the plate (soufflé, fries, slicing the duck). Its Tasks stay locked until their Course is fired.
+_Avoid_: À la minute (in the app)
+
 **Availability**:
 The hours a Cook is free to cook, defaulting to a kitchen-wide schedule.
 

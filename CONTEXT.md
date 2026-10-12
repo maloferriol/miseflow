@@ -185,6 +185,10 @@ _Avoid_: Locale (outside Cooklang), measuring system
 The scaled ingredient totals for one Service, across all its Recipes and sub-recipes, optionally combined with other Services.
 _Avoid_: Grocery list (in code), order
 
+**Combined list**:
+A saved, named Shopping list covering several Services ("Weekend shop"), shopped from in place of theirs. A Service's list belongs to at most one Combined list at a time. Bought and Already have amounts cover the earliest Service first, and are split that way if the Services are uncombined.
+_Avoid_: Merged list, shopping trip
+
 **Pack size**:
 An amount an Ingredient is sold in (cream: 250 ml, 1 L; eggs: 6, 12). The Shopping list picks the combination of packs with the least left over, then the fewest packs. An Ingredient with no pack sizes is bought **loose**.
 _Avoid_: Package, SKU
@@ -192,3 +196,19 @@ _Avoid_: Package, SKU
 **Trim loss**:
 The share of an Ingredient as bought that isn't used (peel, shell, stems). It's added when a weight on the Shopping list becomes an amount to buy.
 _Avoid_: Waste, refuse (outside USDA data)
+
+**Shopping status**:
+Where a Shopping list row stands: **To buy**, **Ordered**, or **Got**. Ordered and Got record an amount, not just a tick. An Ordered row can carry an arrival time; a Task planned before it shows a conflict. A row is covered when Got plus Already have meets the need; if the need later grows, the row goes back to To buy for the shortfall only.
+_Avoid_: Checked, done, purchased
+
+**Already have**:
+An amount of an Ingredient the kitchen has before shopping, entered on a Shopping list row. It comes off the need before packs are chosen.
+_Avoid_: On hand (as a status), stock, inventory
+
+**Staple**:
+An Ingredient the kitchen always keeps (salt, oil, flour). Its rows start as "already have all of it", collapsed at the bottom of the Shopping list, and can be reopened.
+_Avoid_: Pantry item, basic
+
+**Shopping category**:
+The section of the shop an Ingredient is bought in (Produce, Dairy & eggs, Dry goods…). Each Ingredient has one; the kitchen names and orders categories to match its shop, and the Shopping list is grouped in that order. Maps to Cooklang's aisles.
+_Avoid_: Aisle (in the app), department

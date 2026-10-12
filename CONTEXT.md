@@ -57,6 +57,10 @@ _Avoid_: Event, dinner
 A unit of scheduled work for a Dish: one Step by default, or several consecutive Steps grouped together. Has a duration, a Station, and at most one Cook; its progress is the progress of its Steps.
 _Avoid_: To-do, job
 
+**Active time** and **passive time**:
+A Step's duration in two parts. Active time needs a Cook. Passive time (baking, resting, chilling, proving) needs no Cook and can run outside Availability, such as overnight, but still holds its Equipment.
+_Avoid_: Hands-on/hands-off (in the app), wait time
+
 **Make-ahead window**:
 How early before Service a Recipe, sub-recipe, or Step may be done, together with its shelf life once made. A Step's own window overrides its Recipe's; a Step without one inherits it.
 _Avoid_: Advance window, prep window
@@ -67,6 +71,25 @@ A Task whose Step has a make-ahead window. Every other Task is a **last-minute t
 **Plan**:
 A suggested, editable schedule of Tasks for a Service, fitted into the Availability of the Service's Cooks while respecting dependencies and serving times.
 _Avoid_: Timeline, itinerary
+
+**Pin**:
+A Task whose time the cook has fixed. Moving a Task pins it. The Plan never moves a pinned Task. If a pin breaks a rule (outside Availability, before its dependency, past shelf life), it stays where it is and shows as a conflict. Choosing a Task's Cook fixes the Cook, not the time.
+_Avoid_: Lock (for time)
+
+**Unplaced Task**:
+A Task the Plan couldn't fit. It is listed with the reason it didn't fit and quick fixes. The rest of the Plan still stands.
+_Avoid_: Leftover (that's food), overflow
+
+**Re-plan**:
+Fitting the Plan again after a change. While planning, it happens live after every edit, and only what must move moves. On Service day, it happens only when the cook asks. "Re-plan from scratch" ignores the previous Plan but keeps pins.
+
+**Fire**:
+To start a Course during Service. The cook fires Courses by hand, one at a time, in order. A Course is **waiting**, **fired**, or **served**. Its **lead time** is about how long it takes from fire to pass.
+_Avoid_: Send, call (for a Course)
+
+**Serve straight away**:
+A flag on a Step for work that can't wait between finishing and the plate (soufflé, fries, slicing the duck). Its Tasks stay locked until their Course is fired.
+_Avoid_: À la minute (in the app)
 
 **Availability**:
 The hours a Cook is free to cook, defaulting to a kitchen-wide schedule.

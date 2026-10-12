@@ -1,0 +1,77 @@
+# Cooklang capabilities and round-trip fidelity
+
+Answers ticket `../issues/01-cooklang-capabilities.md`. Researched 2026-10-12 against the primary sources below. Where a claim comes from source code, the repo was read at the commit shown.
+
+| Source                                                                                | Ref read                                |
+| ------------------------------------------------------------------------------------- | --------------------------------------- |
+| Spec site: https://cooklang.org/docs/spec/ and https://cooklang.org/docs/conventions/ | live 2026-10-12                         |
+| Spec repo: https://github.com/cooklang/spec                                           | `f088323` (last commit 2026-09-30)      |
+| Reference parser: https://github.com/cooklang/cooklang-rs                             | `44d0bd6`, release v0.19.0 (2026-09-30) |
+| CLI: https://github.com/cooklang/CookCLI                                              | `550808f`, v0.38.1                      |
+| TS parser: https://github.com/cooklang/cooklang-ts                                    | `a33be92`, **deprecated**               |
+
+## TL;DR
+
+- Cooklang can carry **arbitrary YAML front matter per Recipe**, so a stable id, yield, servings, make-ahead window and shelf life _per Recipe_ all fit, but only as **custom keys**. The spec defines `servings` and `yield` and has no id, make-ahead or shelf-life convention.
+- There is **no per-Step metadata** and **no per-Ingredient attribute slot**. An ingredient has only name, quantity/unit, a free-text `(note)`, an alias, and modifiers. Per-Step make-ahead windows, Ingredient allergen/dietary tags and default Station have no home in the `.cook` file without inventing syntax (for example, encoding in notes or comments). Ingredient-level facts belong in a separate catalog file, the way Cooklang itself keeps aisles in a separate `aisle.conf`.
+- **A lossless round-trip is not available off the shelf.** The parser drops comments, and the only Cooklang writer (CookCLI's `cooklang-format`) promises only _semantic_ equivalence. It re-wraps lines and re-serializes YAML. A hand-written file is only safe if the app makes span-based text edits, or never writes `.cook` files at all.
+- **Versioning is weak**: the spec has no version number and no tags, its EBNF is marked "WIP, outdated", and the reference parser is pre-1.0 with frequent breaking changes. The core syntax, front matter, sections, notes and references are stable in practice. Extensions are not.
+
+## 1. What a `.cook` file can express
+
+### Core spec (https://cooklang.org/docs/spec/, spec repo `README.md`)
+
+- **Ingredients** `@name{qty%unit}`, **cookware** `#name{}`, **timers** `~name{qty%unit}`.
+- **Steps**: one paragraph is one step, separated by blank lines. A trailing `\` forces a line break within a step.
+- **Comments**: `-- line` and `[- block -]`.
+- **Metadata**: YAML front matter between `---` fences at the top of the file. The spec example uses `title` and `tags`. Proposal 0003 (status _Released_) replaced the old `>> key: value` syntax. Parsers still accept `>>`, and cooklang-rs 0.14.0 deprecated it with a warning (cooklang-rs `CHANGELOG.md`, 0.14.0).
+- **Notes**: a line starting with `>` is non-step text (proposal 0005, _Released_). In the model this is `Content::Text(String)` inside a section (`cooklang-rs/src/model.rs`).
+- **Sections**: `= Dough` / `== Filling ==` (proposal 0006, _Released_). In the model this is `Section { name: Option<String>, content: Vec<Content> }`.
+- **Short-hand preparations**: `@onion{1}(peeled and finely chopped)` gives an ingredient a free-text `note`.
+- **Recipe references**: `@./sauces/Hollandaise{150%g}`, a path relative to the recipes root without `.cook` (proposal 0015, _Accepted, in implementation_). The reference **is the file path**, and the model carries `RecipeReference { name, components }` (`model.rs`).
+- **Optional components**: `@?chilli flakes{}`, `#?splatter guard{}` (proposal 0018). This became core syntax in cooklang-rs 0.19.0.
+- **Fixed quantities**: `@salt{=1%tsp}` does not scale (conventions page, "Fixed Quantities").
+
+### Conventions (https://cooklang.org/docs/conventions/, spec `conventions.md`)
+
+- **Canonical metadata keys**: `title`, `source`/`source.name`/`source.url`, `author`, `servings`/`serves`, `yield` (`number%unit` or a list, from proposal 0017, _Awaiting review_), `course`/`category`, `locale`, `time`/`duration`, `prep time`/`time.prep`, `cook time`/`time.cook`, `difficulty`, `cuisine`, `diet`, `tags`, `image(s)`/`picture(s)`, `description`/`introduction`. The conventions give **no guidance on custom keys and no id key**.
+- **Scaling**: `servings` and `yield` are independent. `@./path{4%servings}` scales a reference by servings. Scaling by yield units is marked _experimental_.
+- **Other file types**: `.menu` (sections are days, bodies are recipe references, and section titles may include dates), `.shopping-list`, `.shopping-checked`, the pantry (TOML), and **ingredient grouping (`aisle.conf`)**, a separate TOML-like file that maps ingredient names to categories. This is the closest existing precedent for keeping ingredient-level attributes outside recipes.
+
+### Parser extensions (cooklang-rs, not in the spec)
+
+`cooklang-rs/extensions.md` lists component modifiers (`@@` recipe, `@&` reference, `@-` hidden, `@+` new), intermediate preparations `@&(~1)dough{}`, aliases `@white wine|wine{}`, advanced units `{1 L}`, modes `>> [mode]: steps`, temperature detection, ranges `{2-4}`, and timer-requires-time. Only `?` is stated to be in the spec. **`Extensions::default()` enables _all_ of them** (`cooklang-rs/src/lib.rs`, `impl Default for Extensions`). A file that relies on any of them is not portable to a spec-strict reader. CookCLI's own formatter tests use `Extensions::empty()` (`CookCLI/crates/format/README.md`).
+
+## 2. Can it hold MiseFlow's fields?
+
+| MiseFlow field                                | Fits?                    | How / why not                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stable Recipe id                              | Per-file custom key only | Not canonical. Front matter is an arbitrary `serde_yaml::Mapping` (`cooklang-rs/src/metadata.rs`: `pub map: serde_yaml::Mapping`), so `id: 01J…` survives parsing and is ignored by other apps. **Cooklang's own identity for a recipe is its path**: references and `.menu` files point at `./dir/name`, so renaming or moving a file breaks references.                                                                                                                          |
+| Yield / servings                              | Yes, canonical           | `servings` (leading number scales) and `yield` (`500%g`). `yield` is still _Awaiting review_ (proposal 0017), and yield-based scaling is experimental.                                                                                                                                                                                                                                                                                                                             |
+| Make-ahead window + shelf life **per Recipe** | Custom key only          | Arbitrary YAML works (for example, a `make-ahead: {window: 2d, shelf life: 3d}` block). No convention exists, so other apps ignore it. The only canonical time keys are prep, cook and total.                                                                                                                                                                                                                                                                                      |
+| Make-ahead window + shelf life **per Step**   | **No**                   | `Step { items, number }` (`model.rs`, `#[non_exhaustive]`) has no metadata. There is no step-attribute syntax in the spec or the extensions. Workarounds: a `> note` or a comment next to the step (comments are discarded by the parser; notes become a separate `Content::Text`, not attached to the step), a custom key in front matter that points at the step by number or section (fragile, because numbers shift on edit), or an invented syntax that breaks other parsers. |
+| Ingredient allergen / dietary tags            | **No** (per-ingredient)  | `Ingredient { name, alias, quantity, note, reference, relation, modifiers }` (`model.rs`). The only free slot is the `(note)`, which is meant for preparation text ("chopped"). The recipe-level `diet` key exists, but is per Recipe, not per Ingredient. In the CONTEXT.md sense, an Ingredient is a catalog entity, and Cooklang has no catalog beyond `aisle.conf`.                                                                                                            |
+| Ingredient default Station                    | **No** (per-ingredient)  | Same limitation. The closest analogue is an `aisle.conf`-style sidecar file (`[pastry]\nbutter\n…`), but that is a MiseFlow file the spec does not define.                                                                                                                                                                                                                                                                                                                         |
+| Sub-recipe as component                       | Yes                      | `@./path{qty}`, scalable by factor, servings or (experimentally) yield.                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+## 3. Round-trip: parse → model → serialize
+
+- **The parser discards comments.** The lexer produces `line comment` / `block comment` tokens, and the block parser consumes them as whitespace (`cooklang-rs/src/parser/block_parser.rs`, `ws_comments`). The event stream (`parser/mod.rs`, `enum Event`) has no comment event, and the canonical test `testComments` expects `-- testing comments` to yield `steps: []` (`spec/tests/canonical.yaml`).
+- **The model loses source layout.** Step text is reassembled from items. Line wrapping, `\` breaks, the closing-`=` style on sections, spacing and brace style are not retained. Front matter is held as a parsed `serde_yaml::Mapping`, so YAML comments, quoting and style are lost. Key order is kept, because a Mapping is an ordered map.
+- **There is one writer, and it is semantic, not lossless.** CookCLI's `cooklang-format` crate (`crates/format/src/cooklang_source.rs`, derived from Zheoni/cooklang-chef) writes front matter through `serde_yaml::to_writer` and **"re-wraps steps to the terminal width"**. Its stated contract is that output "must parse back into the same recipe" (test `output_reparses_into_an_equivalent_recipe`, which compares a `shape()` of the two recipes) and is idempotent. That means a file the writer produced stays stable, but a hand-written file is normalized on its first write. No writer exists in cooklang-rs itself. cooklang-ts has none either.
+- **A lossless path exists only at the AST/event level.** cooklang-rs emits `Located<…>` components with source spans (`parser/mod.rs`), so an app can make **surgical text edits**, such as changing a quantity or a front-matter key, by span, and leave the rest of the bytes untouched. That would be MiseFlow code, not something the parsers provide. For YAML, it would need a format-preserving YAML editor. The analogous tool for TOML is `toml_edit`, which CookCLI already uses for config files.
+
+## 4. Stability and versioning
+
+- **The spec is unversioned.** The spec repo has no tags or releases (checked on a clone). Its README opens with "not all latest language features supported in the apps yet". `EBNF.md` begins "WIP, the EBNF is outdated and doesn't contain latest changes yet". The only version marker is `version: 8` in `spec/tests/canonical.yaml`, the shared conformance test suite of 51 cases.
+- **Governance**: proposals go through a PR, a discussion and two weeks of core-team review, and are added to the spec once the official apps implement them (`spec/CONTRIBUTING.md`). Almost every proposal's author is the project lead (dubadub). Statuses: 0003, 0004, 0005, 0006, 0007 and 0008 are _Released_. 0010, 0015, 0016 and 0018 are _Accepted, in implementation_. 0017 (yield) is _Awaiting review_. 0002 was _Rejected_.
+- **Parsers**: the ecosystem is converging on **one implementation**. cooklang-ts is deprecated ("no new features or bug fixes", `cooklang-ts/DEPRECATION_NOTICE.md`) in favour of `@cooklang/cooklang`, which is cooklang-rs compiled to WASM. CookCLI is built on cooklang-rs. cooklang-rs is pre-1.0 (v0.19.0), and its changelog marks several changes _(breaking)_ in a single release. Those breaks are mostly in the API, not the file syntax.
+- **Syntax churn**: the one significant file-format change was moving metadata from `>>` to YAML front matter (0.14.0, 2024-12). The old syntax still parses with a deprecation warning. Core syntax has been additive since then (optional `?`, references).
+
+## Implications for the decision (portability/exit)
+
+1. A `.cook` file can be a **portable export** of a Recipe's human content: steps, ingredients, quantities, sections, notes, sub-recipe references, servings and yield. Exported files will open in CookCLI and the Cooklang apps.
+2. It **cannot be the sole source of truth** for MiseFlow's model without (a) custom front-matter keys for id and per-Recipe make-ahead, (b) a sidecar catalog for Ingredient tags and Station, and (c) an invented or encoded scheme for per-Step make-ahead, which the spec does not support and which no other tool would understand.
+3. If `.cook` files are the store and also hand-editable, MiseFlow must either **never rewrite them** or **write by span-patching**. Round-tripping through the model loses comments and formatting.
+4. Identity in Cooklang is the **file path**. A MiseFlow id in front matter would be a MiseFlow convention that other tools ignore, and Cooklang's own references would still break on rename.
+5. To stay portable, MiseFlow should parse with `Extensions::empty()` (spec-only) rather than cooklang-rs's all-extensions default.

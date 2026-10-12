@@ -1,0 +1,1152 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Wayfinder ticket #10 "How should the Prep view show several days of prep?" (map #1).
+  Decided before building: the Prep view is the view you WORK FROM on prep days (phone or printout).
+  The Gantt chart (#8) stays the planning tool, and the kanban board is ticket #40.
+
+  Three variants, switchable via ?variant=A|B|C (or ← / →, or the bottom bar):
+    A  Today list     — one day at a time: Now / Today by time / Ready in the fridge / Tomorrow
+    B  Days grid      — Thu · Fri · Sat columns × Cook, with a make-ahead shelf timeline underneath
+    C  By component   — Course → Dish → component, each a chain of Tasks across days and a ready/expiry status
+
+  Scenario: Saturday dinner for 8 (Sat 17 Oct, Service 19:30). Cooks Malo and Sam. Prep starts Thursday evening.
+  Use "Now" in the top bar to jump through the prep days. "Phone / Desktop" switches the frame.
+  Tick a Task to mark it done; the thing it makes starts its shelf life. No persistence; reload resets.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prep view prototype</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --card: #fff;
+        --ink: #1d1b18;
+        --muted: #77716a;
+        --line: #e4dfd6;
+        --accent: #c2410c;
+        --ok: #15803d;
+        --warn: #b45309;
+        --bad: #b91c1c;
+        --run: #0e7490;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #d9d4ca;
+        color: var(--ink);
+        font:
+          14px/1.35 -apple-system,
+          system-ui,
+          sans-serif;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      .proto-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        padding: 8px 12px;
+        background: #2a2723;
+        color: #eee;
+        font-size: 12px;
+      }
+      .proto-top button {
+        background: #3d3934;
+        border: 1px solid #555;
+        color: #eee;
+        border-radius: 6px;
+        padding: 3px 8px;
+      }
+      .proto-top button.on {
+        background: #eee;
+        color: #222;
+      }
+      .proto-top .sep {
+        width: 12px;
+      }
+      .frame {
+        margin: 12px auto 90px;
+        background: var(--bg);
+        min-height: 70vh;
+        overflow: hidden;
+      }
+      .frame.phone {
+        width: 390px;
+        max-width: 100vw;
+        border-radius: 22px;
+        box-shadow: 0 8px 30px #0003;
+      }
+      .frame.desktop {
+        width: min(1240px, calc(100vw - 24px));
+        border-radius: 8px;
+        box-shadow: 0 4px 20px #0002;
+      }
+      .hdr {
+        padding: 14px 16px 10px;
+        border-bottom: 1px solid var(--line);
+        background: var(--card);
+      }
+      .hdr h1 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .hdr .sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 2px;
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--bg);
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 12px;
+      }
+      .chip.on {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
+      }
+      .sec {
+        padding: 10px 16px;
+      }
+      .sec h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin: 6px 0 8px;
+      }
+      .task {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 9px 10px;
+        margin-bottom: 6px;
+      }
+      .task.done {
+        opacity: 0.5;
+      }
+      .task.done .tname {
+        text-decoration: line-through;
+      }
+      .task.behind {
+        border-color: var(--bad);
+        box-shadow: inset 3px 0 0 var(--bad);
+      }
+      .task.running {
+        border-color: var(--run);
+        box-shadow: inset 3px 0 0 var(--run);
+      }
+      .cb {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 2px solid var(--muted);
+        background: #fff;
+        flex: none;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        padding: 0;
+      }
+      .cb.on {
+        background: var(--ok);
+        border-color: var(--ok);
+        color: #fff;
+      }
+      .tname {
+        font-weight: 600;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .pill {
+        display: inline-block;
+        font-size: 11px;
+        border-radius: 999px;
+        padding: 1px 7px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        margin-right: 4px;
+        white-space: nowrap;
+      }
+      .pill.ok {
+        color: var(--ok);
+        border-color: #bbe5c8;
+        background: #effaf2;
+      }
+      .pill.warn {
+        color: var(--warn);
+        border-color: #f2d6a8;
+        background: #fdf6ea;
+      }
+      .pill.bad {
+        color: var(--bad);
+        border-color: #f3c0c0;
+        background: #fdeeee;
+      }
+      .pill.run {
+        color: var(--run);
+        border-color: #b5dfe8;
+        background: #ecf8fb;
+      }
+      .who {
+        font-weight: 600;
+        color: var(--accent);
+      }
+      .fridge {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .jar {
+        flex: none;
+        width: 140px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px;
+      }
+      .jar .n {
+        font-weight: 600;
+        font-size: 13px;
+      }
+      details summary {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 4px 0;
+      }
+      .daytabs {
+        display: flex;
+        border-bottom: 1px solid var(--line);
+        background: var(--card);
+      }
+      .daytabs button {
+        flex: 1;
+        border: 0;
+        background: none;
+        padding: 9px 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .daytabs button.on {
+        color: var(--ink);
+        font-weight: 700;
+        box-shadow: inset 0 -3px 0 var(--accent);
+      }
+      .avail {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      /* B */
+      .grid {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding: 10px 16px;
+      }
+      .day {
+        flex: 1 0 300px;
+        scroll-snap-align: start;
+        background: #efebe3;
+        border-radius: 10px;
+        padding: 8px;
+      }
+      .phone .day {
+        flex: 0 0 330px;
+      }
+      .day.today {
+        outline: 2px solid var(--accent);
+      }
+      .day h3 {
+        margin: 2px 4px 6px;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .cookcol {
+        margin-bottom: 8px;
+      }
+      .cookcol .ch {
+        font-size: 12px;
+        font-weight: 700;
+        margin: 4px 4px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .task.sm {
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+      .task.sm .cb {
+        width: 18px;
+        height: 18px;
+      }
+      .shelf {
+        padding: 6px 16px 14px;
+      }
+      .shelfrow {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 8px;
+        align-items: center;
+        margin: 3px 0;
+        font-size: 12px;
+      }
+      .phone .shelfrow {
+        grid-template-columns: 100px 1fr;
+      }
+      .track {
+        position: relative;
+        height: 16px;
+        background: #ece8df;
+        border-radius: 4px;
+      }
+      .bar {
+        position: absolute;
+        top: 2px;
+        bottom: 2px;
+        border-radius: 3px;
+      }
+      .bar.making {
+        background: repeating-linear-gradient(
+          45deg,
+          #9cd3df,
+          #9cd3df 4px,
+          #cdeaf0 4px,
+          #cdeaf0 8px
+        );
+      }
+      .bar.ready {
+        background: #86c99b;
+      }
+      .bar.planned {
+        background: transparent;
+        border: 1px dashed #aaa;
+      }
+      .bar.expired {
+        background: #e8a0a0;
+      }
+      .vline {
+        position: absolute;
+        top: -3px;
+        bottom: -3px;
+        width: 2px;
+      }
+      .vline.now {
+        background: var(--run);
+      }
+      .vline.svc {
+        background: var(--accent);
+      }
+      .axis {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 8px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .phone .axis {
+        grid-template-columns: 100px 1fr;
+      }
+      .axis .ticks {
+        position: relative;
+        height: 14px;
+      }
+      .axis .ticks span {
+        position: absolute;
+        transform: translateX(-50%);
+      }
+      /* C */
+      .prog {
+        height: 8px;
+        background: #ece8df;
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .prog > div {
+        height: 100%;
+        background: var(--ok);
+      }
+      .course {
+        margin-bottom: 14px;
+      }
+      .course > .cn {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .comp {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 9px 10px;
+        margin-bottom: 6px;
+      }
+      .comp .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+      }
+      .chain {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+        align-items: center;
+      }
+      .link {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 3px 6px;
+        font-size: 12px;
+        background: var(--bg);
+      }
+      .link.done {
+        color: var(--muted);
+        text-decoration: line-through;
+      }
+      .link.behind {
+        border-color: var(--bad);
+        color: var(--bad);
+      }
+      .link.running {
+        border-color: var(--run);
+      }
+      .link .cb {
+        width: 16px;
+        height: 16px;
+        font-size: 10px;
+        border-width: 1.5px;
+      }
+      .arrow {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .desktop .ccols {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .availstrip {
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
+      }
+      /* switcher + state */
+      .switcher {
+        position: fixed;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #111;
+        color: #fff;
+        border-radius: 999px;
+        padding: 6px 8px;
+        box-shadow: 0 6px 20px #0005;
+        z-index: 50;
+        font-size: 13px;
+      }
+      .switcher button {
+        background: #333;
+        border: 0;
+        color: #fff;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+      }
+      .switcher .lbl {
+        min-width: 170px;
+        text-align: center;
+      }
+      .state {
+        position: fixed;
+        right: 10px;
+        bottom: 70px;
+        width: 360px;
+        max-height: 50vh;
+        overflow: auto;
+        background: #111d;
+        color: #cfc;
+        font:
+          11px/1.3 ui-monospace,
+          monospace;
+        padding: 8px;
+        border-radius: 8px;
+        white-space: pre;
+        display: none;
+        z-index: 40;
+      }
+      .state.on {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="proto-top" id="top"></div>
+    <div class="frame phone" id="frame"></div>
+    <pre class="state" id="state"></pre>
+    <div class="switcher">
+      <button id="prev" aria-label="Previous variant">←</button>
+      <span class="lbl" id="lbl"></span>
+      <button id="next" aria-label="Next variant">→</button>
+    </div>
+    <script>
+      // ---------- time helpers (minutes since Thu 15 Oct 00:00) ----------
+      const DAYS = ["Thu 15", "Fri 16", "Sat 17", "Sun 18", "Mon 19", "Tue 20"];
+      const DAY_SHORT = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue"];
+      const t = (d, hm) => {
+        const [h, m] = hm.split(":").map(Number);
+        return d * 1440 + h * 60 + m;
+      };
+      const hm = (m) =>
+        `${String(Math.floor((m % 1440) / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+      const dayOf = (m) => Math.floor(m / 1440);
+      const when = (m) => `${DAY_SHORT[dayOf(m)]} ${hm(m)}`;
+      const dur = (min) => {
+        min = Math.round(min);
+        if (Math.abs(min) < 60) return `${min} min`;
+        const h = Math.floor(Math.abs(min) / 60),
+          r = Math.abs(min) % 60;
+        if (h >= 24) {
+          const d = Math.floor(h / 24),
+            hh = h % 24;
+          return `${d}d${hh ? " " + hh + "h" : ""}`;
+        }
+        return `${h}h${r ? " " + String(r).padStart(2, "0") : ""}`;
+      };
+      const SERVICE = t(2, "19:30");
+
+      // ---------- scenario ----------
+      const COOKS = ["Malo", "Sam"];
+      const AVAIL = {
+        Malo: [
+          [t(0, "18:00"), t(0, "22:30")],
+          [t(1, "18:00"), t(1, "23:15")],
+          [t(2, "10:00"), SERVICE],
+        ],
+        Sam: [
+          [t(1, "19:00"), t(1, "22:00")],
+          [t(2, "10:00"), SERVICE],
+        ],
+      };
+      const COURSES = [
+        { name: "Starter", dishes: ["Beet salad"] },
+        { name: "Main", dishes: ["Braised short rib"] },
+        { name: "Dessert", dishes: ["Lemon tart"] },
+      ];
+      // Things made ahead (sub-recipes or Steps with a Make-ahead window). shelf = hours once ready.
+      const ITEMS = {
+        stock: { name: "Chicken stock", dish: "Braised short rib", shelf: 96 },
+        dough: { name: "Pastry dough", dish: "Lemon tart", shelf: 72 },
+        shallots: {
+          name: "Pickled shallots",
+          dish: "Beet salad",
+          shelf: 24 * 14,
+        },
+        base: { name: "Ice cream base", dish: "Lemon tart", shelf: 48 },
+        beets: { name: "Roasted beets", dish: "Beet salad", shelf: 72 },
+        shell: { name: "Tart shell", dish: "Lemon tart", shelf: 48 },
+        rib: {
+          name: "Braised short rib",
+          dish: "Braised short rib",
+          shelf: 72,
+        },
+        curd: { name: "Lemon curd", dish: "Lemon tart", shelf: 120 },
+        icecream: {
+          name: "Vanilla ice cream",
+          dish: "Lemon tart",
+          shelf: 24 * 7,
+        },
+        tart: { name: "Lemon tart (filled)", dish: "Lemon tart", shelf: 20 },
+        jus: { name: "Jus", dish: "Braised short rib", shelf: 48 },
+      };
+      // start, active (needs the Cook), passive (runs on its own); makes = ITEMS key; eq = Equipment held.
+      const TASKS = [
+        {
+          id: 1,
+          name: "Roast bones, start stock",
+          dish: "Braised short rib",
+          cook: "Malo",
+          start: t(0, "18:00"),
+          active: 30,
+          passive: 480,
+          eq: "Stove",
+          makes: "stock",
+        },
+        {
+          id: 2,
+          name: "Make pastry dough",
+          dish: "Lemon tart",
+          cook: "Malo",
+          start: t(0, "18:30"),
+          active: 25,
+          passive: 0,
+          makes: "dough",
+        },
+        {
+          id: 3,
+          name: "Pickle shallots",
+          dish: "Beet salad",
+          cook: "Malo",
+          start: t(0, "19:00"),
+          active: 15,
+          passive: 0,
+          makes: "shallots",
+        },
+        {
+          id: 4,
+          name: "Cook ice cream base",
+          dish: "Lemon tart",
+          cook: "Malo",
+          start: t(0, "19:20"),
+          active: 30,
+          passive: 0,
+          makes: "base",
+        },
+        {
+          id: 5,
+          name: "Roast beets",
+          dish: "Beet salad",
+          cook: "Malo",
+          start: t(0, "20:00"),
+          active: 10,
+          passive: 60,
+          eq: "Oven",
+          makes: "beets",
+        },
+        {
+          id: 6,
+          name: "Strain and reduce stock",
+          dish: "Braised short rib",
+          cook: "Malo",
+          start: t(1, "18:00"),
+          active: 15,
+          passive: 45,
+          eq: "Stove",
+          deps: [1],
+        },
+        {
+          id: 7,
+          name: "Roll and blind-bake tart shell",
+          dish: "Lemon tart",
+          cook: "Malo",
+          start: t(1, "18:15"),
+          active: 20,
+          passive: 25,
+          eq: "Oven",
+          deps: [2],
+          makes: "shell",
+        },
+        {
+          id: 8,
+          name: "Make lemon curd",
+          dish: "Lemon tart",
+          cook: "Malo",
+          start: t(1, "19:00"),
+          active: 25,
+          passive: 0,
+          makes: "curd",
+        },
+        {
+          id: 9,
+          name: "Sear and braise short rib",
+          dish: "Braised short rib",
+          cook: "Sam",
+          start: t(1, "19:00"),
+          active: 40,
+          passive: 180,
+          eq: "Oven",
+          deps: [6],
+          makes: "rib",
+        },
+        {
+          id: 10,
+          name: "Churn ice cream",
+          dish: "Lemon tart",
+          cook: "Sam",
+          start: t(1, "19:45"),
+          active: 25,
+          passive: 0,
+          eq: "Ice cream machine",
+          deps: [4],
+          makes: "icecream",
+        },
+        {
+          id: 11,
+          name: "Cool and chill short rib",
+          dish: "Braised short rib",
+          cook: "Malo",
+          start: t(1, "22:45"),
+          active: 15,
+          passive: 0,
+          deps: [9],
+        },
+        {
+          id: 12,
+          name: "Fill tart and set",
+          dish: "Lemon tart",
+          cook: "Sam",
+          start: t(2, "10:30"),
+          active: 15,
+          passive: 120,
+          deps: [7, 8],
+          makes: "tart",
+        },
+        {
+          id: 13,
+          name: "Make jus from braising liquid",
+          dish: "Braised short rib",
+          cook: "Malo",
+          start: t(2, "14:00"),
+          active: 30,
+          passive: 0,
+          deps: [11],
+          makes: "jus",
+        },
+        {
+          id: 14,
+          name: "Peel and slice beets, dress",
+          dish: "Beet salad",
+          cook: "Sam",
+          start: t(2, "16:00"),
+          active: 25,
+          passive: 0,
+          deps: [3, 5],
+        },
+        {
+          id: 15,
+          name: "Glaze carrots",
+          dish: "Braised short rib",
+          cook: "Sam",
+          start: t(2, "17:00"),
+          active: 30,
+          passive: 0,
+        },
+        {
+          id: 16,
+          name: "Pommes purée",
+          dish: "Braised short rib",
+          cook: "Malo",
+          start: t(2, "17:30"),
+          active: 40,
+          passive: 0,
+        },
+        {
+          id: 17,
+          name: "Reheat short rib",
+          dish: "Braised short rib",
+          cook: "Malo",
+          start: t(2, "18:30"),
+          active: 10,
+          passive: 40,
+          eq: "Oven",
+          deps: [11],
+        },
+      ];
+      TASKS.forEach((k) => {
+        k.end = k.start + k.active + k.passive;
+        k.activeEnd = k.start + k.active;
+      });
+      const byId = Object.fromEntries(TASKS.map((k) => [k.id, k]));
+
+      const NOWS = [
+        { label: "Thu 18:00", now: t(0, "18:00") },
+        { label: "Fri 20:15", now: t(1, "20:15"), behind: [8] },
+        { label: "Sat 10:00", now: t(2, "10:00") },
+        { label: "Sat 17:45", now: t(2, "17:45") },
+      ];
+
+      // ---------- state ----------
+      const params = new URLSearchParams(location.search);
+      const VARIANTS = [
+        ["A", "Today list"],
+        ["B", "Days grid"],
+        ["C", "By component"],
+      ];
+      const S = {
+        variant: VARIANTS.some((v) => v[0] === params.get("variant"))
+          ? params.get("variant")
+          : "A",
+        frame: params.get("frame") === "desktop" ? "desktop" : "phone",
+        nowIdx: 1,
+        now: 0,
+        done: {}, // id -> minute it was ticked
+        cook: "All",
+        dayA: null,
+        showState: false,
+      };
+      function setNow(i) {
+        S.nowIdx = i;
+        S.now = NOWS[i].now;
+        S.done = {};
+        const skip = NOWS[i].behind || [];
+        TASKS.forEach((k) => {
+          if (k.activeEnd <= S.now && !skip.includes(k.id))
+            S.done[k.id] = k.activeEnd;
+        });
+        S.dayA = dayOf(S.now);
+      }
+      setNow(1);
+
+      // ---------- derived ----------
+      function status(k) {
+        if (S.done[k.id] != null) {
+          const finish = (S.done[k.id] + k.passive);
+          return finish > S.now ? "running" : "done"; // passive time still going
+        }
+        if (k.activeEnd <= S.now) return "behind";
+        if (k.start <= S.now) return "now";
+        const blocked = (k.deps || []).some((d) => S.done[d] == null);
+        return blocked ? "blocked" : "todo";
+      }
+      function itemState(key) {
+        const k = TASKS.find((x) => x.makes === key);
+        const it = ITEMS[key];
+        const st = status(k);
+        if (st === "running")
+          return { st: "making", from: S.done[k.id], readyAt: k.end, k };
+        if (st === "done") {
+          const readyAt = (S.done[k.id] + k.passive);
+          const exp = readyAt + it.shelf * 60;
+          return { st: exp < S.now ? "expired" : "ready", readyAt, exp, k };
+        }
+        const exp = k.end + it.shelf * 60;
+        return {
+          st: st === "behind" ? "behind" : "planned",
+          readyAt: k.end,
+          exp,
+          k,
+        };
+      }
+      function expiryPill(is) {
+        if (is.st === "making")
+          return `<span class="pill run">ready ${when(is.readyAt)}</span>`;
+        if (is.st === "expired")
+          return `<span class="pill bad">expired ${when(is.exp)}</span>`;
+        if (is.st === "behind")
+          return `<span class="pill bad">not made yet</span>`;
+        const left = is.exp - S.now;
+        const beforeSvc = is.exp < SERVICE;
+        if (is.st === "planned") return `<span class="pill">planned</span>`;
+        if (beforeSvc)
+          return `<span class="pill bad">expires ${when(is.exp)}, before Service</span>`;
+        return `<span class="pill ${left < 24 * 60 ? "warn" : "ok"}">keeps ${dur(left)}</span>`;
+      }
+      const cookOk = (k) => S.cook === "All" || k.cook === S.cook;
+      const fmtTask = (k) =>
+        `${hm(k.start)}–${hm(k.activeEnd)}${k.passive ? ` + ${dur(k.passive)} ${k.eq ? "in " + k.eq : "resting"}` : ""}`;
+      function statusPill(k) {
+        const st = status(k);
+        if (st === "behind")
+          return `<span class="pill bad">behind · was due ${hm(k.activeEnd)}</span>`;
+        if (st === "running")
+          return `<span class="pill run">${k.eq || "resting"} · ${dur((S.done[k.id] + k.passive) - S.now)} left</span>`;
+        if (st === "now") return `<span class="pill warn">now</span>`;
+        if (st === "blocked")
+          return `<span class="pill">waits for ${(k.deps || [])
+            .filter((d) => S.done[d] == null)
+            .map((d) => byId[d].name.toLowerCase())
+            .join(", ")}</span>`;
+        return "";
+      }
+      const cb = (k, cls = "") =>
+        `<button class="cb ${S.done[k.id] != null ? "on" : ""} ${cls}" data-tick="${k.id}" aria-label="Mark done">${S.done[k.id] != null ? "✓" : ""}</button>`;
+      const svcIn = () =>
+        SERVICE > S.now ? `Service in ${dur(SERVICE - S.now)}` : "Service time";
+      const cookChips = () =>
+        `<div class="chips">${["All", ...COOKS].map((c) => `<button class="chip ${S.cook === c ? "on" : ""}" data-cook="${c}">${c}</button>`).join("")}</div>`;
+      function availText(cook, d) {
+        const a = AVAIL[cook].filter(([s]) => dayOf(s) === d);
+        return a.length
+          ? a.map(([s, e]) => `${hm(s)}–${hm(e)}`).join(", ")
+          : "off";
+      }
+
+      // ---------- Variant A: Today list ----------
+      function VariantA() {
+        const d = S.dayA;
+        const isToday = d === dayOf(S.now);
+        const dayTasks = TASKS.filter((k) => dayOf(k.start) === d && cookOk(k));
+        const nowTasks = isToday
+          ? TASKS.filter(
+              (k) =>
+                cookOk(k) && ["now", "running", "behind"].includes(status(k)),
+            )
+          : [];
+        const rest = dayTasks.filter((k) => !nowTasks.includes(k));
+        const ready = Object.keys(ITEMS)
+          .map((key) => [key, itemState(key)])
+          .filter(([, s]) => ["ready", "making", "expired"].includes(s.st));
+        const tomorrow = TASKS.filter(
+          (k) => dayOf(k.start) === d + 1 && cookOk(k),
+        );
+        const row = (k) => `
+          <div class="task ${status(k)}">
+            ${cb(k)}
+            <div style="flex:1">
+              <div class="tname">${k.name}</div>
+              <div class="meta">${fmtTask(k)} · ${k.dish}${S.cook === "All" ? ` · <span class="who">${k.cook}</span>` : ""}</div>
+              <div style="margin-top:3px">${statusPill(k)}${k.makes ? expiryPill(itemState(k.makes)).replace("pill", "pill") : ""}</div>
+            </div>
+          </div>`;
+        const doneN = dayTasks.filter((k) => S.done[k.id] != null).length;
+        return `
+          <div class="hdr">
+            <h1>Prep · ${DAYS[d]} Oct</h1>
+            <div class="sub">Day ${d + 1} of 3 · ${svcIn()} (Sat 19:30) · ${doneN}/${dayTasks.length} done today</div>
+            ${cookChips()}
+            <div class="avail" style="margin-top:6px">${COOKS.map((c) => `${c}: ${availText(c, d)}`).join(" · ")}</div>
+          </div>
+          <div class="daytabs">${[0, 1, 2].map((i) => `<button class="${i === d ? "on" : ""}" data-day="${i}">${DAYS[i]}${i === dayOf(S.now) ? " •" : ""}</button>`).join("")}</div>
+          ${nowTasks.length ? `<div class="sec"><h2>Now</h2>${nowTasks.map(row).join("")}</div>` : ""}
+          <div class="sec"><h2>${isToday ? "Rest of today" : DAYS[d]}</h2>${rest.map(row).join("") || `<div class="meta">Nothing${S.cook !== "All" ? " for " + S.cook : ""}.</div>`}</div>
+          <div class="sec"><h2>Ready in the fridge</h2>
+            <div class="fridge">${ready.map(([key, s]) => `<div class="jar"><div class="n">${ITEMS[key].name}</div><div class="meta">${ITEMS[key].dish}</div><div style="margin-top:4px">${expiryPill(s)}</div></div>`).join("") || `<div class="meta">Nothing made yet.</div>`}</div>
+          </div>
+          ${tomorrow.length ? `<div class="sec"><details><summary>${DAYS[d + 1]}: ${tomorrow.length} Tasks · ${COOKS.map((c) => `${c} ${availText(c, d + 1)}`).join(" · ")}</summary>${tomorrow.map(row).join("")}</details></div>` : ""}
+        `;
+      }
+
+      // ---------- Variant B: Days grid ----------
+      function VariantB() {
+        const days = [0, 1, 2]
+          .map((d) => {
+            const cols = COOKS.filter((c) => S.cook === "All" || c === S.cook)
+              .map((c) => {
+                const ks = TASKS.filter(
+                  (k) => dayOf(k.start) === d && k.cook === c,
+                );
+                const mins = ks.reduce((a, k) => a + k.active, 0);
+                const free = AVAIL[c]
+                  .filter(([s]) => dayOf(s) === d)
+                  .reduce((a, [s, e]) => a + e - s, 0);
+                return `<div class="cookcol">
+              <div class="ch"><span>${c}</span><span class="avail">${availText(c, d)}${free ? ` · ${dur(mins)} of ${dur(free)}` : ""}</span></div>
+              ${ks.map((k) => `<div class="task sm ${status(k)}">${cb(k)}<div style="flex:1"><div class="tname">${k.name}</div><div class="meta">${fmtTask(k)}</div>${statusPill(k)}</div></div>`).join("") || `<div class="meta" style="margin:0 4px 6px">—</div>`}
+            </div>`;
+              })
+              .join("");
+            const all = TASKS.filter((k) => dayOf(k.start) === d);
+            const dn = all.filter((k) => S.done[k.id] != null).length;
+            return `<div class="day ${d === dayOf(S.now) ? "today" : ""}"><h3><span>${DAYS[d]}</span><span class="meta">${dn}/${all.length}</span></h3>${cols}</div>`;
+          })
+          .join("");
+        // shelf timeline: Thu 12:00 → Sun 12:00
+        const from = t(0, "12:00"),
+          to = t(3, "12:00");
+        const pct = (m) =>
+          `${Math.max(0, Math.min(100, ((m - from) / (to - from)) * 100))}%`;
+        const ticks = [t(1, "00:00"), t(2, "00:00"), t(3, "00:00")];
+        const rows = Object.keys(ITEMS)
+          .map((key) => {
+            const s = itemState(key);
+            const start = s.st === "making" ? s.from : s.readyAt;
+            const cls =
+              s.st === "making"
+                ? "making"
+                : s.st === "ready"
+                  ? "ready"
+                  : s.st === "expired"
+                    ? "expired"
+                    : "planned";
+            const end = s.st === "making" ? s.readyAt : s.exp;
+            const extra =
+              s.st === "making"
+                ? `<div class="bar planned" style="left:${pct(s.readyAt)};width:calc(${pct(s.readyAt + ITEMS[key].shelf * 60)} - ${pct(s.readyAt)})"></div>`
+                : "";
+            return `<div class="shelfrow"><span title="${ITEMS[key].dish}">${ITEMS[key].name}</span><div class="track">
+            <div class="bar ${cls}" style="left:${pct(start)};width:calc(${pct(end)} - ${pct(start)})"></div>${extra}
+            <div class="vline now" style="left:${pct(S.now)}"></div><div class="vline svc" style="left:${pct(SERVICE)}"></div></div></div>`;
+          })
+          .join("");
+        return `
+          <div class="hdr">
+            <h1>Prep · Thu → Sat</h1>
+            <div class="sub">Now ${when(S.now)} · ${svcIn()}</div>
+            ${cookChips()}
+          </div>
+          <div class="grid">${days}</div>
+          <div class="shelf">
+            <h2 style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:6px 0 8px">Make-ahead shelf</h2>
+            <div class="axis"><span></span><div class="ticks">${ticks.map((m) => `<span style="left:${pct(m)}">${DAY_SHORT[dayOf(m)]}</span>`).join("")}</div></div>
+            ${rows}
+            <div class="meta" style="margin-top:6px"><span style="color:var(--run)">▍now</span> · <span style="color:var(--accent)">▍Service</span> · hatched = cooking/resting · green = ready, until it expires · dashed = planned</div>
+          </div>`;
+      }
+
+      // ---------- Variant C: By component ----------
+      function VariantC() {
+        const all = TASKS.filter(cookOk);
+        const dn = all.filter((k) => S.done[k.id] != null).length;
+        const behind = all.filter((k) => status(k) === "behind").length;
+        // a component = an ITEM plus the Tasks that lead to it; loose Tasks sit under "On the day"
+        const comps = (dish) => {
+          const keys = Object.keys(ITEMS).filter((k) => ITEMS[k].dish === dish);
+          const used = new Set();
+          const chainFor = (k) => {
+            const out = [];
+            const walk = (id) => {
+              const x = byId[id];
+              (x.deps || []).forEach((d) => {
+                if (byId[d].dish === dish && !byId[d].makes) walk(d);
+              });
+              if (!used.has(id)) {
+                used.add(id);
+                out.push(x);
+              }
+            };
+            walk(k.id);
+            return out;
+          };
+          const list = keys.map((key) => {
+            const k = TASKS.find((x) => x.makes === key);
+            return { key, chain: chainFor(k) };
+          });
+          const loose = TASKS.filter((k) => k.dish === dish && !used.has(k.id));
+          if (loose.length) list.push({ key: null, chain: loose });
+          return list;
+        };
+        const link = (k) =>
+          `<span class="link ${status(k)}">${cb(k)}<span>${DAY_SHORT[dayOf(k.start)]} ${hm(k.start)} · ${k.name}${S.cook === "All" ? ` · <b class="who">${k.cook[0]}</b>` : ""}</span></span>`;
+        const courses = COURSES.map(
+          (c) =>
+            `<div class="course"><div class="cn">${c.name}</div>${c.dishes
+              .map((dish) =>
+                comps(dish)
+                  .map(({ key, chain }) => {
+                    const shown = chain.filter(cookOk);
+                    if (!shown.length) return "";
+                    const s = key && itemState(key);
+                    const title = key ? ITEMS[key].name : `${dish}: on the day`;
+                    const pill = key
+                      ? expiryPill(s)
+                      : chain.every((k) => S.done[k.id] != null)
+                        ? `<span class="pill ok">done</span>`
+                        : `<span class="pill">${DAY_SHORT[dayOf(chain[0].start)]} ${hm(chain[0].start)}</span>`;
+                    return `<div class="comp"><div class="top"><span class="tname">${title}</span>${pill}</div><div class="chain">${shown.map(link).join('<span class="arrow">→</span>')}</div></div>`;
+                  })
+                  .join(""),
+              )
+              .join("")}</div>`,
+        ).join("");
+        return `
+          <div class="hdr">
+            <h1>Ready for Saturday?</h1>
+            <div class="sub">${svcIn()} · ${dn}/${all.length} Tasks done${behind ? ` · <b style="color:var(--bad)">${behind} behind</b>` : " · on track"}</div>
+            <div class="prog"><div style="width:${(dn / all.length) * 100}%"></div></div>
+            ${cookChips()}
+          </div>
+          <div class="sec"><div class="ccols">${courses}</div></div>
+          <div class="sec"><h2>Who's in</h2><div class="availstrip">${COOKS.map((c) => `<div><b>${c}</b> · ${[0, 1, 2].map((d) => `${DAY_SHORT[d]} ${availText(c, d)}`).join(" · ")}</div>`).join("")}</div></div>`;
+      }
+
+      // ---------- render ----------
+      const VIEW = { A: VariantA, B: VariantB, C: VariantC };
+      function render() {
+        document.getElementById("top").innerHTML =
+          `<b>Prep view prototype</b><span class="sep"></span>Now: ${NOWS.map((n, i) => `<button class="${i === S.nowIdx ? "on" : ""}" data-now="${i}">${n.label}</button>`).join("")}` +
+          `<span class="sep"></span>${["phone", "desktop"].map((f) => `<button class="${S.frame === f ? "on" : ""}" data-frame="${f}">${f}</button>`).join("")}` +
+          `<span class="sep"></span><button class="${S.showState ? "on" : ""}" data-state="1">state</button>`;
+        const fr = document.getElementById("frame");
+        fr.className = `frame ${S.frame}`;
+        fr.innerHTML = VIEW[S.variant]();
+        document.getElementById("lbl").textContent =
+          `${S.variant} (${VARIANTS.find((v) => v[0] === S.variant)[1]})`;
+        const st = document.getElementById("state");
+        st.className = `state ${S.showState ? "on" : ""}`;
+        st.textContent = JSON.stringify(
+          {
+            variant: S.variant,
+            now: when(S.now),
+            cook: S.cook,
+            tasks: Object.fromEntries(
+              TASKS.map((k) => [k.id + " " + k.name, status(k)]),
+            ),
+            items: Object.fromEntries(
+              Object.keys(ITEMS).map((key) => {
+                const s = itemState(key);
+                return [
+                  ITEMS[key].name,
+                  `${s.st}${s.exp ? " · expires " + when(s.exp) : ""}`,
+                ];
+              }),
+            ),
+          },
+          null,
+          1,
+        );
+      }
+      function go(v) {
+        S.variant = v;
+        const p = new URLSearchParams(location.search);
+        p.set("variant", v);
+        p.set("frame", S.frame);
+        try { history.replaceState(null, "", "?" + p); } catch {}
+        render();
+      }
+      const step = (n) => {
+        const i = VARIANTS.findIndex((v) => v[0] === S.variant);
+        go(VARIANTS[(i + n + VARIANTS.length) % VARIANTS.length][0]);
+      };
+      document.getElementById("prev").onclick = () => step(-1);
+      document.getElementById("next").onclick = () => step(1);
+      document.addEventListener("keydown", (e) => {
+        if (e.target.closest("input,textarea,[contenteditable]")) return;
+        if (e.key === "ArrowLeft") step(-1);
+        if (e.key === "ArrowRight") step(1);
+      });
+      document.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        if (b.dataset.tick) {
+          const id = +b.dataset.tick;
+          if (S.done[id] != null) delete S.done[id];
+          else S.done[id] = S.now;
+        } else if (b.dataset.now) setNow(+b.dataset.now);
+        else if (b.dataset.frame) {
+          S.frame = b.dataset.frame;
+          return go(S.variant);
+        } else if (b.dataset.cook) S.cook = b.dataset.cook;
+        else if (b.dataset.day) S.dayA = +b.dataset.day;
+        else if (b.dataset.state) S.showState = !S.showState;
+        else return;
+        render();
+      });
+      render();
+    </script>
+  </body>
+</html>

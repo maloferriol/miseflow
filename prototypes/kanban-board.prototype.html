@@ -1,0 +1,1124 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Wayfinder ticket #40 "How does the kanban board track progress alongside the Gantt chart?" (map #1).
+  Logic prototype: one progress state per Step, shown three ways (kanban board, Prep view checklist, Gantt rows).
+  Open by double-click. No persistence; reload resets.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kanban board prototype</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --card: #fff;
+        --ink: #1d1b18;
+        --muted: #77716a;
+        --line: #e4dfd6;
+        --accent: #c2410c;
+        --ok: #15803d;
+        --warn: #b45309;
+        --bad: #b91c1c;
+        --run: #0e7490;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.4 -apple-system,
+          system-ui,
+          sans-serif;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 6px;
+        padding: 3px 8px;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      main {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 20px 16px 60px;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 22px;
+      }
+      h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+      .intro {
+        color: var(--muted);
+        max-width: 900px;
+        margin: 0 0 16px;
+      }
+      .intro b {
+        color: var(--ink);
+      }
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      .state {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+      }
+      .state div small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .state div b {
+        font-size: 16px;
+      }
+      .changed {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: #fff7ed;
+        border-left: 3px solid var(--accent);
+        border-radius: 4px;
+      }
+      .banner {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: #fef3c7;
+        border-radius: 6px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+      .tabs button.on {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
+      }
+      .steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .steps button.done {
+        text-decoration: line-through;
+      }
+      .steps button.next {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 14px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .board {
+        display: grid;
+        gap: 8px;
+      }
+      .lane-label {
+        font-weight: 600;
+        margin: 8px 0 4px;
+      }
+      .cols {
+        display: grid;
+        gap: 8px;
+      }
+      .col {
+        background: #efebe3;
+        border-radius: 8px;
+        padding: 6px;
+        min-height: 60px;
+      }
+      .col h3 {
+        margin: 0 0 6px;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .c {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 6px;
+      }
+      .c.behind {
+        border-color: var(--bad);
+      }
+      .c.conflict {
+        border-color: var(--warn);
+      }
+      .c .t {
+        font-weight: 600;
+      }
+      .c .m {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .c .acts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+      }
+      .c .acts button {
+        font-size: 12px;
+        padding: 2px 6px;
+      }
+      .sl {
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .sl div {
+        display: flex;
+        gap: 6px;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 11px;
+        padding: 1px 6px;
+        border-radius: 999px;
+        margin: 3px 3px 0 0;
+      }
+      .b-bad {
+        background: #fee2e2;
+        color: var(--bad);
+      }
+      .b-warn {
+        background: #fef3c7;
+        color: var(--warn);
+      }
+      .b-run {
+        background: #cffafe;
+        color: var(--run);
+      }
+      .b-ok {
+        background: #dcfce7;
+        color: var(--ok);
+      }
+      .b-mute {
+        background: #eee;
+        color: var(--muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      td,
+      th {
+        text-align: left;
+        padding: 4px 4px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .moved {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .prep label {
+        display: flex;
+        gap: 8px;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--line);
+        align-items: flex-start;
+      }
+      .prep label small {
+        color: var(--muted);
+        display: block;
+      }
+      .note {
+        font-size: 12px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Kanban board ↔ Gantt chart ↔ Prep view</h1>
+      <p class="intro">
+        <b>Question:</b> how does the kanban board record progress, and how does
+        that progress relate to the Plan (Gantt chart) and the Prep view's
+        checkboxes? <b>Model being tested:</b> progress lives on
+        <b>Steps</b> only. A card is a <b>Task</b>; its column is
+        <i>derived</i> from its Steps, so the board, the Prep view checkbox and
+        the Gantt chart all show one state. Moving a card records what really
+        happened (started at, hands-off at, done at). It never <b>pins</b> the
+        Task. Real progress feeds the Plan: while planning it re-plans live, and
+        from the start of <b>Service day</b> it only shows conflicts until the
+        cook presses Re-plan. Simplified: no Availability or Equipment checks,
+        only dependencies. Scenario: Saturday dinner, Service Sat 19:30, Cooks
+        Malo and Sam.
+      </p>
+
+      <section class="panel">
+        <h2>Current state</h2>
+        <div class="state" id="state"></div>
+        <div id="banner"></div>
+        <div class="changed" id="changed"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Guided walkthroughs</h2>
+        <div class="tabs" id="tabs"></div>
+        <div id="scenario"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Free play</h2>
+        <div class="row">
+          Clock:
+          <button data-act="tick" data-m="15">+15 min</button>
+          <button data-act="tick" data-m="60">+1 h</button>
+          <button data-act="tick" data-m="240">+4 h</button>
+          <button data-act="jump" data-to="1440">→ Sat 00:00</button>
+          <button data-act="jump" data-to="2040">→ Sat 10:00</button>
+          <button data-act="jump" data-to="2430">→ Sat 16:30</button>
+          &nbsp; Service day starts:
+          <select id="rule">
+            <option value="midnight">at midnight on Service date</option>
+            <option value="firstTask">
+              at the first Task planned on Service date
+            </option>
+            <option value="manual">
+              when the cook presses “Start Service day”
+            </option>
+          </select>
+          <button data-act="startServiceDay">Start Service day</button>
+        </div>
+        <div class="row" style="margin-top: 8px">
+          Board:
+          <label
+            ><input type="checkbox" id="passiveCol" /> separate “Cooking /
+            resting” column</label
+          >
+          &nbsp; Cook filter:
+          <select id="cookFilter">
+            <option value="">All Cooks</option>
+            <option>Malo</option>
+            <option>Sam</option>
+          </select>
+          &nbsp; <button data-act="reset">Reset</button>
+        </div>
+      </section>
+
+      <div class="grid">
+        <section class="panel">
+          <h2>
+            Kanban board
+            <span class="note">(card buttons = moving the card)</span>
+          </h2>
+          <div class="board" id="board"></div>
+        </section>
+        <div>
+          <section class="panel">
+            <h2>
+              Prep view · today <span class="note">(same state, checkbox)</span>
+            </h2>
+            <div class="prep" id="prep"></div>
+          </section>
+          <section class="panel">
+            <h2>Gantt chart · Plan rows</h2>
+            <div id="gantt"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // ───────────── Pure logic module (no DOM) ─────────────
+      // Times are minutes from Fri 00:00. Sat 00:00 = 1440. Service = Sat 19:30.
+      const SERVICE_AT = 2610;
+      const SERVICE_DATE_START = 1440;
+
+      const TASKS = [
+        {
+          id: "stock",
+          name: "Make chicken stock",
+          dish: "Velouté (starter)",
+          cook: "Malo",
+          station: "Hot line",
+          deps: [],
+          plannedStart: 960,
+          steps: [
+            {
+              name: "Roast the bones",
+              active: 15,
+              passive: 45,
+              passiveLabel: "in the oven",
+            },
+            {
+              name: "Simmer the stock",
+              active: 10,
+              passive: 240,
+              passiveLabel: "simmering",
+            },
+          ],
+        },
+        {
+          id: "strain",
+          name: "Strain and chill stock",
+          dish: "Velouté (starter)",
+          cook: "Malo",
+          station: "Garde manger",
+          deps: ["stock"],
+          plannedStart: 1270,
+          steps: [
+            {
+              name: "Strain and chill",
+              active: 15,
+              passive: 60,
+              passiveLabel: "chilling",
+            },
+          ],
+        },
+        {
+          id: "dough",
+          name: "Pastry dough",
+          dish: "Lemon tart (dessert)",
+          cook: "Sam",
+          station: "Pastry",
+          deps: [],
+          plannedStart: 1020,
+          steps: [
+            {
+              name: "Mix and wrap dough",
+              active: 20,
+              passive: 60,
+              passiveLabel: "resting",
+            },
+          ],
+        },
+        {
+          id: "shells",
+          name: "Blind-bake tart shell",
+          dish: "Lemon tart (dessert)",
+          cook: "Sam",
+          station: "Pastry",
+          deps: ["dough"],
+          plannedStart: 2040,
+          steps: [
+            {
+              name: "Line and blind-bake",
+              active: 15,
+              passive: 25,
+              passiveLabel: "in the oven",
+            },
+          ],
+        },
+        {
+          id: "filling",
+          name: "Fill and bake tart",
+          dish: "Lemon tart (dessert)",
+          cook: "Sam",
+          station: "Pastry",
+          deps: ["shells"],
+          plannedStart: 2400,
+          steps: [
+            { name: "Make lemon curd", active: 20, passive: 0 },
+            {
+              name: "Fill and bake",
+              active: 5,
+              passive: 30,
+              passiveLabel: "in the oven",
+            },
+          ],
+        },
+        {
+          id: "veloute",
+          name: "Velouté",
+          dish: "Velouté (starter)",
+          cook: "Malo",
+          station: "Hot line",
+          deps: ["strain"],
+          plannedStart: 2460,
+          steps: [{ name: "Make velouté", active: 30, passive: 0 }],
+        },
+      ];
+
+      function initialState() {
+        return {
+          now: 960,
+          rule: "firstTask",
+          serviceDayPressed: false,
+          tasks: Object.fromEntries(
+            TASKS.map((t) => [
+              t.id,
+              {
+                plannedStart: t.plannedStart,
+                originalStart: t.plannedStart,
+                steps: t.steps.map(() => ({ status: "todo" })), // todo | active | passive | done
+                history: [],
+              },
+            ]),
+          ),
+          changed: "Start: Friday 16:00. Nothing started.",
+        };
+      }
+
+      const def = (id) => TASKS.find((t) => t.id === id);
+      const fmt = (m) =>
+        (m < 1440 ? "Fri " : "Sat ") +
+        String(Math.floor((m % 1440) / 60)).padStart(2, "0") +
+        ":" +
+        String(m % 60).padStart(2, "0");
+      const dur = (m) =>
+        m >= 60
+          ? Math.floor(m / 60) + "h" + (m % 60 ? " " + (m % 60) : "")
+          : m + " min";
+      const total = (id) =>
+        def(id).steps.reduce((s, x) => s + x.active + x.passive, 0);
+
+      function currentStep(task) {
+        return task.steps.findIndex((s) => s.status !== "done");
+      }
+
+      // The card's column, derived from its Steps.
+      function taskStatus(task) {
+        if (task.steps.every((s) => s.status === "done")) return "done";
+        if (task.steps.every((s) => s.status === "todo")) return "todo";
+        if (task.steps[currentStep(task)].status === "passive")
+          return "waiting";
+        return "inProgress";
+      }
+
+      function serviceDayStarted(state) {
+        if (state.rule === "midnight") return state.now >= SERVICE_DATE_START;
+        if (state.rule === "manual") return state.serviceDayPressed;
+        const first = Math.min(
+          ...TASKS.map((t) => state.tasks[t.id].originalStart).filter(
+            (s) => s >= SERVICE_DATE_START,
+          ),
+        );
+        return state.now >= first;
+      }
+      const replanMode = (state) =>
+        serviceDayStarted(state) ? "onRequest" : "live";
+
+      // Expected start/end of every Task given real progress and the current Plan.
+      function schedule(state) {
+        const out = {};
+        for (const d of TASKS) {
+          const t = state.tasks[d.id];
+          const st = taskStatus(t);
+          const depEnd = Math.max(0, ...d.deps.map((x) => out[x].end));
+          let start, end;
+          if (st === "todo") {
+            start = Math.max(t.plannedStart, depEnd, state.now);
+            end = start + total(d.id);
+          } else {
+            start = t.steps[0].startedAt;
+            if (st === "done") end = t.steps[t.steps.length - 1].doneAt;
+            else {
+              let x = state.now;
+              d.steps.forEach((sd, i) => {
+                const s = t.steps[i];
+                if (s.status === "active")
+                  x = Math.max(x, s.startedAt + sd.active) + sd.passive;
+                else if (s.status === "passive")
+                  x = Math.max(x, s.handsOffAt + sd.passive);
+                else if (s.status === "todo") x = x + sd.active + sd.passive;
+              });
+              end = x;
+            }
+          }
+          out[d.id] = {
+            start,
+            end,
+            depEnd,
+            status: st,
+            behind: st === "todo" && state.now > t.plannedStart,
+            conflict: st === "todo" && depEnd > t.plannedStart,
+            passiveUp:
+              st === "waiting" &&
+              (() => {
+                const i = currentStep(t);
+                return state.now >= t.steps[i].handsOffAt + d.steps[i].passive;
+              })(),
+          };
+        }
+        return out;
+      }
+
+      // Re-plan: only what must move moves. A not-started Task moves later only if a dependency will not be ready.
+      // A Task that is itself behind keeps its planned time ("was due"), its dependents move.
+      function replan(state) {
+        const s = structuredClone(state);
+        for (const d of TASKS) {
+          const t = s.tasks[d.id];
+          if (taskStatus(t) !== "todo") continue;
+          const sch = schedule(s);
+          if (sch[d.id].depEnd > t.plannedStart)
+            t.plannedStart = sch[d.id].depEnd;
+        }
+        return s;
+      }
+      function wouldMove(state) {
+        const after = replan(state);
+        return TASKS.filter(
+          (d) =>
+            after.tasks[d.id].plannedStart !== state.tasks[d.id].plannedStart,
+        ).map((d) => d.id);
+      }
+
+      function reduce(state, action) {
+        let s = structuredClone(state);
+        const t = action.id && s.tasks[action.id];
+        const d = action.id && def(action.id);
+        const save = () => t.history.push(JSON.stringify(t.steps));
+        const i = t ? currentStep(t) : -1;
+        const step = t && i >= 0 ? t.steps[i] : null;
+        const sd = d && i >= 0 ? d.steps[i] : null;
+        let msg = "";
+        switch (action.type) {
+          case "tick":
+            s.now += action.m;
+            msg = `Clock moved to ${fmt(s.now)}.`;
+            break;
+          case "jump":
+            s.now = Math.max(s.now, action.to);
+            msg = `Clock moved to ${fmt(s.now)}.`;
+            break;
+          case "setRule":
+            s.rule = action.rule;
+            msg = `Service day rule changed.`;
+            break;
+          case "startServiceDay":
+            s.serviceDayPressed = true;
+            msg = "Cook pressed “Start Service day”.";
+            break;
+          case "start": // To do → In progress, or next Step of a grouped Task
+            save();
+            step.status = "active";
+            step.startedAt = s.now;
+            msg = `“${d.name}”: started “${sd.name}” at ${fmt(s.now)}.`;
+            break;
+          case "handsOff": // active part finished, passive time starts, Cook is free
+            save();
+            step.status = "passive";
+            step.handsOffAt = s.now;
+            msg = `“${d.name}”: “${sd.name}” ${sd.passiveLabel} until ${fmt(s.now + sd.passive)}. ${d.cook} is free.`;
+            break;
+          case "stepDone":
+            save();
+            step.status = "done";
+            step.doneAt = s.now;
+            msg = `“${d.name}”: “${sd.name}” done at ${fmt(s.now)}.`;
+            break;
+          case "markDone": // dragged straight to Done
+            save();
+            t.steps.forEach((x) => {
+              if (x.status !== "done") {
+                x.startedAt ??= s.now;
+                x.status = "done";
+                x.doneAt = s.now;
+              }
+            });
+            msg = `“${d.name}” moved to Done at ${fmt(s.now)}.`;
+            break;
+          case "prepTick": {
+            // Prep view checkbox: “the hands-on part of the current Step is done”
+            save();
+            if (step.status === "todo") step.startedAt = s.now; // start unknown; recorded as now
+            if (step.status === "passive" || sd.passive === 0) {
+              step.status = "done";
+              step.doneAt = s.now;
+              msg = `Prep view tick: “${sd.name}” done.`;
+            } else {
+              step.status = "passive";
+              step.handsOffAt = s.now;
+              msg = `Prep view tick: “${sd.name}” hands-on done, ${sd.passiveLabel} until ${fmt(s.now + sd.passive)}.`;
+            }
+            break;
+          }
+          case "undo": {
+            const prev = t.history.pop();
+            if (prev) t.steps = JSON.parse(prev);
+            msg = `“${d.name}” moved back (undo).`;
+            break;
+          }
+          case "replan": {
+            const moved = wouldMove(s);
+            s = replan(s);
+            msg = `Re-plan pressed: moved ${moved.map((x) => def(x).name).join(", ") || "nothing"}.`;
+            break;
+          }
+          case "reset":
+            return initialState();
+        }
+        if (replanMode(s) === "live" && action.type !== "replan") {
+          const moved = wouldMove(s);
+          s = replan(s);
+          if (moved.length)
+            msg += ` Live re-plan moved: ${moved.map((x) => `${def(x).name} → ${fmt(s.tasks[x].plannedStart)}`).join(", ")}.`;
+        }
+        s.changed = msg;
+        return s;
+      }
+
+      // ───────────── Page (throwaway shell) ─────────────
+      let state = initialState();
+      let ui = { passiveCol: false, cookFilter: "" };
+
+      function dispatch(a) {
+        state = reduce(state, a);
+        render();
+      }
+
+      const COLS = () =>
+        ui.passiveCol
+          ? [
+              ["todo", "To do"],
+              ["inProgress", "In progress"],
+              ["waiting", "Cooking / resting"],
+              ["done", "Done"],
+            ]
+          : [
+              ["todo", "To do"],
+              ["inProgress", "In progress"],
+              ["done", "Done"],
+            ];
+
+      function card(d, sch) {
+        const t = state.tasks[d.id];
+        const x = sch[d.id];
+        const i = currentStep(t);
+        const cls = x.behind ? "behind" : x.conflict ? "conflict" : "";
+        let badges = "";
+        if (x.behind)
+          badges += `<span class="badge b-bad">behind · was due ${fmt(t.plannedStart)}</span>`;
+        if (x.conflict)
+          badges += `<span class="badge b-warn">${def(d.deps[0]).name} not ready until ${fmt(x.depEnd)}</span>`;
+        if (x.status === "waiting") {
+          const sd = d.steps[i],
+            s = t.steps[i];
+          badges += x.passiveUp
+            ? `<span class="badge b-warn">⏰ ${sd.passiveLabel} — time's up ${fmt(s.handsOffAt + sd.passive)}</span>`
+            : `<span class="badge b-run">⏳ ${sd.passiveLabel} until ${fmt(s.handsOffAt + sd.passive)}</span>`;
+          badges += `<span class="badge b-mute">${d.cook} free</span>`;
+          if (!ui.passiveCol)
+            badges += `<span class="badge b-mute">hands-off</span>`;
+        }
+        if (x.status === "inProgress" && t.steps[i].status === "todo")
+          badges += `<span class="badge b-warn">next Step waiting for ${d.cook}</span>`;
+        if (x.status === "done")
+          badges += `<span class="badge b-ok">done ${fmt(x.end)}</span>`;
+
+        const steps =
+          d.steps.length > 1
+            ? `<div class="sl">${d.steps
+                .map((sd, k) => {
+                  const st = t.steps[k].status;
+                  const icon = {
+                    todo: "○",
+                    active: "◐",
+                    passive: "⏳",
+                    done: "●",
+                  }[st];
+                  return `<div>${icon} ${sd.name}</div>`;
+                })
+                .join(
+                  "",
+                )}<div class="m">Step ${Math.min(i < 0 ? d.steps.length : i + 1, d.steps.length)} of ${d.steps.length}</div></div>`
+            : "";
+
+        const acts = [];
+        if (x.status !== "done") {
+          const sd = d.steps[i],
+            s = t.steps[i].status;
+          if (s === "todo")
+            acts.push([
+              d.steps.length > 1 && i > 0
+                ? `Start “${sd.name}”`
+                : "→ In progress",
+              "start",
+            ]);
+          if (s === "active" && sd.passive)
+            acts.push([`Hands-off (${sd.passiveLabel})`, "handsOff"]);
+          if (s === "active" && !sd.passive)
+            acts.push([
+              i < d.steps.length - 1 ? "Step done" : "→ Done",
+              "stepDone",
+            ]);
+          if (s === "passive")
+            acts.push([
+              i < d.steps.length - 1
+                ? `${sd.passiveLabel} over`
+                : `${sd.passiveLabel} over → Done`,
+              "stepDone",
+            ]);
+          acts.push(["→ Done", "markDone"]);
+        }
+        if (t.history.length) acts.push(["← back", "undo"]);
+        const seen = new Set();
+        const btns = acts
+          .filter(([l]) => !seen.has(l) && seen.add(l))
+          .map(
+            ([l, a]) =>
+              `<button data-card="${d.id}" data-a="${a}">${l}</button>`,
+          )
+          .join("");
+
+        return `<div class="c ${cls}"><div class="t">${d.name}</div>
+          <div class="m">${d.dish} · ${d.station} · ${d.cook} · plan ${fmt(t.plannedStart)}${t.plannedStart !== t.originalStart ? ' <span class="moved">(moved)</span>' : ""}</div>
+          ${steps}<div>${badges}</div><div class="acts">${btns}</div></div>`;
+      }
+
+      function render() {
+        const sch = schedule(state);
+        const mode = replanMode(state);
+        document.getElementById("state").innerHTML = `
+          <div><small>Now</small><b>${fmt(state.now)}</b></div>
+          <div><small>Service</small><b>${fmt(SERVICE_AT)}</b></div>
+          <div><small>Service day</small><b>${serviceDayStarted(state) ? "started" : "not yet"}</b></div>
+          <div><small>Re-planning</small><b>${mode === "live" ? "Live (prep days)" : "On request (Service day)"}</b></div>
+          <div><small>Cooks busy (hands-on)</small><b>${["Malo", "Sam"].map((c) => c + ": " + (TASKS.some((d) => d.cook === c && state.tasks[d.id].steps.some((s) => s.status === "active")) ? "busy" : "free")).join(" · ")}</b></div>`;
+        const wm = wouldMove(state);
+        document.getElementById("banner").innerHTML =
+          mode === "onRequest" && wm.length
+            ? `<div class="banner">Re-plan would move ${wm.length} Task${wm.length > 1 ? "s" : ""}: ${wm.map((x) => def(x).name).join(", ")} <button class="primary" data-act="replan">Re-plan</button></div>`
+            : "";
+        document.getElementById("changed").textContent =
+          "What just changed: " + state.changed;
+        document.getElementById("rule").value = state.rule;
+
+        const cooks = ui.cookFilter ? [ui.cookFilter] : ["Malo", "Sam"];
+        const cols = COLS();
+        document.getElementById("board").innerHTML = cooks
+          .map(
+            (c) => `
+          <div class="lane-label">${c}</div>
+          <div class="cols" style="grid-template-columns: repeat(${cols.length}, 1fr)">
+            ${cols
+              .map(
+                ([k, label]) =>
+                  `<div class="col"><h3>${label}</h3>${TASKS.filter(
+                    (d) => d.cook === c,
+                  )
+                    .filter((d) => {
+                      const st = sch[d.id].status;
+                      return (
+                        st === k ||
+                        (!ui.passiveCol &&
+                          k === "inProgress" &&
+                          st === "waiting")
+                      );
+                    })
+                    .sort(
+                      (a, b) =>
+                        state.tasks[a.id].plannedStart -
+                        state.tasks[b.id].plannedStart,
+                    )
+                    .map((d) => card(d, sch))
+                    .join("")}</div>`,
+              )
+              .join("")}
+          </div>`,
+          )
+          .join("");
+
+        const day = state.now < 1440 ? 0 : 1;
+        const today = TASKS.filter((d) => {
+          const t = state.tasks[d.id],
+            st = sch[d.id].status;
+          return (
+            (!ui.cookFilter || d.cook === ui.cookFilter) &&
+            (Math.floor(t.plannedStart / 1440) === day ||
+              (st !== "todo" && st !== "done") ||
+              (st === "done" && Math.floor(sch[d.id].end / 1440) === day))
+          );
+        }).sort(
+          (a, b) =>
+            state.tasks[a.id].plannedStart - state.tasks[b.id].plannedStart,
+        );
+        document.getElementById("prep").innerHTML =
+          today
+            .map((d) => {
+              const t = state.tasks[d.id],
+                x = sch[d.id],
+                i = currentStep(t);
+              const done = x.status === "done";
+              const sub = done
+                ? `done ${fmt(x.end)}`
+                : x.status === "waiting"
+                  ? `${d.steps[i].passiveLabel} until ${fmt(t.steps[i].handsOffAt + d.steps[i].passive)}${x.passiveUp ? " ⏰" : ""} — tick when it's out`
+                  : `${fmt(t.plannedStart)} · ${d.cook}${d.steps.length > 1 ? ` · Step ${i + 1}/${d.steps.length}: ${d.steps[i].name}` : ""}${x.behind ? ' · <span style="color:var(--bad)">behind</span>' : ""}`;
+              return `<label><input type="checkbox" ${done ? "checked disabled" : ""} data-prep="${d.id}" /><span>${d.name}<small>${sub}</small></span></label>`;
+            })
+            .join("") || '<p class="note">Nothing today.</p>';
+
+        document.getElementById("gantt").innerHTML =
+          `<table><tr><th>Task</th><th>Plan</th><th>Expected</th></tr>${TASKS.map(
+            (d) => {
+              const t = state.tasks[d.id],
+                x = sch[d.id];
+              const flags = [
+                x.behind && '<span class="badge b-bad">behind</span>',
+                x.conflict && '<span class="badge b-warn">conflict</span>',
+                t.plannedStart !== t.originalStart &&
+                  `<span class="moved">was ${fmt(t.originalStart)}</span>`,
+              ]
+                .filter(Boolean)
+                .join(" ");
+              return `<tr><td>${d.name}<br><span class="note">${d.cook}</span></td><td>${fmt(t.plannedStart)} ${flags}</td><td>${fmt(x.start)}–${fmt(x.end)}<br><span class="note">${{ todo: "not started", inProgress: "in progress", waiting: "hands-off", done: "done" }[x.status]}</span></td></tr>`;
+            },
+          ).join("")}</table>`;
+        renderScenario();
+      }
+
+      // ───────────── Walkthroughs ─────────────
+      const SCENARIOS = [
+        {
+          title: "1 · One state, three views",
+          desc: "Friday 16:00. Malo starts the stock on the board; Sam ticks the dough in the Prep view. Watch the same progress appear on the board, the Prep checklist and the Gantt rows. The stock is a grouped Task (two Steps), so its card shows Step progress.",
+          steps: [
+            [
+              "Malo moves “Make chicken stock” to In progress",
+              { type: "start", id: "stock" },
+            ],
+            [
+              "+15 min: bones go in the oven (hands-off)",
+              [
+                { type: "tick", m: 15 },
+                { type: "handsOff", id: "stock" },
+              ],
+            ],
+            [
+              "Sam ticks “Pastry dough” in the Prep view at 16:15 (planned 17:00)",
+              { type: "prepTick", id: "dough" },
+            ],
+            [
+              "+45 min: bones out of the oven",
+              [
+                { type: "tick", m: 45 },
+                { type: "stepDone", id: "stock" },
+              ],
+            ],
+            ["Malo starts “Simmer the stock”", { type: "start", id: "stock" }],
+          ],
+        },
+        {
+          title: "2 · Passive time overnight",
+          desc: "The stock simmers for 4 hours with nobody watching. Where does the card sit? Malo is free. Then the timer runs out but nobody has confirmed it's off the heat.",
+          setup: [
+            { type: "start", id: "stock" },
+            { type: "tick", m: 15 },
+            { type: "handsOff", id: "stock" },
+            { type: "tick", m: 45 },
+            { type: "stepDone", id: "stock" },
+            { type: "start", id: "stock" },
+            { type: "tick", m: 10 },
+          ],
+          steps: [
+            [
+              "Malo sets the stock simmering (hands-off)",
+              { type: "handsOff", id: "stock" },
+            ],
+            [
+              "Toggle the separate “Cooking / resting” column on",
+              { ui: "passiveCol" },
+            ],
+            [
+              "+4 h → 21:10: timer is up, not yet confirmed",
+              { type: "tick", m: 240 },
+            ],
+            [
+              "+15 min: still unconfirmed — what happens to “Strain and chill”?",
+              { type: "tick", m: 15 },
+            ],
+            [
+              "Malo confirms “simmering over”",
+              { type: "stepDone", id: "stock" },
+            ],
+          ],
+        },
+        {
+          title: "3 · Running late on a prep day (Live)",
+          desc: "Friday. Malo hasn't started the stock by 17:30. The stock card goes red; the Plan re-fits live, so “Strain and chill” and anything after it move on their own.",
+          steps: [
+            ["+1 h → 17:00, stock still To do", { type: "tick", m: 60 }],
+            ["+30 min → 17:30", { type: "tick", m: 30 }],
+            ["Malo finally starts the stock", { type: "start", id: "stock" }],
+          ],
+        },
+        {
+          title: "4 · Running late on Service day (On request)",
+          desc: "Everything up to Saturday morning went to plan, but the tart shell wasn't baked at 10:00. At 16:30 the filling (planned 16:00) can't start. On Service day nothing moves on its own: a conflict and a Re-plan banner instead.",
+          setup: [
+            { type: "start", id: "stock" },
+            { type: "markDone", id: "stock" },
+            { type: "markDone", id: "dough" },
+            { type: "markDone", id: "strain" },
+            { type: "jump", to: 1450 },
+          ],
+          steps: [
+            ["Jump to Sat 16:30", { type: "jump", to: 2430 }],
+            ["Sam starts the shell now", { type: "start", id: "shells" }],
+            ["Press Re-plan", { type: "replan" }],
+          ],
+        },
+        {
+          title: "5 · Moved to Done by mistake",
+          desc: "Sam drags the dough card straight to Done by mistake, then drags it back. The Prep checkbox and the Gantt row follow, and nothing is pinned.",
+          steps: [
+            [
+              "Sam drags “Pastry dough” to Done",
+              { type: "markDone", id: "dough" },
+            ],
+            ["Sam drags it back", { type: "undo", id: "dough" }],
+          ],
+        },
+        {
+          title: "6 · When does Service day start?",
+          desc: "Friday night the strain-and-chill runs late past midnight. Under “midnight”, re-planning switches to On request at 00:00 even though the cooks are asleep. Under “first Task on Service date” it stays Live until 10:00, when Sam is due to bake the shell.",
+          setup: [
+            { type: "markDone", id: "dough" },
+            { type: "start", id: "stock" },
+            { type: "jump", to: 1380 },
+            { type: "markDone", id: "stock" },
+          ],
+          steps: [
+            [
+              "Rule: midnight. Jump to Sat 00:00",
+              [
+                { type: "setRule", rule: "midnight" },
+                { type: "jump", to: 1440 },
+              ],
+            ],
+            [
+              "Malo strains the stock at 00:00 — see what (does not) move",
+              { type: "start", id: "strain" },
+            ],
+            [
+              "Switch the rule to “first Task on Service date”",
+              { type: "setRule", rule: "firstTask" },
+            ],
+          ],
+        },
+      ];
+      let scen = null,
+        scenStep = 0;
+
+      function runScenario(k) {
+        scen = k;
+        scenStep = 0;
+        ui.passiveCol = false;
+        document.getElementById("passiveCol").checked = false;
+        state = initialState();
+        for (const a of SCENARIOS[k].setup || []) state = reduce(state, a);
+        state.changed = "Walkthrough reset: " + SCENARIOS[k].title;
+        render();
+      }
+      function renderScenario() {
+        document.getElementById("tabs").innerHTML = SCENARIOS.map(
+          (s, k) =>
+            `<button data-scen="${k}" class="${scen === k ? "on" : ""}">${s.title}</button>`,
+        ).join("");
+        if (scen === null) {
+          document.getElementById("scenario").innerHTML =
+            '<p class="note">Pick a walkthrough. Each one resets to a known state.</p>';
+          return;
+        }
+        const s = SCENARIOS[scen];
+        document.getElementById("scenario").innerHTML =
+          `<p>${s.desc}</p><div class="steps">${s.steps
+            .map(
+              ([l], k) =>
+                `<button data-step="${k}" class="${k < scenStep ? "done" : k === scenStep ? "next" : ""}" ${k !== scenStep ? "disabled" : ""}>${k + 1}. ${l}</button>`,
+            )
+            .join("")}</div>`;
+      }
+
+      document.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        if (b.dataset.card)
+          return dispatch({ type: b.dataset.a, id: b.dataset.card });
+        if (b.dataset.scen) return runScenario(+b.dataset.scen);
+        if (b.dataset.step) {
+          const acts = SCENARIOS[scen].steps[+b.dataset.step][1];
+          for (const a of [].concat(acts)) {
+            if (a.ui === "passiveCol") {
+              ui.passiveCol = true;
+              document.getElementById("passiveCol").checked = true;
+            } else state = reduce(state, a);
+          }
+          scenStep++;
+          return render();
+        }
+        const act = b.dataset.act;
+        if (!act) return;
+        if (act === "tick") dispatch({ type: "tick", m: +b.dataset.m });
+        else if (act === "jump") dispatch({ type: "jump", to: +b.dataset.to });
+        else dispatch({ type: act });
+      });
+      document.addEventListener("change", (e) => {
+        if (e.target.dataset.prep)
+          return dispatch({ type: "prepTick", id: e.target.dataset.prep });
+        if (e.target.id === "rule")
+          return dispatch({ type: "setRule", rule: e.target.value });
+        if (e.target.id === "passiveCol") {
+          ui.passiveCol = e.target.checked;
+          render();
+        }
+        if (e.target.id === "cookFilter") {
+          ui.cookFilter = e.target.value;
+          render();
+        }
+      });
+      render();
+    </script>
+  </body>
+</html>

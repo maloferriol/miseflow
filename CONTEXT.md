@@ -95,15 +95,53 @@ _Avoid_: Line item, ingredient (for the line)
 The unit a Recipe's author wrote a Quantity in.
 
 **Main unit**:
-The unit a Quantity is shown and totalled in: a kitchen-wide default for each kind of measure (grams for mass, millilitres for volume), which an Ingredient can override (milk in litres, eggs by count).
+The unit a Quantity is shown and totalled in. Each Ingredient has a preferred kind of measure (flour by mass, milk by volume, eggs by count), and the kitchen picks the unit for each kind (grams, millilitres). An Ingredient can override the unit (milk in litres).
 _Avoid_: Base unit, default unit
+
+**Approximate total**:
+A total that includes a reference Conversion, a default piece size, or a sub-recipe that couldn't be scaled. It's marked ≈ and can explain where its number came from. Values the kitchen entered itself count as exact.
+_Avoid_: Estimate (alone), guess
 
 **Conversion**:
 How a Quantity of one Ingredient turns into a different kind of measure, such as the grams in a cup of flour or the weight of one onion. Accepted reference values come first, and an Ingredient can override them.
 _Avoid_: Density (unless it's specifically weight per volume)
+
+**Fixed unit**:
+A unit that converts by a constant within its kind of measure (g, kg, ml, L, tsp, tbsp, cup, oz, lb).
+
+**Ingredient unit**:
+A unit whose size depends on the Ingredient: a piece (no unit, as in "3 eggs"), clove, slice, sprig, head, stick, can, bunch. Quantities in the same Ingredient unit add up directly; turning them into another unit needs a Conversion.
+_Avoid_: Count unit (alone)
+
+**Vague amount**:
+A Quantity with no number that can be summed: a pinch, a dash, a handful, to taste, or none at all. Listed, but never added into a total.
+
+**Servings and yield**:
+A Recipe's **servings** is how many people it feeds, which sets a Dish's Scale factor. Its **yield** is the Quantity it makes (500 g, 3 L, 24 cookies), which a parent Recipe divides into when using it as a sub-recipe. A sub-recipe needs a yield.
+_Avoid_: Portions (for yield), batch size
+
+**Scale factor**:
+How many times a Dish makes its Recipe: the Menu's guest count over the Recipe's servings by default, or a portion count or factor the cook sets for that Dish. Quantities scale linearly by it, except fixed ones.
+_Avoid_: Multiplier, batch size
+
+**Fixed quantity**:
+An Ingredient line marked not to scale (a bay leaf, salt for the pasta water). It keeps its Quantity at any Scale factor.
+_Avoid_: Constant, unscaled
+
+**Unit region**:
+Which convention a Recipe's ambiguous units follow (a US cup is 236.6 ml, a metric cup 250 ml; a UK pint is 568 ml). It defaults to the kitchen's region, which also decides regional Ingredient aliases.
+_Avoid_: Locale (outside Cooklang), measuring system
 
 ## Shopping
 
 **Shopping list**:
 The scaled ingredient totals for one Service, across all its Recipes and sub-recipes, optionally combined with other Services.
 _Avoid_: Grocery list (in code), order
+
+**Pack size**:
+An amount an Ingredient is sold in (cream: 250 ml, 1 L; eggs: 6, 12). The Shopping list picks the combination of packs with the least left over, then the fewest packs. An Ingredient with no pack sizes is bought **loose**.
+_Avoid_: Package, SKU
+
+**Trim loss**:
+The share of an Ingredient as bought that isn't used (peel, shell, stems). It's added when a weight on the Shopping list becomes an amount to buy.
+_Avoid_: Waste, refuse (outside USDA data)

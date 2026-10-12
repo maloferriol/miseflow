@@ -35,7 +35,7 @@ _Avoid_: Event, dinner
 ## Planning
 
 **Task**:
-A unit of scheduled work for a Dish: one Step by default, or several consecutive Steps grouped together. Has a duration, a Station, and an assignee; its progress is the progress of its Steps.
+A unit of scheduled work for a Dish: one Step by default, or several consecutive Steps grouped together. Has a duration, a Station, and at most one Cook; its progress is the progress of its Steps.
 _Avoid_: To-do, job
 
 **Make-ahead window**:
@@ -46,11 +46,15 @@ _Avoid_: Advance window, prep window
 A Task whose Step has a make-ahead window. Every other Task is a **last-minute task**.
 
 **Plan**:
-A suggested, editable schedule of Tasks for a Service, fitted into people's availability while respecting dependencies and serving times.
+A suggested, editable schedule of Tasks for a Service, fitted into the Availability of the Service's Cooks while respecting dependencies and serving times.
 _Avoid_: Timeline, itinerary
 
 **Availability**:
-The hours a person is free to cook, defaulting to a kitchen-wide schedule.
+The hours a Cook is free to cook, defaulting to a kitchen-wide schedule.
+
+**Cook**:
+A named person on the account's roster who can be given Tasks, with no login of their own. The account owner is one of them. Each Service picks which Cooks are working it; a Task with no Cook is unassigned.
+_Avoid_: Assignee, user, staff, helper, person
 
 **Station**:
 An area of the kitchen (pastry, garde manger, hot line) that a Task belongs to.

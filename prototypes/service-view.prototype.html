@@ -1,0 +1,1265 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Wayfinder ticket #9 "How should the Service view look and behave on a phone?" (map #1).
+  Three variants of the phone Service view, switchable via ?variant=A|B|C (or ← / → keys, or the bottom bar).
+    A  Run sheet      — one scrolling list grouped by Course, checkboxes, inline timers, sticky "Fire next" bar
+    B  Now / Next     — one big Task at a time, timers as a strip of rings, course dots
+    C  Ticket rail    — swipe between Course tickets (Waiting → Fired → Served), timers in a bottom drawer
+  Scenario: Saturday dinner for 8, two Cooks (Malo, Sam), four Courses. No persistence; reload resets.
+  "Serve straight away" Tasks (⚡) are locked until their Course is fired — that's one of the things to react to.
+  Clock speed (x1 / x10 / x60) and a live state dump are in the "state" panel.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Service view prototype</title>
+    <style>
+      :root {
+        --bg: #f6f4ef;
+        --card: #fff;
+        --ink: #1d1b18;
+        --muted: #77716a;
+        --line: #e4dfd6;
+        --accent: #c2410c;
+        --ok: #15803d;
+        --warn: #b45309;
+        --zap: #7c3aed;
+        --fired: #0e7490;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #d9d4ca;
+        color: var(--ink);
+        font:
+          15px/1.35 -apple-system,
+          system-ui,
+          sans-serif;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      .phone {
+        width: 390px;
+        max-width: 100vw;
+        height: 844px;
+        max-height: 100vh;
+        margin: 0 auto;
+        background: var(--bg);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      @media (min-width: 500px) {
+        .phone {
+          margin-top: 16px;
+          border-radius: 28px;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+          height: min(844px, calc(100vh - 100px));
+        }
+      }
+      .scroll {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .topbar {
+        padding: 12px 16px 8px;
+        background: var(--card);
+        border-bottom: 1px solid var(--line);
+      }
+      .topbar h1 {
+        font-size: 17px;
+        margin: 0;
+      }
+      .topbar .sub {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--bg);
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 13px;
+      }
+      .chip.on {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: var(--bg);
+        color: var(--muted);
+        margin-right: 4px;
+      }
+      .tag.zap {
+        background: #ede9fe;
+        color: var(--zap);
+        font-weight: 600;
+      }
+      .tag.cook {
+        background: #e0f2fe;
+        color: #075985;
+      }
+      .toast {
+        position: absolute;
+        left: 50%;
+        bottom: 76px;
+        transform: translateX(-50%);
+        background: var(--ink);
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        display: flex;
+        gap: 12px;
+        z-index: 40;
+        white-space: nowrap;
+      }
+      .toast button {
+        background: none;
+        border: 0;
+        color: #fbbf24;
+        font-weight: 600;
+        padding: 0;
+      }
+      .ring {
+        transform: rotate(-90deg);
+      }
+      @keyframes flash {
+        50% {
+          background: #fee2e2;
+        }
+      }
+      .alarm {
+        animation: flash 1s infinite;
+      }
+
+      /* ---------- Variant A: Run sheet ---------- */
+      .A-group {
+        margin: 12px 12px 0;
+        background: var(--card);
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+      }
+      .A-gh {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .A-gh b {
+        font-size: 15px;
+      }
+      .A-gh .st {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .A-group.served {
+        opacity: 0.55;
+      }
+      .A-group.collapsed .A-rows {
+        display: none;
+      }
+      .A-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .A-row:last-child {
+        border-bottom: 0;
+      }
+      .A-row.done .A-title {
+        text-decoration: line-through;
+        color: var(--muted);
+      }
+      .A-row.locked {
+        opacity: 0.5;
+      }
+      .A-check {
+        width: 30px;
+        height: 30px;
+        flex: none;
+        border-radius: 8px;
+        border: 2px solid var(--line);
+        background: #fff;
+        font-size: 18px;
+        line-height: 1;
+      }
+      .A-row.done .A-check {
+        background: var(--ok);
+        border-color: var(--ok);
+        color: #fff;
+      }
+      .A-main {
+        flex: 1;
+        min-width: 0;
+      }
+      .A-time {
+        font-variant-numeric: tabular-nums;
+        color: var(--muted);
+        font-size: 13px;
+        width: 42px;
+        flex: none;
+        padding-top: 6px;
+      }
+      .A-timer {
+        margin-top: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 10px 3px 4px;
+        background: var(--bg);
+        font-variant-numeric: tabular-nums;
+      }
+      .A-timer.run {
+        border-color: var(--fired);
+        color: var(--fired);
+      }
+      .A-timer.alarm {
+        border-color: #dc2626;
+        color: #dc2626;
+      }
+      .A-tray {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 8px 12px;
+        background: #0f172a;
+        color: #fff;
+      }
+      .A-tray:empty {
+        display: none;
+      }
+      .A-tray .t {
+        flex: none;
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+      }
+      .A-tray .t.alarm {
+        animation: none;
+        background: #dc2626;
+      }
+      .A-fire {
+        padding: 10px 12px 14px;
+        background: var(--card);
+        border-top: 1px solid var(--line);
+      }
+      .A-fire button {
+        width: 100%;
+        padding: 14px;
+        border: 0;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .A-fire .hint {
+        font-size: 12px;
+        color: var(--muted);
+        text-align: center;
+        margin-top: 6px;
+      }
+
+      /* ---------- Variant B: Now / Next ---------- */
+      .B {
+        background: #111;
+        color: #f5f5f4;
+      }
+      .B .topbar {
+        background: #111;
+        border-color: #292524;
+      }
+      .B .topbar .sub {
+        color: #a8a29e;
+      }
+      .B .chip {
+        background: #1c1917;
+        border-color: #44403c;
+        color: #e7e5e4;
+      }
+      .B .chip.on {
+        background: #f5f5f4;
+        color: #111;
+      }
+      .B-dots {
+        display: flex;
+        gap: 4px;
+        margin-top: 10px;
+      }
+      .B-dots div {
+        flex: 1;
+        text-align: center;
+        font-size: 11px;
+        padding: 4px 0;
+        border-radius: 6px;
+        background: #292524;
+        color: #a8a29e;
+      }
+      .B-dots div.fired {
+        background: var(--fired);
+        color: #fff;
+      }
+      .B-dots div.served {
+        background: #14532d;
+        color: #bbf7d0;
+      }
+      .B-rings {
+        display: flex;
+        gap: 10px;
+        padding: 10px 16px;
+        overflow-x: auto;
+        border-bottom: 1px solid #292524;
+        min-height: 0;
+      }
+      .B-rings:empty {
+        display: none;
+      }
+      .B-ringbox {
+        flex: none;
+        text-align: center;
+        font-size: 11px;
+        color: #d6d3d1;
+        width: 64px;
+      }
+      .B-ringbox.alarm {
+        animation: none;
+        color: #fca5a5;
+      }
+      .B-ringbox .n {
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+      }
+      .B-now {
+        margin: 16px;
+        padding: 20px;
+        border-radius: 20px;
+        background: #1c1917;
+        border: 1px solid #44403c;
+      }
+      .B-now .k {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #fdba74;
+      }
+      .B-now h2 {
+        font-size: 26px;
+        line-height: 1.15;
+        margin: 8px 0 6px;
+      }
+      .B-now .meta {
+        color: #a8a29e;
+        font-size: 14px;
+      }
+      .B-big {
+        display: block;
+        width: 100%;
+        margin-top: 18px;
+        padding: 22px;
+        font-size: 20px;
+        font-weight: 800;
+        border: 0;
+        border-radius: 16px;
+        background: var(--ok);
+        color: #fff;
+      }
+      .B-big.timer {
+        background: var(--fired);
+      }
+      .B-big.fire {
+        background: var(--accent);
+      }
+      .B-small {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .B-small button {
+        flex: 1;
+        padding: 10px;
+        background: #292524;
+        border: 0;
+        border-radius: 10px;
+        color: #d6d3d1;
+        font-size: 13px;
+      }
+      .B-next {
+        margin: 0 16px;
+      }
+      .B-next h3 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #78716c;
+        margin: 8px 0;
+      }
+      .B-next .r {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #1c1917;
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .B-next .r .m {
+        color: #a8a29e;
+        font-size: 12px;
+      }
+      .B .tag {
+        background: #292524;
+        color: #a8a29e;
+      }
+      .B .tag.zap {
+        background: #3b0764;
+        color: #d8b4fe;
+      }
+      .B .tag.cook {
+        background: #082f49;
+        color: #7dd3fc;
+      }
+
+      /* ---------- Variant C: Ticket rail ---------- */
+      .C-rail {
+        flex: 1;
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 12px;
+        padding: 14px 24px 14px;
+      }
+      .C-ticket {
+        flex: none;
+        width: 320px;
+        scroll-snap-align: center;
+        background: #fffdf5;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        display: flex;
+        flex-direction: column;
+        border-top: 8px solid var(--line);
+        max-height: 100%;
+      }
+      .C-ticket.fired {
+        border-top-color: var(--fired);
+      }
+      .C-ticket.served {
+        border-top-color: var(--ok);
+        opacity: 0.7;
+      }
+      .C-head {
+        padding: 12px 14px 8px;
+        border-bottom: 2px dashed var(--line);
+      }
+      .C-head .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .C-head .num {
+        font-family: ui-monospace, monospace;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .C-head h2 {
+        margin: 2px 0;
+        font-size: 22px;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      .C-head .lead {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .C-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 14px;
+      }
+      .C-dish {
+        font-weight: 700;
+        margin: 10px 0 2px;
+        font-family: ui-monospace, monospace;
+        font-size: 13px;
+        text-transform: uppercase;
+      }
+      .C-task {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px dotted var(--line);
+      }
+      .C-task.done .tt {
+        text-decoration: line-through;
+        color: var(--muted);
+      }
+      .C-task.locked {
+        opacity: 0.45;
+      }
+      .C-task .tt {
+        flex: 1;
+      }
+      .C-task .box {
+        width: 26px;
+        height: 26px;
+        border: 2px solid var(--ink);
+        border-radius: 50%;
+        background: none;
+        flex: none;
+      }
+      .C-task.done .box {
+        background: var(--ink);
+        color: #fff;
+      }
+      .C-task .play {
+        border: 1px solid var(--fired);
+        color: var(--fired);
+        background: none;
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .C-foot {
+        padding: 10px 14px 14px;
+        border-top: 2px dashed var(--line);
+      }
+      .C-foot button {
+        width: 100%;
+        padding: 12px;
+        border: 0;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 15px;
+        background: var(--accent);
+        color: #fff;
+      }
+      .C-foot button.serve {
+        background: var(--ok);
+      }
+      .C-foot button:disabled {
+        background: var(--line);
+        color: var(--muted);
+      }
+      .C-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 0 12px;
+      }
+      .C-tabs button {
+        flex: 1;
+        border: 0;
+        background: none;
+        padding: 6px 0;
+        font-size: 12px;
+        color: var(--muted);
+        border-bottom: 3px solid transparent;
+      }
+      .C-tabs button.fired {
+        color: var(--fired);
+        border-color: var(--fired);
+      }
+      .C-tabs button.served {
+        color: var(--ok);
+        border-color: var(--ok);
+      }
+      .C-drawer {
+        background: #0f172a;
+        color: #fff;
+        border-radius: 16px 16px 0 0;
+        padding: 8px 14px 12px;
+      }
+      .C-drawer .hd {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      .C-drawer .t {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-top: 1px solid #1e293b;
+        font-variant-numeric: tabular-nums;
+      }
+      .C-drawer .t.alarm {
+        animation: none;
+        color: #fca5a5;
+      }
+      .C-drawer .t button {
+        background: #dc2626;
+        border: 0;
+        color: #fff;
+        border-radius: 6px;
+        padding: 2px 8px;
+        font-size: 12px;
+      }
+
+      /* ---------- prototype chrome (not part of the design) ---------- */
+      .proto-bar {
+        position: fixed;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: #ff0;
+        color: #000;
+        border: 2px solid #000;
+        border-radius: 999px;
+        padding: 4px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        font:
+          600 13px ui-monospace,
+          monospace;
+      }
+      .proto-bar button {
+        background: #000;
+        color: #ff0;
+        border: 0;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font: inherit;
+      }
+      .proto-bar span {
+        padding: 0 8px;
+        white-space: nowrap;
+      }
+      .proto-state {
+        position: fixed;
+        right: 12px;
+        top: 12px;
+        bottom: 70px;
+        width: 340px;
+        max-width: calc(100vw - 24px);
+        z-index: 99;
+        background: #000;
+        color: #0f0;
+        font:
+          11px/1.3 ui-monospace,
+          monospace;
+        padding: 10px;
+        overflow: auto;
+        border: 2px solid #ff0;
+        border-radius: 10px;
+        display: none;
+      }
+      .proto-state.open {
+        display: block;
+      }
+      .proto-state button {
+        background: #ff0;
+        color: #000;
+        border: 0;
+        margin: 0 4px 6px 0;
+        padding: 2px 8px;
+        font: inherit;
+      }
+      .proto-state button.on {
+        background: #0f0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="phone" id="app"></div>
+
+    <div class="proto-bar">
+      <button id="prev">←</button><span id="vlabel"></span
+      ><button id="next">→</button><button id="stateBtn">state</button>
+    </div>
+    <div class="proto-state" id="statePanel"></div>
+
+    <script>
+      // ---------------- data ----------------
+      const VARIANTS = { A: "Run sheet", B: "Now / Next", C: "Ticket rail" };
+      const COOKS = ["Malo", "Sam"];
+
+      // Course 0 = "Before service": last-minute Tasks the Plan placed on the clock before Service time.
+      const courses = [
+        { id: 0, name: "Before service", state: "fired", clock: true },
+        { id: 1, name: "Amuse", state: "waiting" },
+        { id: 2, name: "Starter", state: "waiting" },
+        { id: 3, name: "Main", state: "waiting" },
+        { id: 4, name: "Dessert", state: "waiting" },
+      ];
+      // active / passive in minutes. zap = serve straight away (locked until its Course is fired).
+      let tid = 0;
+      const T = (course, dish, title, o = {}) => ({
+        id: ++tid,
+        course,
+        dish,
+        title,
+        active: 0,
+        passive: 0,
+        cook: null,
+        equip: null,
+        zap: false,
+        at: null,
+        done: false,
+        timer: null,
+        ...o,
+      });
+      const tasks = [
+        T(0, "Chocolate soufflé", "Preheat oven to 200°C", {
+          at: "18:30",
+          passive: 15,
+          equip: "Oven",
+          cook: "Sam",
+        }),
+        T(0, "Chocolate soufflé", "Butter and sugar 8 ramekins", {
+          at: "18:40",
+          active: 6,
+          cook: "Sam",
+        }),
+        T(0, "Pea velouté", "Reheat velouté base gently", {
+          at: "19:00",
+          active: 3,
+          passive: 10,
+          equip: "Burner 1",
+          cook: "Malo",
+        }),
+        T(0, "—", "Warm plates and bowls", {
+          at: "19:10",
+          passive: 15,
+          equip: "Plate warmer",
+          cook: "Sam",
+        }),
+        T(1, "Gougères", "Bake gougères", {
+          passive: 12,
+          equip: "Oven",
+          cook: "Sam",
+          zap: true,
+        }),
+        T(1, "Gougères", "Plate and serve gougères", {
+          active: 2,
+          cook: "Sam",
+          zap: true,
+        }),
+        T(2, "Pea velouté", "Blend velouté with cold butter", {
+          active: 3,
+          cook: "Malo",
+        }),
+        T(2, "Pea velouté", "Bowl, crème fraîche, pea shoots", {
+          active: 4,
+          cook: "Malo",
+        }),
+        T(3, "Duck breast", "Sear duck skin-side", {
+          active: 8,
+          equip: "Burner 2",
+          cook: "Malo",
+        }),
+        T(3, "Duck breast", "Roast duck", {
+          passive: 6,
+          equip: "Oven",
+          cook: "Malo",
+        }),
+        T(3, "Duck breast", "Rest duck", { passive: 8, cook: "Malo" }),
+        T(3, "Pommes fondantes", "Reheat fondantes", {
+          passive: 10,
+          equip: "Oven",
+          cook: "Sam",
+        }),
+        T(3, "Duck breast", "Mount jus with butter", {
+          active: 3,
+          equip: "Burner 1",
+          cook: "Sam",
+        }),
+        T(3, "Duck breast", "Slice duck and plate", {
+          active: 5,
+          cook: "Malo",
+          zap: true,
+        }),
+        T(4, "Chocolate soufflé", "Fold whites into base, fill ramekins", {
+          active: 4,
+          cook: "Sam",
+          zap: true,
+        }),
+        T(4, "Chocolate soufflé", "Bake soufflés", {
+          passive: 12,
+          equip: "Oven",
+          cook: "Sam",
+          zap: true,
+        }),
+        T(4, "Chocolate soufflé", "Dust and serve immediately", {
+          active: 1,
+          cook: "Sam",
+          zap: true,
+        }),
+      ];
+
+      const state = {
+        variant: "A",
+        cook: "All",
+        speed: 1,
+        toast: null,
+        bFocus: null,
+        cIndex: 0,
+        log: [],
+      };
+      let now = Date.now();
+      let last = performance.now();
+
+      // ---------------- helpers / actions ----------------
+      const fmt = (s) => {
+        s = Math.max(0, Math.ceil(s));
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+      };
+      const dur = (t) => t.active + t.passive;
+      const visible = (t) =>
+        state.cook === "All" || t.cook === state.cook || !t.cook;
+      const courseTasks = (c) =>
+        tasks.filter((t) => t.course === c && visible(t));
+      const locked = (t) => t.zap && courses[t.course].state === "waiting";
+      const remaining = (t) => (t.timer ? (t.timer.endsAt - now) / 1000 : null);
+      const ringing = (t) => t.timer && remaining(t) <= 0 && !t.done;
+      const running = () => tasks.filter((t) => t.timer && !t.done);
+      // lead time = longest dish chain in a Course (sequential within a dish)
+      const leadTime = (c) => {
+        const by = {};
+        tasks
+          .filter((t) => t.course === c)
+          .forEach((t) => (by[t.dish] = (by[t.dish] || 0) + dur(t)));
+        return Math.max(0, ...Object.values(by));
+      };
+      const nextToFire = () => courses.find((c) => c.state === "waiting");
+      const firedOpen = () =>
+        courses.filter((c) => c.state === "fired" && c.id > 0);
+      const log = (m) => {
+        state.log.unshift(m);
+        state.log.length = Math.min(state.log.length, 12);
+      };
+
+      function toggleDone(id) {
+        const t = tasks.find((x) => x.id === id);
+        if (locked(t)) return;
+        t.done = !t.done;
+        log(`${t.done ? "done" : "undone"}: ${t.title}`);
+        if (t.done)
+          toast(`Done: ${t.title}`, () => {
+            t.done = false;
+            log(`undo: ${t.title}`);
+          });
+        render();
+      }
+      function startTimer(id) {
+        const t = tasks.find((x) => x.id === id);
+        if (locked(t) || !t.passive) return;
+        t.timer = { endsAt: now + t.passive * 60000 };
+        log(`timer start: ${t.title} (${t.passive}m)`);
+        render();
+      }
+      function addMinute(id) {
+        const t = tasks.find((x) => x.id === id);
+        if (t.timer) {
+          t.timer.endsAt = Math.max(now, t.timer.endsAt) + 60000;
+          log(`+1m: ${t.title}`);
+          render();
+        }
+      }
+      function fire(cid) {
+        const c = courses[cid];
+        c.state = "fired";
+        log(`FIRE ${c.name}`);
+        toast(`Fired ${c.name}`, () => {
+          c.state = "waiting";
+          log(`unfire ${c.name}`);
+        });
+        render();
+      }
+      function serve(cid) {
+        const c = courses[cid];
+        c.state = "served";
+        log(`SERVED ${c.name}`);
+        tasks.filter((t) => t.course === cid).forEach((t) => (t.done = true));
+        render();
+      }
+      let toastTimer;
+      function toast(msg, undo) {
+        state.toast = { msg, undo };
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          state.toast = null;
+          render();
+        }, 4000);
+      }
+
+      // ---------------- shared bits ----------------
+      const tags = (t) =>
+        `${t.cook ? `<span class="tag cook">${t.cook}</span>` : ""}${t.equip ? `<span class="tag">${t.equip}</span>` : ""}${t.zap ? `<span class="tag zap">⚡ straight away</span>` : ""}`;
+      const durTxt = (t) =>
+        [
+          t.active && `${t.active}m active`,
+          t.passive && `${t.passive}m passive`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      const cookChips = () =>
+        `<div class="chips">${["All", ...COOKS].map((c) => `<button class="chip ${state.cook === c ? "on" : ""}" data-cook="${c}">${c}</button>`).join("")}</div>`;
+      const header = (sub) =>
+        `<div class="topbar"><h1>Saturday dinner · 8 guests</h1><div class="sub">${sub}</div>${cookChips()}</div>`;
+      const toastHtml = () =>
+        state.toast
+          ? `<div class="toast">${state.toast.msg}${state.toast.undo ? "<button data-undo>Undo</button>" : ""}</div>`
+          : "";
+      function ring(t, size = 52) {
+        const r = size / 2 - 4,
+          c = 2 * Math.PI * r,
+          frac = t.timer ? Math.max(0, remaining(t)) / (t.passive * 60) : 1;
+        return `<svg width="${size}" height="${size}" class="ring"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="#44403c" stroke-width="5" fill="none"/>
+    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="${ringing(t) ? "#dc2626" : "#22d3ee"}" stroke-width="5" fill="none" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - frac)}"/></svg>`;
+      }
+
+      // ---------------- Variant A: Run sheet ----------------
+      function VariantA() {
+        const nf = nextToFire();
+        const tray = running()
+          .map(
+            (t) =>
+              `<div class="t ${ringing(t) ? "alarm" : ""}">${ringing(t) ? "🔔 " : "⏱ "}${t.title.split(" ").slice(0, 2).join(" ")} ${ringing(t) ? "DONE" : fmt(remaining(t))}</div>`,
+          )
+          .join("");
+        const groups = courses
+          .map((c) => {
+            const ts = courseTasks(c.id);
+            if (!ts.length) return "";
+            const st = c.clock
+              ? "From the Plan"
+              : {
+                  waiting: `Waiting · ${leadTime(c.id)} min from fire`,
+                  fired: "Fired",
+                  served: "Served",
+                }[c.state];
+            const rows = ts
+              .map((t) => {
+                const tm = t.passive
+                  ? t.timer
+                    ? `<button class="A-timer ${ringing(t) ? "alarm" : "run"}" data-plus="${t.id}">${ringing(t) ? "🔔 time’s up · +1m" : "⏱ " + fmt(remaining(t)) + " · +1m"}</button>`
+                    : `<button class="A-timer" data-timer="${t.id}" ${locked(t) ? "disabled" : ""}>▶ ${t.passive}:00 ${t.title.toLowerCase().includes("bake") || t.title.toLowerCase().includes("roast") ? "oven" : "timer"}</button>`
+                  : "";
+                return `<div class="A-row ${t.done ? "done" : ""} ${locked(t) ? "locked" : ""} ${ringing(t) ? "alarm" : ""}">
+        ${c.clock ? `<div class="A-time">${t.at}</div>` : ""}
+        <button class="A-check" data-done="${t.id}" ${locked(t) ? "disabled" : ""}>${t.done ? "✓" : locked(t) ? "🔒" : ""}</button>
+        <div class="A-main"><div class="A-title">${t.title}</div><div>${t.dish !== "—" ? `<span class="tag">${t.dish}</span>` : ""}${tags(t)}</div>${tm}</div>
+      </div>`;
+              })
+              .join("");
+            const stColor =
+              c.state === "fired"
+                ? "var(--fired)"
+                : c.state === "served"
+                  ? "var(--ok)"
+                  : "var(--muted)";
+            return `<div class="A-group ${c.state === "served" ? "served collapsed" : ""}"><div class="A-gh"><b>${c.clock ? "" : c.id + ". "}${c.name}</b>
+      <span class="st" style="color:${stColor}">${st}</span>
+      ${c.state === "fired" && !c.clock ? `<button class="chip" data-serve="${c.id}">Served ✓</button>` : ""}</div><div class="A-rows">${rows}</div></div>`;
+          })
+          .join("");
+        const fireBar = nf
+          ? `<div class="A-fire"><button data-fire="${nf.id}">🔥 Fire ${nf.name}</button>
+      <div class="hint">${nf.name} needs ~${leadTime(nf.id)} min from fire to pass${
+        firedOpen().length
+          ? ` · ${firedOpen()
+              .map((c) => c.name)
+              .join(", ")} still out`
+          : ""
+      }</div></div>`
+          : `<div class="A-fire"><div class="hint">All Courses fired.</div></div>`;
+        return `${header("Service 19:30 · run sheet")}<div class="A-tray">${tray}</div><div class="scroll">${groups}<div style="height:16px"></div></div>${fireBar}${toastHtml()}`;
+      }
+
+      // ---------------- Variant B: Now / Next ----------------
+      function VariantB() {
+        const open = tasks.filter(
+          (t) =>
+            visible(t) &&
+            !t.done &&
+            !locked(t) &&
+            courses[t.course].state !== "served",
+        );
+        // Now = ringing timer first, else focused, else first open without a running timer
+        const now_ =
+          open.find(ringing) ||
+          open.find((t) => t.id === state.bFocus) ||
+          open.find((t) => !t.timer) ||
+          null;
+        const nf = nextToFire();
+        const next = open.filter((t) => t !== now_ && !t.timer).slice(0, 3);
+        const rings = running()
+          .filter(visible)
+          .map(
+            (t) =>
+              `<div class="B-ringbox ${ringing(t) ? "alarm" : ""}" data-focus="${t.id}">${ring(t)}<div class="n">${ringing(t) ? "DONE" : fmt(remaining(t))}</div><div>${t.title.split(" ").slice(0, 2).join(" ")}</div></div>`,
+          )
+          .join("");
+        const dots = courses
+          .filter((c) => !c.clock)
+          .map((c) => `<div class="${c.state}">${c.name}</div>`)
+          .join("");
+        let card;
+        if (now_) {
+          const isTimer = now_.passive && !now_.timer;
+          card = `<div class="B-now ${ringing(now_) ? "alarm" : ""}"><div class="k">${ringing(now_) ? "🔔 Timer done" : courses[now_.course].name} · ${now_.dish}</div>
+      <h2>${now_.title}</h2><div class="meta">${durTxt(now_)}</div><div style="margin-top:8px">${tags(now_)}</div>
+      ${isTimer ? `<button class="B-big timer" data-timer="${now_.id}">▶ Start ${now_.passive} min timer</button>` : `<button class="B-big" data-done="${now_.id}">Done ✓</button>`}
+      <div class="B-small">${ringing(now_) ? `<button data-plus="${now_.id}">+1 min</button>` : ""}${isTimer ? `<button data-done="${now_.id}">Mark done without timer</button>` : ""}<button data-skip="${now_.id}">Later</button></div></div>`;
+        } else if (nf) {
+          card = `<div class="B-now"><div class="k">Nothing open${
+            firedOpen().length
+              ? " · " +
+                firedOpen()
+                  .map((c) => c.name)
+                  .join(", ") +
+                " out"
+              : ""
+          }</div><h2>Fire ${nf.name}?</h2>
+      <div class="meta">~${leadTime(nf.id)} min from fire to pass. Unlocks ${tasks.filter((t) => t.course === nf.id && t.zap).length} ⚡ Tasks.</div>
+      <button class="B-big fire" data-fire="${nf.id}">🔥 Fire ${nf.name}</button></div>`;
+        } else card = `<div class="B-now"><h2>That’s service. 🎉</h2></div>`;
+        const fireRow =
+          now_ && nf
+            ? `<div class="B-next"><button class="B-big fire" style="padding:12px;font-size:15px;margin:8px 0" data-fire="${nf.id}">🔥 Fire ${nf.name} (~${leadTime(nf.id)} min)</button></div>`
+            : "";
+        const serveRow = firedOpen()
+          .map(
+            (c) =>
+              `<button class="chip" style="margin:0 4px 8px 16px" data-serve="${c.id}">${c.name} served ✓</button>`,
+          )
+          .join("");
+        return `<div class="B" style="display:flex;flex-direction:column;height:100%">
+    <div class="topbar"><h1>Saturday dinner · 8</h1><div class="sub">Service 19:30</div>${cookChips()}<div class="B-dots">${dots}</div></div>
+    <div class="B-rings">${rings}</div>
+    <div class="scroll">${card}${fireRow}${serveRow ? `<div>${serveRow}</div>` : ""}
+      <div class="B-next"><h3>Up next</h3>${next.map((t) => `<div class="r" data-focus="${t.id}"><div>${t.title}<div class="m">${courses[t.course].name} · ${durTxt(t)}</div></div><div>${t.cook ? `<span class="tag cook">${t.cook}</span>` : ""}</div></div>`).join("") || '<div class="r m">—</div>'}</div>
+      <div style="height:80px"></div></div>${toastHtml()}</div>`;
+      }
+
+      // ---------------- Variant C: Ticket rail ----------------
+      function VariantC() {
+        const tabs = courses
+          .map(
+            (c, i) =>
+              `<button class="${c.state === "waiting" ? "" : c.state}" data-goto="${i}">${c.clock ? "Pre" : c.name}</button>`,
+          )
+          .join("");
+        const tickets = courses
+          .map((c) => {
+            const ts = courseTasks(c.id);
+            const byDish = {};
+            ts.forEach((t) => (byDish[t.dish] = byDish[t.dish] || []).push(t));
+            const body = Object.entries(byDish)
+              .map(
+                ([d, list]) =>
+                  `<div class="C-dish">${d}</div>` +
+                  list
+                    .map(
+                      (t) => `
+      <div class="C-task ${t.done ? "done" : ""} ${locked(t) ? "locked" : ""} ${ringing(t) ? "alarm" : ""}">
+        <button class="box" data-done="${t.id}" ${locked(t) ? "disabled" : ""}>${t.done ? "✓" : ""}</button>
+        <div class="tt">${c.clock ? `<b>${t.at}</b> ` : ""}${t.title}<div>${tags(t)}</div></div>
+        ${t.passive ? (t.timer ? `<button class="play" data-plus="${t.id}">${ringing(t) ? "🔔 +1m" : fmt(remaining(t))}</button>` : `<button class="play" data-timer="${t.id}" ${locked(t) ? "disabled" : ""}>▶ ${t.passive}m</button>`) : ""}
+      </div>`,
+                    )
+                    .join(""),
+              )
+              .join("");
+            const allDone = ts.every((t) => t.done);
+            const foot = c.clock
+              ? ""
+              : c.state === "waiting"
+                ? `<button data-fire="${c.id}" ${nextToFire()?.id !== c.id ? "disabled" : ""}>${nextToFire()?.id === c.id ? "🔥 Fire" : "Fire after " + courses[c.id - 1].name}</button>`
+                : c.state === "fired"
+                  ? `<button class="serve" data-serve="${c.id}">${allDone ? "Served ✓" : "Mark served"}</button>`
+                  : "";
+            return `<div class="C-ticket ${c.state}"><div class="C-head"><div class="row"><span class="num">#${c.id} · ${c.clock ? "PLAN" : c.state.toUpperCase()}</span><span class="num">${ts.filter((t) => t.done).length}/${ts.length}</span></div>
+      <h2>${c.name}</h2><div class="lead">${c.clock ? "Clock times from the Plan" : `~${leadTime(c.id)} min fire → pass`}</div></div>
+      <div class="C-body">${body}</div>${foot ? `<div class="C-foot">${foot}</div>` : ""}</div>`;
+          })
+          .join("");
+        const rs = running();
+        const drawer = `<div class="C-drawer"><div class="hd"><span>TIMERS</span><span>${rs.length} running</span></div>${rs.map((t) => `<div class="t ${ringing(t) ? "alarm" : ""}"><span>${t.title}</span><span>${ringing(t) ? `<button data-done="${t.id}">🔔 done</button>` : fmt(remaining(t))}</span></div>`).join("") || '<div class="t" style="color:#64748b">none</div>'}</div>`;
+        return `${header("Service 19:30 · swipe Courses")}<div class="C-tabs">${tabs}</div><div class="C-rail" id="rail">${tickets}</div>${drawer}${toastHtml()}`;
+      }
+
+      // ---------------- render / wiring ----------------
+      const app = document.getElementById("app");
+      function render() {
+        const keepRail = document.getElementById("rail")?.scrollLeft;
+        const keepScroll = app.querySelector(".scroll")?.scrollTop;
+        app.innerHTML = { A: VariantA, B: VariantB, C: VariantC }[
+          state.variant
+        ]();
+        if (keepRail != null && document.getElementById("rail"))
+          document.getElementById("rail").scrollLeft = keepRail;
+        if (keepScroll != null && app.querySelector(".scroll"))
+          app.querySelector(".scroll").scrollTop = keepScroll;
+        document.getElementById("vlabel").textContent =
+          `${state.variant} (${VARIANTS[state.variant]})`;
+        renderState();
+      }
+      app.addEventListener("click", (e) => {
+        const b = e.target.closest(
+          "[data-done],[data-timer],[data-plus],[data-fire],[data-serve],[data-cook],[data-undo],[data-focus],[data-skip],[data-goto]",
+        );
+        if (!b) return;
+        const d = b.dataset;
+        if (d.done) toggleDone(+d.done);
+        else if (d.timer) startTimer(+d.timer);
+        else if (d.plus) addMinute(+d.plus);
+        else if (d.fire) fire(+d.fire);
+        else if (d.serve) serve(+d.serve);
+        else if (d.cook) {
+          state.cook = d.cook;
+          render();
+        } else if (d.undo !== undefined) {
+          state.toast?.undo?.();
+          state.toast = null;
+          render();
+        } else if (d.focus) {
+          state.bFocus = +d.focus;
+          render();
+        } else if (d.skip) {
+          const open = tasks.filter(
+            (t) =>
+              !t.done &&
+              !locked(t) &&
+              visible(t) &&
+              !t.timer &&
+              t.id !== +d.skip,
+          );
+          state.bFocus = open[0]?.id ?? null;
+          render();
+        } else if (d.goto) {
+          const r = document.getElementById("rail");
+          r.children[+d.goto].scrollIntoView({
+            behavior: "smooth",
+            inline: "center",
+            block: "nearest",
+          });
+        }
+      });
+
+      // variant switcher
+      const keys = Object.keys(VARIANTS);
+      function setVariant(v) {
+        state.variant = v;
+        const u = new URL(location);
+        u.searchParams.set("variant", v);
+        history.replaceState(null, "", u);
+        render();
+      }
+      const cycle = (n) =>
+        setVariant(
+          keys[(keys.indexOf(state.variant) + n + keys.length) % keys.length],
+        );
+      document.getElementById("prev").onclick = () => cycle(-1);
+      document.getElementById("next").onclick = () => cycle(1);
+      addEventListener("keydown", (e) => {
+        if (e.target.closest("input,textarea,[contenteditable]")) return;
+        if (e.key === "ArrowLeft") cycle(-1);
+        if (e.key === "ArrowRight") cycle(1);
+      });
+
+      // state panel
+      const panel = document.getElementById("statePanel");
+      document.getElementById("stateBtn").onclick = () => {
+        panel.classList.toggle("open");
+        renderState();
+      };
+      panel.addEventListener("click", (e) => {
+        const s = e.target.dataset.speed;
+        if (s) {
+          state.speed = +s;
+          renderState();
+        }
+        if (e.target.dataset.reset !== undefined) location.reload();
+      });
+      function renderState() {
+        if (!panel.classList.contains("open")) return;
+        panel.innerHTML = `${[1, 10, 60].map((s) => `<button data-speed="${s}" class="${state.speed === s ? "on" : ""}">x${s}</button>`).join("")}<button data-reset>reset</button>
+<pre>${JSON.stringify(
+          {
+            variant: state.variant,
+            cookFilter: state.cook,
+            clockSpeed: state.speed,
+            courses: courses.map(
+              (c) =>
+                `${c.name}: ${c.state}${c.clock ? "" : ` (lead ${leadTime(c.id)}m)`}`,
+            ),
+            timers: running().map(
+              (t) =>
+                `${t.title}: ${ringing(t) ? "RINGING" : fmt(remaining(t))}`,
+            ),
+            done: tasks.filter((t) => t.done).map((t) => t.title),
+            locked: tasks.filter(locked).map((t) => t.title),
+            log: state.log,
+          },
+          null,
+          2,
+        )}</pre>`;
+      }
+
+      // clock
+      let lastRing = new Set();
+      setInterval(() => {
+        const p = performance.now();
+        now += (p - last) * state.speed;
+        last = p;
+        const ringingNow = new Set(
+          running()
+            .filter(ringing)
+            .map((t) => t.id),
+        );
+        for (const id of ringingNow)
+          if (!lastRing.has(id)) {
+            navigator.vibrate?.([300, 100, 300]);
+            log(`RING: ${tasks.find((t) => t.id === id).title}`);
+          }
+        lastRing = ringingNow;
+        if (running().length || panel.classList.contains("open")) render();
+      }, 250);
+
+      state.variant = VARIANTS[
+        new URLSearchParams(location.search).get("variant")
+      ]
+        ? new URLSearchParams(location.search).get("variant")
+        : "A";
+      render();
+    </script>
+  </body>
+</html>

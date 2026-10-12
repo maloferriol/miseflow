@@ -30,7 +30,7 @@ Every Quantity's unit falls into one of three tiers:
 
 ## 2. Ingredients and the catalog
 
-([#27](https://github.com/maloferriol/miseflow/issues/27), [#35](https://github.com/maloferriol/miseflow/issues/35))
+([#27](https://github.com/maloferriol/miseflow/issues/27), [#35](https://github.com/maloferriol/miseflow/issues/35), [ADR 0002](adr/0002-ingredient-lines-link-to-ingredients.md), [ADR 0003](adr/0003-ingredient-seed-published-under-odbl.md))
 
 - **Totals group by Ingredient, never by text.** Every Ingredient line links to one Ingredient in the kitchen's Ingredient catalog, or to a sub-recipe. The line keeps the author's wording, its preparation ("diced", "packed") and its size ("large").
 - **What counts as one Ingredient.** Things bought as different products are different Ingredients: brown sugar vs sugar, heavy vs double cream. Nothing rolls up. Preparation and size don't make a new Ingredient: diced and sliced onions add into one onion total.

@@ -151,7 +151,11 @@ In priority order:
 
 ([#8](https://github.com/maloferriol/miseflow/issues/8), [prototype](https://github.com/maloferriol/miseflow/blob/prototype/plan-editing/prototypes/plan-editing.prototype.html))
 
-1. **Gantt chart.** The Plan is edited on a Gantt chart across days, with one lane per Cook and per Equipment unit, active time solid and passive time hatched.
+1. **Gantt chart.** The Plan is edited on a Gantt chart across days, active time solid and passive time hatched. Lanes follow the menu, never Cooks or Equipment ([#60](https://github.com/maloferriol/miseflow/issues/60), [prototype](https://github.com/maloferriol/miseflow/blob/prototype/gantt-lanes/prototypes/gantt-lanes.prototype.html)):
+   - A **Service** lane on top holds the Mise en place tasks. Below it, each Course has a lane per Dish, and under each Dish a lane per Batch it uses, nested as deep as the sub-recipes go.
+   - A Batch shared by several parents shows under each one. The extra copies are greyed out, and any copy can be dragged.
+   - A Dish can be collapsed to fold its Batches into its own lane.
+   - Above the lanes, a **load strip** per Cook shows their active time, red where they're doubled up, and one per Equipment unit shows what it holds. A Task's Cook is chosen with a picker, never by dragging between lanes.
 2. **Live re-plan while planning.** Every edit re-fits the rest of the Plan at once, and only what must move moves. The Task just edited goes first.
 3. **On request on Service day.** An edit lands on its own, clashes show as conflicts, and a banner previews what a Re-plan would do ("would move 3 Tasks, fit 1"). Service day starts at the first Task planned on the Service date, or earlier with **Start Service day** ([#40](https://github.com/maloferriol/miseflow/issues/40)).
 4. **Pins.** Moving a Task pins it. Reassigning a Task fixes its Cook (🔒), not its time. Pins never move, even when they break a rule (outside Availability, before a dependency, past shelf life); they show as conflicts and the Plan fits around them.

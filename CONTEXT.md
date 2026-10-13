@@ -66,7 +66,7 @@ A Task owned by the Service rather than a Dish or Batch: one per prep day for th
 _Avoid_: Prep block, setup task
 
 **Mise en place line**:
-One Ingredient to weigh out or prepare for a prep day, summed by Ingredient and preparation across every Ingredient line its Tasks use that day ("shallots, brunoise: 180 g, for: Velouté, Beurre blanc"). Ticked off on its own. Sub-recipe lines are Batches, not Mise en place lines.
+One Ingredient to weigh out or prepare for a prep day, summed by Ingredient and preparation across every Ingredient line its Tasks use that day ("shallots, brunoise: 180 g, for: Velouté, Beurre blanc"). Ticked off on its own. Its **destination** is the Station (or Stations, each with its share) of the Tasks that use it: where it's sent once ready, not where it's prepared. Sub-recipe lines are Batches, not Mise en place lines.
 _Avoid_: Mise (alone), prepped ingredient
 
 **Active time** and **passive time**:
@@ -108,7 +108,7 @@ The view the cook works from on the days before Service, to do the Plan rather t
 _Avoid_: Prep list (that's per Station), to-do list
 
 **Station prep list**:
-What one Station must have ready for a Service, across all prep days: one row per Batch or Dish the Station makes, with its scaled yield, what it's for, the day it's planned and when it must be ready, and that Station's Tasks for it underneath. Shown on screen and printed one page per Station; the day's Mise en place lines print as their own page.
+What one Station must have ready for a Service, across all prep days: one row per Batch or Dish the Station makes, with its scaled yield, what it's for, the day it's planned and when it must be ready, and that Station's Tasks for it underneath. A "From mise en place" section shows the Station's share of the day's Mise en place lines, read-only, ready once each is ticked. Shown on screen and printed one page per Station; the day's Mise en place lines print as their own page.
 _Avoid_: Par sheet, station sheet, prep view (that's per Cook and day)
 
 **Make-ahead shelf**:

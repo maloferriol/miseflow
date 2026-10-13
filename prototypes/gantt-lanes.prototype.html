@@ -1,0 +1,463 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway. Wayfinder ticket #60 "Do Gantt lanes per Dish or Batch fit the spec's model?"
+  Three variants of the MVP Plan's Gantt lanes, switchable via ?variant=A|B|C and the floating bar (or ← →).
+  Same Plan in every variant: the ADR 0004 dinner for 6, one Cook, no Equipment.
+  Dragging a bar sideways moves it and pins it. There is no re-plan: the question is how the lanes read.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PROTOTYPE — Gantt lanes</title>
+    <style>
+      :root {
+        --ink: #1c1917;
+        --mute: #78716c;
+        --line: #e7e5e4;
+        --bg: #fafaf9;
+        --card: #fff;
+        --avail: #ecfdf5;
+        --bad: #b91c1c;
+        --service: #dc2626;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      main { max-width: 1400px; margin: 0 auto; padding: 20px 16px 96px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .proto { display: inline-block; background: #fde68a; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+      .sub { color: var(--mute); margin: 0 0 12px; }
+      .guide { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+      .guide h2 { font-size: 15px; margin: 0 0 4px; }
+      .guide p { margin: 4px 0; }
+      .toolbar { display: flex; gap: 16px; align-items: center; margin: 8px 0; color: var(--mute); font-size: 13px; }
+      .legend span { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }
+      .sw { width: 22px; height: 10px; display: inline-block; border: 1px solid #555; }
+      .sw.active { background: #555; }
+      .sw.passive { background: repeating-linear-gradient(45deg, #555 0 3px, transparent 3px 7px); }
+
+      .chart { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; position: relative; }
+      .row { display: flex; border-bottom: 1px solid var(--line); min-height: 34px; }
+      .row.small { min-height: 22px; }
+      .row.header { min-height: 26px; background: #f5f5f4; }
+      .row.header .label { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mute); }
+      .label {
+        position: sticky; left: 0; z-index: 3; flex: 0 0 250px; width: 250px;
+        background: inherit; background-color: var(--card); border-right: 1px solid var(--line);
+        padding: 5px 8px; font-size: 13px; display: flex; flex-direction: column; justify-content: center;
+      }
+      .row.header .label { background-color: #f5f5f4; }
+      .label small { color: var(--mute); font-size: 11px; }
+      .label .tw { cursor: pointer; user-select: none; color: var(--mute); margin-right: 4px; }
+      .label.ghost { color: var(--mute); font-style: italic; }
+      .track { position: relative; flex: 0 0 auto; }
+      .avail { position: absolute; top: 0; bottom: 0; background: var(--avail); }
+      .grid { position: absolute; top: 0; bottom: 0; border-left: 1px solid #f0efee; }
+      .grid.day { border-left: 1px solid #a8a29e; }
+      .seam { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(90deg, #e7e5e4 0 2px, transparent 2px 6px); }
+      .svc { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--service); z-index: 1; }
+      .axis .track { height: 40px; }
+      .tick { position: absolute; top: 20px; font-size: 11px; color: var(--mute); transform: translateX(-50%); white-space: nowrap; }
+      .daylbl { position: absolute; top: 2px; font-size: 12px; font-weight: 600; padding-left: 4px; white-space: nowrap; }
+      .seamlbl { position: absolute; top: 2px; font-size: 10px; color: var(--mute); transform: translateX(-50%); white-space: nowrap; }
+      .bar {
+        position: absolute; top: 5px; height: 24px; border-radius: 4px; cursor: grab;
+        display: flex; overflow: hidden; z-index: 2; font-size: 11px; color: #fff;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+      }
+      .row.small .bar { top: 3px; height: 16px; }
+      .bar.dragging { cursor: grabbing; box-shadow: 0 0 0 2px #111; z-index: 5; }
+      .bar.conflict { box-shadow: 0 0 0 2px var(--bad); }
+      .bar.ghost { opacity: 0.4; border: 1px dashed #111; }
+      .bar.faded { opacity: 0.55; }
+      .bar .a { height: 100%; }
+      .bar .p { height: 100%; }
+      .bar .txt { position: absolute; left: 4px; top: 0; bottom: 0; display: flex; align-items: center; white-space: nowrap; pointer-events: none; text-shadow: 0 0 2px rgba(0,0,0,0.6); }
+      .loadbar { position: absolute; top: 4px; height: 12px; background: #57534e; border-radius: 2px; z-index: 2; }
+      .loadbar.clash { background: var(--bad); z-index: 3; }
+
+      .state { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; margin-top: 12px; }
+      .panel { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+      .panel h3 { font-size: 14px; margin: 0 0 6px; }
+      .conf { color: var(--bad); margin: 3px 0; }
+      table { border-collapse: collapse; width: 100%; font-size: 12px; }
+      td, th { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); }
+      th { color: var(--mute); font-weight: 500; }
+      button { font: inherit; font-size: 12px; padding: 1px 6px; cursor: pointer; }
+      .log { color: var(--mute); font-size: 12px; margin-top: 6px; }
+
+      .switcher {
+        position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 100;
+        background: #111; color: #fff; border-radius: 999px; padding: 6px 8px;
+        display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); font-size: 13px;
+      }
+      .switcher button { background: #333; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; font-size: 15px; }
+      .switcher button:hover { background: #555; }
+      .switcher .vl { min-width: 280px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Gantt lanes <span class="proto">PROTOTYPE</span></h1>
+      <p class="sub">
+        Saturday dinner for 6 (ADR 0004 walkthrough). One Cook, no Equipment. Availability Thu and Fri 18:00–22:00, Sat 09:00–19:30 (green). Service Sat 19:30 (red line).
+      </p>
+      <div class="guide" id="guide"></div>
+      <div class="toolbar">
+        <label><input type="checkbox" id="nights" checked /> Collapse nights</label>
+        <span class="legend">
+          <span><i class="sw active"></i>active (needs the Cook)</span>
+          <span><i class="sw passive"></i>passive (no Cook)</span>
+          <span>📌 pinned</span>
+          <span style="color: var(--bad)">red outline = conflict</span>
+        </span>
+      </div>
+      <div class="chart" id="chart"></div>
+      <div class="state">
+        <div class="panel">
+          <h3>Conflicts</h3>
+          <div id="conflicts"></div>
+          <div class="log" id="log"></div>
+        </div>
+        <div class="panel">
+          <h3>Tasks</h3>
+          <div id="tasks"></div>
+        </div>
+      </div>
+    </main>
+    <div class="switcher">
+      <button id="prev" title="Previous variant (←)">◀</button>
+      <span class="vl" id="vl"></span>
+      <button id="next" title="Next variant (→)">▶</button>
+    </div>
+
+    <script>
+      // ---------- Data: minutes from Thu 00:00 ----------
+      const THU = 0, FRI = 1440, SAT = 2880;
+      const SERVICE = SAT + 19 * 60 + 30;
+      const AVAIL = [
+        [THU + 18 * 60, THU + 22 * 60],
+        [FRI + 18 * 60, FRI + 22 * 60],
+        [SAT + 9 * 60, SERVICE],
+      ];
+      const OWNERS = {
+        stock: { name: "Chicken stock", kind: "batch", scale: "×1.5", for: ["velo", "bb"], color: "#a16207" },
+        velo: { name: "Velouté", kind: "dish", course: "Starter", color: "#2563eb" },
+        bb: { name: "Beurre blanc", kind: "batch", scale: "×1", for: ["duck"], color: "#7c3aed" },
+        duck: { name: "Duck breast", kind: "dish", course: "Main", color: "#be123c" },
+        pate: { name: "Pâte brisée", kind: "batch", scale: "×1", for: ["tatin"], color: "#0d9488" },
+        tatin: { name: "Tarte tatin", kind: "dish", course: "Dessert", color: "#c2410c" },
+      };
+      const h = (d, hh, mm = 0) => d + hh * 60 + mm;
+      // a = active minutes, p = passive minutes
+      const PLAN = [
+        { id: "s1", owner: "stock", name: "Roast bones", s: h(THU, 18), a: 20, p: 40, deps: [] },
+        { id: "s2", owner: "stock", name: "Simmer stock", s: h(THU, 19), a: 15, p: 150, deps: ["s1"] },
+        { id: "s3", owner: "stock", name: "Strain & chill", s: h(THU, 21, 45), a: 15, p: 0, deps: ["s2"] },
+        { id: "p1", owner: "pate", name: "Make dough, chill", s: h(FRI, 20, 30), a: 20, p: 60, deps: [] },
+        { id: "d1", owner: "duck", name: "Score & dry-brine", s: h(SAT, 10), a: 15, p: 240, deps: [] },
+        { id: "t1", owner: "tatin", name: "Caramelise apples", s: h(SAT, 15), a: 30, p: 0, deps: [] },
+        { id: "t2", owner: "tatin", name: "Assemble & bake", s: h(SAT, 15, 30), a: 10, p: 40, deps: ["t1", "p1"] },
+        { id: "t3", owner: "tatin", name: "Cool", s: h(SAT, 16, 20), a: 0, p: 60, deps: ["t2"] },
+        { id: "v1", owner: "velo", name: "Sweat leeks", s: h(SAT, 17), a: 20, p: 0, deps: [] },
+        { id: "v2", owner: "velo", name: "Simmer velouté", s: h(SAT, 17, 20), a: 5, p: 30, deps: ["v1", "s3"] },
+        { id: "v3", owner: "velo", name: "Blend & season", s: h(SAT, 18), a: 15, p: 0, deps: ["v2"], pinned: true },
+        { id: "b1", owner: "bb", name: "Reduce shallots & stock", s: h(SAT, 18), a: 20, p: 0, deps: ["s3"] },
+        { id: "b2", owner: "bb", name: "Mount with butter", s: h(SAT, 18, 35), a: 10, p: 0, deps: ["b1"] },
+        { id: "d2", owner: "duck", name: "Sear & rest duck", s: h(SAT, 19), a: 20, p: 10, deps: ["d1", "b2"] },
+      ];
+      const T = {};
+      for (const t of PLAN) T[t.id] = { ...t, planned: t.s, pinned: !!t.pinned };
+      const byOwner = (o) => PLAN.filter((t) => t.owner === o).map((t) => t.id);
+      const ownerLabel = (o) => {
+        const w = OWNERS[o];
+        return w.kind === "batch"
+          ? `${w.name} ${w.scale} · for: ${w.for.map((f) => OWNERS[f].name).join(", ")}`
+          : w.name;
+      };
+      const fmt = (m) => {
+        const d = Math.floor(m / 1440), r = ((m % 1440) + 1440) % 1440;
+        return `${["Thu", "Fri", "Sat", "Sun"][d] || "?"} ${String(Math.floor(r / 60)).padStart(2, "0")}:${String(r % 60).padStart(2, "0")}`;
+      };
+      const end = (t) => t.s + t.a + t.p;
+
+      // ---------- Time axis (with optional collapsed nights) ----------
+      const PX = 1.1, SEAM = 40;
+      let collapse = true;
+      const SEGS = () => (collapse ? [[h(THU, 17), h(THU, 23)], [h(FRI, 17), h(FRI, 23)], [h(SAT, 8), h(SAT, 20)]] : [[h(THU, 17), h(SAT, 20)]]);
+      function X(m) {
+        const S = SEGS();
+        let off = 0;
+        for (let i = 0; i < S.length; i++) {
+          const [a, b] = S[i];
+          if (m < a) {
+            if (i === 0) return 0;
+            const pb = S[i - 1][1];
+            return off - SEAM + ((m - pb) / (a - pb)) * SEAM;
+          }
+          if (m <= b) return off + (m - a) * PX;
+          off += (b - a) * PX + SEAM;
+        }
+        return off - SEAM;
+      }
+      function INV(px) {
+        const S = SEGS();
+        let off = 0;
+        for (let i = 0; i < S.length; i++) {
+          const [a, b] = S[i], w = (b - a) * PX;
+          if (px <= off + w) return a + Math.max(0, px - off) / PX;
+          off += w;
+          if (i < S.length - 1 && px < off + SEAM) return b + ((px - off) / SEAM) * (S[i + 1][0] - b);
+          off += SEAM;
+        }
+        return S[S.length - 1][1];
+      }
+      const WIDTH = () => X(SEGS()[SEGS().length - 1][1]) + 8;
+
+      // ---------- Conflicts ----------
+      function conflicts() {
+        const out = [], ids = Object.keys(T);
+        const nm = (t) => `${OWNERS[t.owner].name}: ${t.name}`;
+        for (let i = 0; i < ids.length; i++)
+          for (let j = i + 1; j < ids.length; j++) {
+            const x = T[ids[i]], y = T[ids[j]];
+            if (x.a && y.a && x.s < y.s + y.a && y.s < x.s + x.a)
+              out.push({ ids: [x.id, y.id], text: `You're doing ${nm(x)} and ${nm(y)} at the same time.` });
+          }
+        for (const t of Object.values(T)) {
+          for (const d of t.deps)
+            if (t.s < end(T[d])) out.push({ ids: [t.id], text: `${nm(t)} starts before ${nm(T[d])} is done (${fmt(end(T[d]))}).` });
+          if (t.a && !AVAIL.some(([a, b]) => t.s >= a && t.s + t.a <= b))
+            out.push({ ids: [t.id], text: `${nm(t)}: you aren't available ${fmt(t.s)}–${fmt(t.s + t.a)}.` });
+          if (end(t) > SERVICE) out.push({ ids: [t.id], text: `${nm(t)} isn't done by Service.` });
+        }
+        return out;
+      }
+
+      // ---------- Variants: each returns rows ----------
+      // row: { label, sub, header, small, ghost, items: [{id, parts, faded, ghost}], load, twisty }
+      const ALL = ["active", "passive"];
+      const items = (ids, extra = {}) => ids.map((id) => ({ id, parts: ALL, ...extra }));
+
+      const VARIANTS = {
+        A: {
+          name: "Cook lane (spec §6)",
+          guide:
+            "The spec's model with one Cook: one lane for your active time, passive time stacked in sub-rows beneath. Bars are coloured by Dish or Batch. Look for: can you tell which Dish a bar belongs to, and does the passive stack read as \"things cooking on their own\"? This is what phase 3 grows from (more Cook lanes, Equipment lanes).",
+          rows() {
+            const rows = [{ label: "You (Cook)", sub: "active time", items: Object.values(T).filter((t) => t.a).map((t) => ({ id: t.id, parts: ["active"] })) }];
+            const lanes = [];
+            for (const t of Object.values(T).filter((t) => t.p).sort((x, y) => x.s + x.a - (y.s + y.a))) {
+              const ps = t.s + t.a;
+              let i = lanes.findIndex((l) => l <= ps);
+              if (i < 0) { i = lanes.length; lanes.push(0); }
+              lanes[i] = end(t);
+              (rows[i + 1] ||= { label: i ? "" : "Passive", sub: i ? "" : "no Cook needed", small: true, items: [] }).items.push({ id: t.id, parts: ["passive"] });
+            }
+            return rows;
+          },
+        },
+        B: {
+          name: "Dish/Batch lanes + Cook load",
+          guide:
+            "One lane per Dish and per Batch, grouped by Course; a Batch sits above the first Dish it feeds. A thin \"Your load\" strip on top merges your active time across every lane, red where you're doubled up. Look for: does a Dish read as a chain left to right? Do you notice the 18:00 clash (Blend velouté is pinned on top of Reduce shallots)? Try dragging Reduce shallots later.",
+          rows() {
+            const rows = [{ label: "Your load", sub: "active time, all lanes", small: true, load: true }];
+            const order = [["Starter", ["stock", "velo"]], ["Main", ["bb", "duck"]], ["Dessert", ["pate", "tatin"]]];
+            for (const [course, owners] of order) {
+              rows.push({ label: course, header: true });
+              for (const o of owners) rows.push({ label: OWNERS[o].name + (OWNERS[o].kind === "batch" ? " " + OWNERS[o].scale : ""), sub: OWNERS[o].kind === "batch" ? "for: " + OWNERS[o].for.map((f) => OWNERS[f].name).join(", ") : "Dish", items: items(byOwner(o)) });
+            }
+            return rows;
+          },
+        },
+        C: {
+          name: "Course tree, shared Batch under each parent",
+          guide:
+            "Course → Dish → the Batches it uses, nested, like the Prep view's By component tab. A shared Batch (Chicken stock) shows under every parent; the second copy is a ghost (dashed) that still drags. Collapse a Dish (▾) to fold its Batches into its own lane. No load strip, so a clash only shows as a red outline. Look for: is the duplication helpful or confusing? Does collapsing give you a usable one-lane-per-Dish overview?",
+          collapsed: new Set(),
+          rows() {
+            const tree = { velo: ["stock"], duck: ["bb"], bb: ["stock"], tatin: ["pate"] };
+            const seen = new Set();
+            const rows = [];
+            const desc = (o) => (tree[o] || []).flatMap((c) => [c, ...desc(c)]);
+            const walk = (o, depth) => {
+              const ghost = seen.has(o);
+              seen.add(o);
+              const w = OWNERS[o];
+              const pad = "   ".repeat(depth);
+              const kids = tree[o] || [];
+              const isDish = w.kind === "dish";
+              const collapsed = isDish && this.collapsed.has(o);
+              const row = {
+                label: pad + (isDish ? "" : "└ ") + w.name + (w.kind === "batch" ? " " + w.scale : ""),
+                sub: pad + (w.kind === "batch" ? (ghost ? "also shown above" : "for: " + w.for.map((f) => OWNERS[f].name).join(", ")) : collapsed ? "Dish, with its Batches" : "Dish"),
+                ghost,
+                twisty: isDish && kids.length ? o : null,
+                items: items(byOwner(o), { ghost }),
+              };
+              if (collapsed) row.items.push(...[...new Set(desc(o))].flatMap((d) => items(byOwner(d), { faded: true })));
+              rows.push(row);
+              if (!collapsed) for (const k of kids) walk(k, depth + 1);
+            };
+            for (const [course, dishes] of [["Starter", ["velo"]], ["Main", ["duck"]], ["Dessert", ["tatin"]]]) {
+              rows.push({ label: course, header: true });
+              for (const d of dishes) walk(d, 1);
+            }
+            return rows;
+          },
+        },
+      };
+      const KEYS = Object.keys(VARIANTS);
+      let variant = new URLSearchParams(location.search).get("variant");
+      if (!KEYS.includes(variant)) variant = "A";
+
+      // ---------- Render ----------
+      const $ = (id) => document.getElementById(id);
+      let drag = null, lastLog = "";
+
+      function background(track, withAvail) {
+        if (withAvail) for (const [a, b] of AVAIL) track.insertAdjacentHTML("beforeend", `<div class="avail" style="left:${X(a)}px;width:${X(b) - X(a)}px"></div>`);
+        const S = SEGS();
+        for (let i = 0; i < S.length; i++) {
+          const [a, b] = S[i];
+          for (let m = Math.ceil(a / 60) * 60; m <= b; m += 60)
+            track.insertAdjacentHTML("beforeend", `<div class="grid ${m % 1440 === 0 ? "day" : ""}" style="left:${X(m)}px"></div>`);
+          if (i < S.length - 1) track.insertAdjacentHTML("beforeend", `<div class="seam" style="left:${X(b)}px;width:${SEAM}px"></div>`);
+        }
+        track.insertAdjacentHTML("beforeend", `<div class="svc" style="left:${X(SERVICE)}px"></div>`);
+      }
+
+      function render() {
+        const V = VARIANTS[variant];
+        $("vl").textContent = `${variant} · ${V.name}`;
+        $("guide").innerHTML = `<h2>${variant}. ${V.name}</h2><p>${V.guide}</p>`;
+        const C = conflicts();
+        const bad = new Set(C.flatMap((c) => c.ids));
+        const chart = $("chart");
+        chart.innerHTML = "";
+        const W = WIDTH();
+
+        // axis
+        const axis = document.createElement("div");
+        axis.className = "row axis";
+        axis.innerHTML = `<div class="label"><small>${collapse ? "Nights collapsed" : "Full time"}</small></div><div class="track" style="width:${W}px"></div>`;
+        const at = axis.querySelector(".track");
+        const S = SEGS();
+        S.forEach(([a, b], i) => {
+          if (collapse || i === 0) at.insertAdjacentHTML("beforeend", `<div class="daylbl" style="left:${X(a)}px">${fmt(a).slice(0, 3)}</div>`);
+          for (let m = Math.ceil(a / 60) * 60; m <= b; m += 60) {
+            if (!collapse && m % 1440 === 0) at.insertAdjacentHTML("beforeend", `<div class="daylbl" style="left:${X(m)}px">${fmt(m).slice(0, 3)}</div>`);
+            if (!collapse && m % 180) continue;
+            at.insertAdjacentHTML("beforeend", `<div class="tick" style="left:${X(m)}px">${fmt(m).slice(4)}</div>`);
+          }
+          if (i < S.length - 1) at.insertAdjacentHTML("beforeend", `<div class="seamlbl" style="left:${X(b) + SEAM / 2}px">night</div>`);
+        });
+        chart.appendChild(axis);
+
+        for (const r of V.rows()) {
+          const row = document.createElement("div");
+          row.className = "row" + (r.header ? " header" : "") + (r.small ? " small" : "");
+          const tw = r.twisty ? `<span class="tw" data-tw="${r.twisty}">${VARIANTS.C.collapsed.has(r.twisty) ? "▸" : "▾"}</span>` : "";
+          row.innerHTML = `<div class="label ${r.ghost ? "ghost" : ""}"><div>${tw}${r.label}</div>${r.sub ? `<small>${r.sub}</small>` : ""}</div><div class="track" style="width:${W}px"></div>`;
+          const track = row.querySelector(".track");
+          background(track, !r.header);
+          if (r.load) {
+            const act = Object.values(T).filter((t) => t.a);
+            for (const t of act) track.insertAdjacentHTML("beforeend", `<div class="loadbar" style="left:${X(t.s)}px;width:${Math.max(2, X(t.s + t.a) - X(t.s))}px" title="${OWNERS[t.owner].name}: ${t.name}"></div>`);
+            for (const c of C.filter((c) => c.ids.length === 2)) {
+              const [x, y] = c.ids.map((i) => T[i]);
+              const s = Math.max(x.s, y.s), e = Math.min(x.s + x.a, y.s + y.a);
+              track.insertAdjacentHTML("beforeend", `<div class="loadbar clash" style="left:${X(s)}px;width:${Math.max(3, X(e) - X(s))}px" title="${c.text}"></div>`);
+            }
+          }
+          for (const it of r.items || []) track.appendChild(bar(it, bad.has(it.id)));
+          chart.appendChild(row);
+        }
+
+        $("conflicts").innerHTML = C.length ? C.map((c) => `<div class="conf">⚠ ${c.text}</div>`).join("") : `<div style="color:#059669">No conflicts.</div>`;
+        $("log").textContent = lastLog;
+        $("tasks").innerHTML =
+          `<table><tr><th>Dish / Batch</th><th>Task</th><th>Start</th><th>Active</th><th>Passive</th><th>Done</th><th></th></tr>` +
+          PLAN.map(({ id }) => {
+            const t = T[id];
+            return `<tr style="${bad.has(id) ? "color:var(--bad)" : ""}"><td>${OWNERS[t.owner].name}</td><td>${t.name}</td><td>${fmt(t.s)}</td><td>${t.a}′</td><td>${t.p}′</td><td>${fmt(end(t))}</td><td>${t.pinned ? `📌 <button data-unpin="${id}">Unpin</button>` : ""}</td></tr>`;
+          }).join("") +
+          `</table><div class="log">Unpin puts a Task back where the Plan had it. There's no re-plan in this prototype.</div>`;
+      }
+
+      function bar(it, isBad) {
+        const t = T[it.id], color = OWNERS[t.owner].color;
+        const parts = it.parts.filter((p) => (p === "active" ? t.a : t.p));
+        const s = it.parts.includes("active") ? t.s : t.s + t.a;
+        const e = it.parts.includes("passive") ? end(t) : t.s + t.a;
+        const el = document.createElement("div");
+        el.className = "bar" + (isBad ? " conflict" : "") + (it.ghost ? " ghost" : "") + (it.faded ? " faded" : "") + (drag && drag.id === t.id ? " dragging" : "");
+        el.style.left = X(s) + "px";
+        el.style.width = Math.max(4, X(e) - X(s)) + "px";
+        el.dataset.id = t.id;
+        el.title = `${ownerLabel(t.owner)}\n${t.name}\n${fmt(t.s)} → ${fmt(end(t))}\nactive ${t.a}′, passive ${t.p}′${t.pinned ? "\n📌 pinned" : ""}`;
+        for (const p of parts) {
+          const seg = document.createElement("div");
+          seg.className = p === "active" ? "a" : "p";
+          const ps = p === "active" ? t.s : t.s + t.a, pe = p === "active" ? t.s + t.a : end(t);
+          seg.style.width = X(pe) - X(ps) + "px";
+          seg.style.background = p === "active" ? color : `repeating-linear-gradient(45deg, ${color} 0 4px, ${color}33 4px 9px)`;
+          el.appendChild(seg);
+        }
+        const short = variant === "A" ? `${OWNERS[t.owner].name}: ${t.name}` : t.name;
+        el.insertAdjacentHTML("beforeend", `<span class="txt">${t.pinned ? "📌 " : ""}${short}</span>`);
+        return el;
+      }
+
+      // ---------- Interaction ----------
+      document.addEventListener("mousedown", (e) => {
+        const b = e.target.closest(".bar");
+        if (!b) return;
+        e.preventDefault();
+        drag = { id: b.dataset.id, x0: e.clientX, s0: T[b.dataset.id].s, moved: false };
+      });
+      document.addEventListener("mousemove", (e) => {
+        if (!drag) return;
+        const t = T[drag.id];
+        const ns = Math.round(INV(X(drag.s0) + e.clientX - drag.x0) / 5) * 5;
+        if (ns !== t.s) { t.s = ns; drag.moved = true; render(); }
+      });
+      document.addEventListener("mouseup", () => {
+        if (!drag) return;
+        const t = T[drag.id];
+        if (drag.moved) { t.pinned = true; lastLog = `Moved ${OWNERS[t.owner].name}: ${t.name} to ${fmt(t.s)}. It's pinned.`; }
+        drag = null;
+        render();
+      });
+      document.addEventListener("click", (e) => {
+        const u = e.target.dataset.unpin;
+        if (u) { T[u].s = T[u].planned; T[u].pinned = false; lastLog = `Unpinned ${T[u].name}.`; render(); }
+        const tw = e.target.dataset.tw;
+        if (tw) { const c = VARIANTS.C.collapsed; c.has(tw) ? c.delete(tw) : c.add(tw); render(); }
+      });
+      $("nights").addEventListener("change", (e) => { collapse = e.target.checked; render(); });
+
+      function go(step) {
+        variant = KEYS[(KEYS.indexOf(variant) + step + KEYS.length) % KEYS.length];
+        const u = new URL(location.href);
+        u.searchParams.set("variant", variant);
+        history.replaceState(null, "", u);
+        render();
+      }
+      $("prev").onclick = () => go(-1);
+      $("next").onclick = () => go(1);
+      document.addEventListener("keydown", (e) => {
+        if (e.target.closest("input, textarea, [contenteditable]")) return;
+        if (e.key === "ArrowLeft") go(-1);
+        if (e.key === "ArrowRight") go(1);
+      });
+      render();
+    </script>
+  </body>
+</html>

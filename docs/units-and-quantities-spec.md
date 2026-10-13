@@ -128,7 +128,7 @@ Every Quantity's unit falls into one of three tiers:
 
 Recorded on map [#25](https://github.com/maloferriol/miseflow/issues/25) as out of scope:
 
-- Buy instead of make (now fog on [#1](https://github.com/maloferriol/miseflow/issues/1))
+- Buy instead of make (settled in [How does buying a sub-recipe ready-made work?](https://github.com/maloferriol/miseflow/issues/44))
 - Substitutions and roll-ups
 - LLM-assisted matching in the app
 - A whole-piece factor helper

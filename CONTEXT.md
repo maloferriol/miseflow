@@ -44,8 +44,12 @@ An ordered section of a Menu (starter, main, dessert). Courses have a sequence, 
 _Avoid_: Round, plate
 
 **Dish**:
-A Recipe placed in a Course of a Menu, holding that Service's scaling, progress, and schedule.
+A Recipe placed in a Course of a Menu, holding that Service's scaling, progress, and schedule. It follows the Recipe's latest Revision while planning; from Service day, a new Revision waits until the cook applies it.
 _Avoid_: Menu item, recipe instance
+
+**Dish override**:
+A change that applies only to one Service's Dish or Batch, not its Recipe: skipping a Step, or changing a Quantity or a duration. Anything bigger is a change to the Recipe. If a later Revision removes the Step, the override goes; if it changes what was overridden, the override stays and is flagged.
+_Avoid_: Variation, local edit
 
 **Batch**:
 One making (or purchase) of a sub-recipe for a Service, with its own Scale factor, Tasks and progress, feeding one or more Dishes or parent Batches. By default a sub-recipe gets one Batch per Service, sized to everything its parents use. The cook can split a Batch (by parent, per Course, or into equal parts) and merge Batches of the same sub-recipe back; MiseFlow suggests splitting per Course when a Batch that can't be made ahead feeds several Courses, but never splits on its own. A Batch must be ready before its earliest use and keep until its latest use. It never spans two Services.
@@ -56,7 +60,7 @@ A Batch the cook buys ready-made instead of making. It uses the sub-recipe's **b
 _Avoid_: Shop-bought recipe, convenience product
 
 **Service**:
-A single serving of a Menu, anchored to a date, with an optional time. Make-ahead windows and deadlines are measured backward from it.
+A single serving of a Menu, anchored to a date, with an optional time. Make-ahead windows and deadlines are measured backward from it. Once its time has passed or every Course is served, it is **closed**: its Dishes and Batches keep the Revisions, scaling, progress and Shopping list they had, and later Recipe edits never change it.
 _Avoid_: Event, dinner
 
 ## Planning

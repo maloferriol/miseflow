@@ -13,7 +13,7 @@ Decided while charting the map.
 
 - **Platform.** A responsive web app, installable so it can send notifications. Desktop is for planning, the phone is for the kitchen.
 - **Data.** Cloud-synced with an offline cache. The database is canonical for Recipes and Menus; Cooklang `.cook` / `.menu` files are export and re-import snapshots ([#2](https://github.com/maloferriol/miseflow/issues/2), [#3](https://github.com/maloferriol/miseflow/issues/3), [ADR 0001](adr/0001-database-canonical-cooklang-for-export.md)).
-- **Accounts.** Single-user accounts in v1. Team sharing comes in a later effort.
+- **Accounts.** One user: MiseFlow is a personal project. Team sharing is out of scope for good ([#57](https://github.com/maloferriol/miseflow/issues/57)).
 - **The core loop.** Write Recipes → place them as Dishes in the Courses of a Menu for a Service → MiseFlow breaks them into Tasks and suggests a Plan → the kitchen preps from the Prep view and Station prep lists, cooks the Service from the Service view, and shops from the Shopping list.
 
 ## 2. Recipes
@@ -259,7 +259,7 @@ In-app timers plus browser push. The chef is the only user: every notification g
 From map [#1](https://github.com/maloferriol/miseflow/issues/1). Each is a possible later effort.
 
 - Supplier and cost tracking.
-- Multi-user team sharing and permissions, including linking a Cook to a real account ([#6](https://github.com/maloferriol/miseflow/issues/6)).
+- Multi-user team sharing and permissions, including linking a Cook to a real account ([#6](https://github.com/maloferriol/miseflow/issues/6)). Ruled out for good, not a later effort: MiseFlow is a personal project ([#57](https://github.com/maloferriol/miseflow/issues/57)).
 - Tech stack and sync implementation (engineering, not product spec).
 - Recipe import from photos (OCR) or other apps' exports, and raw Cooklang editing ([#4](https://github.com/maloferriol/miseflow/issues/4)).
 - Per-Course serving times. Courses are ordered only.

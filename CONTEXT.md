@@ -48,8 +48,12 @@ A Recipe placed in a Course of a Menu, holding that Service's scaling, progress,
 _Avoid_: Menu item, recipe instance
 
 **Batch**:
-One making of a sub-recipe for a Service, with its own Scale factor, Tasks and progress, feeding one or more Dishes or parent Batches. By default a sub-recipe gets one Batch per Service, sized to everything its parents use. The cook can split a Batch (by parent, per Course, or into equal parts) and merge Batches of the same sub-recipe back; MiseFlow suggests splitting per Course when a Batch that can't be made ahead feeds several Courses, but never splits on its own. A Batch must be ready before its earliest use and keep until its latest use. It never spans two Services.
+One making (or purchase) of a sub-recipe for a Service, with its own Scale factor, Tasks and progress, feeding one or more Dishes or parent Batches. By default a sub-recipe gets one Batch per Service, sized to everything its parents use. The cook can split a Batch (by parent, per Course, or into equal parts) and merge Batches of the same sub-recipe back; MiseFlow suggests splitting per Course when a Batch that can't be made ahead feeds several Courses, but never splits on its own. A Batch must be ready before its earliest use and keep until its latest use. It never spans two Services.
 _Avoid_: Sub-recipe (for the making), prep, lot
+
+**Bought batch**:
+A Batch the cook buys ready-made instead of making. It uses the sub-recipe's **bought form**, an Ingredient in the catalog ("Puff pastry, ready-made") with its own pack sizes, Shopping category and allergen tags, and it's bought in the amount its parents use. A sub-recipe can default to bought, and each Batch can be switched between Make and Buy. A bought Batch has no Tasks and no make-ahead window; it's ready once its Shopping list row is Got. Child Batches that only feed it drop out.
+_Avoid_: Shop-bought recipe, convenience product
 
 **Service**:
 A single serving of a Menu, anchored to a date, with an optional time. Make-ahead windows and deadlines are measured backward from it.

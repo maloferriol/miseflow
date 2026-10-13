@@ -58,8 +58,16 @@ _Avoid_: Event, dinner
 ## Planning
 
 **Task**:
-A unit of scheduled work for a Dish or a Batch: one Step by default, or several consecutive Steps grouped together. Has a duration, a Station, and at most one Cook; its progress is the progress of its Steps.
+A unit of scheduled work for a Dish, a Batch, or a Service's mise en place: one Step by default, or several consecutive Steps grouped together. Has a duration, a Station, and at most one Cook; its progress is the progress of its Steps (or, for a Mise en place task, of its Mise en place lines).
 _Avoid_: To-do, job
+
+**Mise en place task**:
+A Task owned by the Service rather than a Dish or Batch: one per prep day for the whole kitchen, holding every Mise en place line used that day. The Tasks that use its lines depend on it, so the Plan places it before the earliest of them. Its duration is an estimate per line, approximate (≈) while any line uses the default. A Step marked as mise en place in the Planning pass joins it instead of its Dish's Tasks.
+_Avoid_: Prep block, setup task
+
+**Mise en place line**:
+One Ingredient to weigh out or prepare for a prep day, summed by Ingredient and preparation across every Ingredient line its Tasks use that day ("shallots, brunoise: 180 g, for: Velouté, Beurre blanc"). Ticked off on its own. Sub-recipe lines are Batches, not Mise en place lines.
+_Avoid_: Mise (alone), prepped ingredient
 
 **Active time** and **passive time**:
 A Step's duration in two parts. Active time needs a Cook. Passive time (baking, resting, chilling, proving) needs no Cook and can run outside Availability, such as overnight, but still holds its Equipment.
@@ -98,6 +106,10 @@ _Avoid_: Kanban (in the app), tracker
 **Prep view**:
 The view the cook works from on the days before Service, to do the Plan rather than edit it. On a phone it shows one day at a time. On desktop it shows the prep days side by side per Cook, with a "By component" tab. A Task that is behind shows which later Tasks it holds up.
 _Avoid_: Prep list (that's per Station), to-do list
+
+**Station prep list**:
+What one Station must have ready for a Service, across all prep days: one row per Batch or Dish the Station makes, with its scaled yield, what it's for, the day it's planned and when it must be ready, and that Station's Tasks for it underneath. Shown on screen and printed one page per Station; the day's Mise en place lines print as their own page.
+_Avoid_: Par sheet, station sheet, prep view (that's per Cook and day)
 
 **Make-ahead shelf**:
 Everything made ahead for a Service, each item shown from when it's made to when it expires, measured against Service time.

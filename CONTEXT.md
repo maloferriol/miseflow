@@ -47,6 +47,10 @@ _Avoid_: Round, plate
 A Recipe placed in a Course of a Menu, holding that Service's scaling, progress, and schedule.
 _Avoid_: Menu item, recipe instance
 
+**Batch**:
+One making of a sub-recipe for a Service, with its own Scale factor, Tasks and progress, feeding one or more Dishes or parent Batches. By default a sub-recipe gets one Batch per Service, sized to everything its parents use. The cook can split a Batch (by parent, per Course, or into equal parts) and merge Batches of the same sub-recipe back; MiseFlow suggests splitting per Course when a Batch that can't be made ahead feeds several Courses, but never splits on its own. A Batch must be ready before its earliest use and keep until its latest use. It never spans two Services.
+_Avoid_: Sub-recipe (for the making), prep, lot
+
 **Service**:
 A single serving of a Menu, anchored to a date, with an optional time. Make-ahead windows and deadlines are measured backward from it.
 _Avoid_: Event, dinner
@@ -54,7 +58,7 @@ _Avoid_: Event, dinner
 ## Planning
 
 **Task**:
-A unit of scheduled work for a Dish: one Step by default, or several consecutive Steps grouped together. Has a duration, a Station, and at most one Cook; its progress is the progress of its Steps.
+A unit of scheduled work for a Dish or a Batch: one Step by default, or several consecutive Steps grouped together. Has a duration, a Station, and at most one Cook; its progress is the progress of its Steps.
 _Avoid_: To-do, job
 
 **Active time** and **passive time**:

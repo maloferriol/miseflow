@@ -135,6 +135,36 @@ describe("positions", () => {
     ).map((r) => r.position);
     expect(new Set(positions).size).toBe(5);
   });
+
+  it("gives parallel addDish calls on one Course distinct, ordered positions", async () => {
+    const [menuId, courseId, recipeId] = Array.from({ length: 3 }, () => crypto.randomUUID());
+    for (const [name, args] of [
+      ["createMenu", { menuId, name: "Saturday dinner", guestCount: 6 }],
+      ["addCourse", { courseId, menuId, name: "Starter" }],
+      ["createRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Velouté" }],
+    ] as const) {
+      expect((await postMutation({ id: crypto.randomUUID(), name, args })).status).toBe(200);
+    }
+    const dishIds = Array.from({ length: 5 }, () => crypto.randomUUID());
+
+    const statuses = await Promise.all(
+      dishIds.map(async (dishId) =>
+        (
+          await postMutation({
+            id: crypto.randomUUID(),
+            name: "addDish",
+            args: { dishId, courseId, recipeId },
+          })
+        ).status,
+      ),
+    );
+
+    expect(statuses).toEqual(Array(5).fill(200));
+    const positions = (
+      await db.select({ position: dishes.position }).from(dishes).where(eq(dishes.courseId, courseId))
+    ).map((r) => r.position);
+    expect(new Set(positions).size).toBe(5);
+  });
 });
 
 describe("owner stamping", () => {

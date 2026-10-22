@@ -8,7 +8,8 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "setup:local": "tsx --env-file-if-exists=../.env scripts/setup-local.ts",
-    "token": "tsx --env-file-if-exists=../.env scripts/token.ts"
+    "token": "tsx --env-file-if-exists=../.env scripts/token.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",

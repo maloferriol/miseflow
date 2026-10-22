@@ -1,14 +1,12 @@
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
+import { createApp } from "./app.ts";
+import { authConfigFromEnv } from "./auth.ts";
 
-const app = new Hono();
-
-app.get("/health", (c) => c.json({ ok: true }));
-
+const app = createApp({ auth: authConfigFromEnv() });
 const port = Number(process.env.PORT ?? 8787);
 
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`MiseFlow API listening on http://localhost:${info.port}`);
 });
 
-export type AppType = typeof app;
+export type { AppType } from "./app.ts";

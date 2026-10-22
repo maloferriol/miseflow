@@ -29,9 +29,11 @@ function prepare(model: PlanningModel): Prepared[] {
     let approximate = false;
     const stretches: Stretch[] = [];
     for (const s of task.steps) {
-      if (s.activeMinutes === null) approximate = true;
-      const active = s.activeMinutes === null ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes);
       const passive = s.passiveMinutes === null ? 0 : roundUp(s.passiveMinutes);
+      // No duration at all: a 10-minute active placeholder. Passive only: active 0.
+      const unknown = s.activeMinutes === null && passive === 0;
+      if (unknown) approximate = true;
+      const active = unknown ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0);
       if (active > 0) stretches.push({ offset, minutes: active });
       offset += active + passive;
     }
@@ -59,19 +61,44 @@ function latestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute)
 export function schedule(model: PlanningModel): Plan {
   const cook = model.cooks[0]!;
   let free = normalize(cook.free);
+  const tasks = new Map(prepare(model).map((t) => [t.key, t]));
+
+  // successors[k]: Tasks that may start only once k has finished.
+  const successors = new Map<TaskKey, TaskKey[]>([...tasks.keys()].map((k) => [k, []]));
+  for (const link of model.links) successors.get(link.before)!.push(link.after);
+  const waitingOn = new Map([...successors].map(([k, after]) => [k, new Set(after)]));
+
+  const starts = new Map<TaskKey, Minute>();
   const placements: Placement[] = [];
-  for (const task of prepare(model).sort(byKey)) {
-    const start = latestFit(free, task, task.lower, model.service.at);
-    if (start === null) continue;
-    for (const s of task.stretches) free = subtract(free, start + s.offset, start + s.offset + s.minutes);
-    placements.push({
-      key: task.key,
-      start,
-      end: start + task.duration,
-      cookId: cook.id,
-      pinned: false,
-      approximate: task.approximate,
-    });
+  const upperOf = (key: TaskKey) =>
+    successors.get(key)!.reduce((upper, after) => Math.min(upper, starts.get(after)!), model.service.at);
+
+  while (waitingOn.size > 0) {
+    // Eligible: every successor is done. Latest upper bound first, then key.
+    let next: { key: TaskKey; upper: Minute } | null = null;
+    for (const [key, waiting] of waitingOn) {
+      if (waiting.size > 0) continue;
+      const upper = upperOf(key);
+      if (!next || upper > next.upper || (upper === next.upper && key < next.key)) next = { key, upper };
+    }
+    const { key, upper } = next!;
+    const task = tasks.get(key)!;
+    waitingOn.delete(key);
+
+    const start = latestFit(free, task, task.lower, upper);
+    if (start !== null) {
+      for (const s of task.stretches) free = subtract(free, start + s.offset, start + s.offset + s.minutes);
+      starts.set(key, start);
+      placements.push({
+        key,
+        start,
+        end: start + task.duration,
+        cookId: cook.id,
+        pinned: false,
+        approximate: task.approximate,
+      });
+    }
+    for (const link of model.links) if (link.after === key) waitingOn.get(link.before)?.delete(key);
   }
   return { placements: placements.sort(byKey), unplaced: [] };
 }

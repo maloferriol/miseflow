@@ -10,12 +10,6 @@ export type AuthConfig = {
 
 export type AuthEnv = { Variables: JwtVariables & { ownerId: string } };
 
-export function authConfigFromEnv(): AuthConfig {
-  const url = process.env.SUPABASE_URL;
-  if (!url) throw new Error("SUPABASE_URL is not set. Copy .env.example to .env first.");
-  return { issuer: `${url.replace(/\/$/, "")}/auth/v1` };
-}
-
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Checks the Supabase access token against the project's published keys, without calling

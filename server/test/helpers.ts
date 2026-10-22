@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { type AppOptions, createApp } from "../src/app.ts";
-import { authConfigFromEnv } from "../src/auth.ts";
-import { createDb, databaseUrlFromEnv } from "../src/db.ts";
+import { createDb } from "../src/db.ts";
+import { authConfigFromEnv, databaseUrlFromEnv } from "../src/env.ts";
 
 export function requireEnv(name: string): string {
   const value = process.env[name];

@@ -833,6 +833,22 @@ describe("schedule", () => {
       );
     });
 
+    it("throws DuplicatePrevious for two previous placements with the same key", () => {
+      const input = {
+        ...base(),
+        previous: [
+          {
+            key: "dish:a:s1",
+            start: at(0, 18, 0),
+            cookId: "c1",
+            pinned: false,
+          },
+          { key: "dish:a:s1", start: at(0, 19, 0), cookId: "c1", pinned: true },
+        ],
+      };
+      expect(codeOf(input)).toBe("DuplicatePrevious");
+    });
+
     it("throws UnknownLinkTask for a link to a Task that does not exist", () => {
       expect(
         codeOf({

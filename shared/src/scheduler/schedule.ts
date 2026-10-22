@@ -118,7 +118,8 @@ function before(a: Candidate, b: Candidate): boolean {
 /**
  * Plans a whole Service backward from Service time. Pure and deterministic.
  * Throws `SchedulerInputError` for input it cannot plan: not exactly one Cook, an empty or
- * duplicate Task, a negative or non-finite duration, a link to an unknown Task, or a dependency cycle.
+ * duplicate Task, a negative or non-finite duration, a link to an unknown Task, a duplicate previous
+ * placement, or a dependency cycle.
  */
 export function schedule(model: PlanningModel): Plan {
   if (model.cooks.length !== 1) {
@@ -135,6 +136,13 @@ export function schedule(model: PlanningModel): Plan {
   if (unknown.length > 0) {
     const keys = [...new Set(unknown)].sort();
     throw new SchedulerInputError("UnknownLinkTask", `Link to unknown Task ${keys.join(", ")}`, keys);
+  }
+  const seenPrevious = new Set<TaskKey>();
+  for (const prev of model.previous) {
+    if (seenPrevious.has(prev.key)) {
+      throw new SchedulerInputError("DuplicatePrevious", `Duplicate previous placement ${prev.key}`, [prev.key]);
+    }
+    seenPrevious.add(prev.key);
   }
 
   // successors[k]: Tasks that may start only once k has finished; predecessors is the reverse.
@@ -210,7 +218,7 @@ export function schedule(model: PlanningModel): Plan {
   // Pins first: fixed occupants, never searched. A pin for a Task that no longer exists is ignored.
   for (const prev of [...model.previous].sort(byKey)) {
     const task = tasks.get(prev.key);
-    if (!prev.pinned || !task || bounds.has(task.key)) continue;
+    if (!prev.pinned || !task) continue;
     place(task, prev.start, true);
     pins.push({ task, start: prev.start });
     done(task.key);

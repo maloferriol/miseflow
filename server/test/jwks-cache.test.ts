@@ -129,4 +129,30 @@ describe("JWKS cache", () => {
     expect(stale.map((key) => key.kid)).toEqual(["k1"]);
     expect(server.fetches).toBe(1);
   }, 1_000);
+
+  it("throws on a cold failure and caches nothing", async () => {
+    const { server, fetch } = fakeJwks(["k1"]);
+    const keys = createJwksCache(url, { fetch, now: () => 0 });
+
+    server.down = true;
+    await expect(keys("k1")).rejects.toThrow("503");
+    server.down = false;
+    const found = await keys("k1");
+
+    expect(found.map((key) => key.kid)).toEqual(["k1"]);
+    expect(server.fetches).toBe(2);
+  });
+
+  it("drops a key removed from the JWKS once the TTL has passed", async () => {
+    const { server, fetch } = fakeJwks(["k1", "k2"]);
+    let now = 0;
+    const keys = createJwksCache(url, { fetch, now: () => now });
+    await keys("k1");
+
+    server.kids = ["k1"];
+    now = 11 * 60_000;
+    const found = await keys("k1");
+
+    expect(found.map((key) => key.kid)).toEqual(["k1"]);
+  });
 });

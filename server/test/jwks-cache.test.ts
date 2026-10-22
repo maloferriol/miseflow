@@ -107,4 +107,26 @@ describe("JWKS cache", () => {
     expect(stale.map((key) => key.kid)).toEqual(["k1"]);
     expect(server.fetches).toBe(2);
   });
+
+  it("times out a fetch that hangs and serves the stale keys", async () => {
+    const { server, fetch: serve } = fakeJwks(["k1"]);
+    let hang = false;
+    // Never answers while `hang` is set; only the abort signal ends it.
+    const fetch = (_url: string, init?: RequestInit): Promise<Response> =>
+      hang
+        ? new Promise((_, reject) =>
+            init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)),
+          )
+        : serve();
+    let now = 0;
+    const keys = createJwksCache(url, { fetch, now: () => now, timeoutMs: 20 });
+    await keys("k1");
+
+    hang = true;
+    now = 11 * 60_000;
+    const stale = await keys("k1");
+
+    expect(stale.map((key) => key.kid)).toEqual(["k1"]);
+    expect(server.fetches).toBe(1);
+  }, 1_000);
 });

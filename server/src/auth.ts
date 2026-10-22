@@ -71,7 +71,13 @@ export function createJwksCache(
   {
     fetch = globalThis.fetch,
     now = Date.now,
-  }: { fetch?: (url: string) => Promise<Response>; now?: () => number } = {},
+    timeoutMs = 5_000,
+  }: {
+    fetch?: (url: string, init?: RequestInit) => Promise<Response>;
+    now?: () => number;
+    /** A fetch that takes longer fails, so a hanging endpoint can't wedge the in-flight fetch. */
+    timeoutMs?: number;
+  } = {},
 ): KeySource {
   let keys: Jwk[] | undefined;
   let fetchedAt = 0;
@@ -81,7 +87,7 @@ export function createJwksCache(
   const load = async (): Promise<Jwk[]> => {
     attemptedAt = now();
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
       if (!res.ok)
         throw new Error(`Failed to fetch JWKS from ${url}: ${res.status}`);
       const body: { keys?: unknown } = await res.json();

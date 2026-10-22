@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
-import { menus } from "../schema.ts";
-import { getMutator } from "./registry.ts";
+import { courses, dishes, menus, recipes } from "../schema.ts";
+import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
 const ownerId = crypto.randomUUID();
 
@@ -50,6 +50,65 @@ describe("createMenu", () => {
       });
       const rows = await tx.select().from(menus).where(eq(menus.id, menuId));
       expect(rows).toMatchObject([{ name: "Saturday dinner", guestCount: 6, ownerId }]);
+    });
+  });
+});
+
+async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
+  const mutator = getMutator(name)!;
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner });
+}
+
+describe("addCourse", () => {
+  it("appends each Course after the last one in the Menu", async () => {
+    const menuId = crypto.randomUUID();
+    const [first, second] = [crypto.randomUUID(), crypto.randomUUID()];
+    await inRollback(async (tx) => {
+      await run(tx, "createMenu", { menuId, name: "Saturday dinner", guestCount: 6 });
+      await run(tx, "addCourse", { courseId: first, menuId, name: "Starter" });
+      await run(tx, "addCourse", { courseId: second, menuId, name: "Main" });
+
+      const rows = await tx.select().from(courses).where(eq(courses.menuId, menuId));
+      const position = (id: string) => rows.find((r) => r.id === id)!.position;
+      expect(position(first) < position(second)).toBe(true);
+      expect(rows.every((r) => r.ownerId === ownerId)).toBe(true);
+    });
+  });
+
+  it("refuses another owner's Menu", async () => {
+    const menuId = crypto.randomUUID();
+    await inRollback(async (tx) => {
+      await run(tx, "createMenu", { menuId, name: "Theirs", guestCount: 2 }, crypto.randomUUID());
+      await expect(
+        run(tx, "addCourse", { courseId: crypto.randomUUID(), menuId, name: "Starter" }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+});
+
+describe("addDish", () => {
+  it("places the Recipe in the Course", async () => {
+    const [menuId, courseId, recipeId, dishId] = Array.from({ length: 4 }, () => crypto.randomUUID());
+    await inRollback(async (tx) => {
+      await run(tx, "createMenu", { menuId, name: "Saturday dinner", guestCount: 6 });
+      await run(tx, "addCourse", { courseId, menuId, name: "Starter" });
+      await run(tx, "createRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Velouté" });
+      await run(tx, "addDish", { dishId, courseId, recipeId });
+
+      const rows = await tx.select().from(dishes).where(eq(dishes.id, dishId));
+      expect(rows).toMatchObject([{ courseId, recipeId, ownerId }]);
+    });
+  });
+
+  it("refuses another owner's Recipe", async () => {
+    const [menuId, courseId, recipeId] = Array.from({ length: 3 }, () => crypto.randomUUID());
+    await inRollback(async (tx) => {
+      await run(tx, "createMenu", { menuId, name: "Saturday dinner", guestCount: 6 });
+      await run(tx, "addCourse", { courseId, menuId, name: "Starter" });
+      await tx.insert(recipes).values({ id: recipeId, ownerId: crypto.randomUUID(), name: "Theirs" });
+      await expect(
+        run(tx, "addDish", { dishId: crypto.randomUUID(), courseId, recipeId }),
+      ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 });

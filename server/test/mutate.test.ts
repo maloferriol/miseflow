@@ -1,5 +1,15 @@
-import { appliedMutations, defineMutator, menus, mutators } from "@miseflow/shared";
-import { eq } from "drizzle-orm";
+import {
+  appliedMutations,
+  courses,
+  defineMutator,
+  dishes,
+  menus,
+  mutators,
+  recipeRevisions,
+  recipes,
+} from "@miseflow/shared";
+import { eq, inArray } from "drizzle-orm";
+import { decode } from "hono/jwt";
 import { z } from "zod";
 import { describe, expect, it } from "vitest";
 import { db, getToken, testApp } from "./helpers.ts";
@@ -84,5 +94,54 @@ describe("POST /mutate", () => {
     const res = await postMutation({ id: "not-a-uuid", name: "createMenu" });
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe("INVALID_BODY");
+  });
+});
+
+describe("owner stamping", () => {
+  it("stamps owner_id with the token's sub on every row written", async () => {
+    const sub = decode(await getToken()).payload.sub;
+    const [menuId, courseId, recipeId, revisionId, dishId] = Array.from({ length: 5 }, () =>
+      crypto.randomUUID(),
+    );
+    const sent = [
+      { name: "createMenu", args: { menuId, name: "Saturday dinner", guestCount: 6 } },
+      { name: "addCourse", args: { courseId, menuId, name: "Starter" } },
+      { name: "createRecipe", args: { recipeId, revisionId, name: "Velouté" } },
+      { name: "addDish", args: { dishId, courseId, recipeId } },
+    ].map((m) => ({ id: crypto.randomUUID(), ...m }));
+
+    for (const mutation of sent) expect((await postMutation(mutation)).status).toBe(200);
+
+    const owners = [
+      ...(await db.select({ o: menus.ownerId }).from(menus).where(eq(menus.id, menuId))),
+      ...(await db.select({ o: courses.ownerId }).from(courses).where(eq(courses.id, courseId))),
+      ...(await db.select({ o: recipes.ownerId }).from(recipes).where(eq(recipes.id, recipeId))),
+      ...(await db
+        .select({ o: recipeRevisions.ownerId })
+        .from(recipeRevisions)
+        .where(eq(recipeRevisions.id, revisionId))),
+      ...(await db.select({ o: dishes.ownerId }).from(dishes).where(eq(dishes.id, dishId))),
+      ...(await db
+        .select({ o: appliedMutations.ownerId })
+        .from(appliedMutations)
+        .where(inArray(appliedMutations.id, sent.map((m) => m.id)))),
+    ].map((r) => r.o);
+    expect(owners).toEqual(Array(9).fill(sub));
+  });
+
+  it("answers a mutation on another owner's Menu with 404 and writes nothing", async () => {
+    const menuId = crypto.randomUUID();
+    await db.insert(menus).values({ id: menuId, ownerId: crypto.randomUUID(), name: "Theirs" });
+    const courseId = crypto.randomUUID();
+
+    const res = await postMutation({
+      id: crypto.randomUUID(),
+      name: "addCourse",
+      args: { courseId, menuId, name: "Starter" },
+    });
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("NOT_FOUND");
+    expect(await db.select().from(courses).where(eq(courses.id, courseId))).toHaveLength(0);
   });
 });

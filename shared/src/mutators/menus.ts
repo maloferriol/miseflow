@@ -1,6 +1,8 @@
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { menus } from "../schema.ts";
-import { defineMutator } from "./define.ts";
+import { courses, dishes, menus, recipes } from "../schema.ts";
+import { defineMutator, NotFoundError, type Tx } from "./define.ts";
+import { positionAfter } from "./position.ts";
 
 const name = z.string().trim().min(1).max(200);
 
@@ -20,3 +22,62 @@ export const createMenu = defineMutator({
     });
   },
 });
+
+export const addCourse = defineMutator({
+  name: "addCourse",
+  args: z.strictObject({ courseId: z.uuid(), menuId: z.uuid(), name }),
+  async run(tx, args, { ownerId }) {
+    await requireOwned(tx, menus, args.menuId, ownerId, "Menu");
+    // Soft-deleted siblings count too, so a new key never repeats one of theirs.
+    const [last] = await tx
+      .select({ position: courses.position })
+      .from(courses)
+      .where(eq(courses.menuId, args.menuId))
+      .orderBy(desc(sql`${courses.position} collate "C"`))
+      .limit(1);
+    await tx.insert(courses).values({
+      id: args.courseId,
+      ownerId,
+      menuId: args.menuId,
+      name: args.name,
+      position: positionAfter(last?.position ?? null),
+    });
+  },
+});
+
+export const addDish = defineMutator({
+  name: "addDish",
+  args: z.strictObject({ dishId: z.uuid(), courseId: z.uuid(), recipeId: z.uuid() }),
+  async run(tx, args, { ownerId }) {
+    await requireOwned(tx, courses, args.courseId, ownerId, "Course");
+    await requireOwned(tx, recipes, args.recipeId, ownerId, "Recipe");
+    const [last] = await tx
+      .select({ position: dishes.position })
+      .from(dishes)
+      .where(eq(dishes.courseId, args.courseId))
+      .orderBy(desc(sql`${dishes.position} collate "C"`))
+      .limit(1);
+    await tx.insert(dishes).values({
+      id: args.dishId,
+      ownerId,
+      courseId: args.courseId,
+      recipeId: args.recipeId,
+      position: positionAfter(last?.position ?? null),
+    });
+  },
+});
+
+// A parent row must exist, be live and belong to the caller; anything else reads as missing.
+async function requireOwned(
+  tx: Tx,
+  table: typeof menus | typeof courses | typeof recipes,
+  id: string,
+  ownerId: string,
+  what: string,
+) {
+  const [row] = await tx
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.id, id), eq(table.ownerId, ownerId), isNull(table.deletedAt)));
+  if (!row) throw new NotFoundError(what);
+}

@@ -60,8 +60,9 @@ function tokenKid(c: Context): string | undefined {
 }
 
 const TTL_MS = 10 * 60_000;
-// An unknown kid refetches at most this often, so forged kids can't hammer the JWKS endpoint.
-const UNKNOWN_KID_COOLDOWN_MS = 30_000;
+// Fetches are at least this far apart once keys are cached, counted from the last attempt,
+// failed or not: forged kids and a down endpoint can't make every request fetch the JWKS.
+const REFETCH_COOLDOWN_MS = 30_000;
 
 // Caches a JWKS for TTL_MS, refetches early for an unknown kid (key rotation), and shares one
 // in-flight fetch between concurrent requests. A failed refetch keeps serving the old keys.
@@ -74,9 +75,11 @@ export function createJwksCache(
 ): KeySource {
   let keys: Jwk[] | undefined;
   let fetchedAt = 0;
+  let attemptedAt = 0;
   let inFlight: Promise<Jwk[]> | undefined;
 
   const load = async (): Promise<Jwk[]> => {
+    attemptedAt = now();
     try {
       const res = await fetch(url);
       if (!res.ok)
@@ -108,12 +111,12 @@ export function createJwksCache(
   };
 
   return async (kid) => {
-    if (!keys || now() - fetchedAt >= TTL_MS) return refresh();
+    if (!keys) return refresh();
+    if (now() - attemptedAt < REFETCH_COOLDOWN_MS) return keys;
+    const expired = now() - fetchedAt >= TTL_MS;
     const unknownKid =
       kid !== undefined && !keys.some((key) => key.kid === kid);
-    if (unknownKid && now() - fetchedAt >= UNKNOWN_KID_COOLDOWN_MS)
-      return refresh();
-    return keys;
+    return expired || unknownKid ? refresh() : keys;
   };
 }
 

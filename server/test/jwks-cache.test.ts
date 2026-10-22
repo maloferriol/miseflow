@@ -3,11 +3,13 @@ import { createJwksCache } from "../src/auth.ts";
 
 const url = "http://auth.test/.well-known/jwks.json";
 
-// A JWKS endpoint that counts its fetches and serves whatever `keys` holds at the time.
+// A JWKS endpoint that counts its fetches and serves whatever `kids` holds at the time, or a
+// 503 while `down`.
 function fakeJwks(kids: string[]) {
-  const server = { kids, fetches: 0 };
+  const server = { kids, fetches: 0, down: false };
   const fetch = async () => {
     server.fetches += 1;
+    if (server.down) return new Response("unavailable", { status: 503 });
     return new Response(
       JSON.stringify({ keys: server.kids.map((kid) => ({ kid, kty: "EC" })) }),
     );
@@ -87,5 +89,22 @@ describe("JWKS cache", () => {
 
     expect(found.map((key) => key.kid)).toEqual(["k1"]);
     expect(server.fetches).toBe(1);
+  });
+
+  it("serves stale keys after a failed refetch and does not retry inside the cooldown", async () => {
+    const { server, fetch } = fakeJwks(["k1"]);
+    let now = 0;
+    const keys = createJwksCache(url, { fetch, now: () => now });
+    await keys("k1");
+
+    server.down = true;
+    now = 11 * 60_000;
+    const stale = await keys("k1");
+    now += 1_000;
+    await keys("k1");
+    await keys("forged");
+
+    expect(stale.map((key) => key.kid)).toEqual(["k1"]);
+    expect(server.fetches).toBe(2);
   });
 });

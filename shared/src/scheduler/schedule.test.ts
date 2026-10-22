@@ -699,6 +699,32 @@ describe("schedule", () => {
     ]);
   });
 
+  it("Decision 2: a predecessor of an Unplaced Task is planned against the next placed successor", () => {
+    const plan = schedule(
+      model({
+        service: { dayStart: at(0, 0, 0), at: at(0, 19, 30) },
+        free: [{ start: at(0, 9, 0), end: at(0, 19, 30) }],
+        tasks: [
+          dishTask("a", [step("s1", 20)]),
+          dishTask("b", [step("s1", 30)], at(0, 18, 45)), // window 18:45–18:50: too tight
+          dishTask("c", [step("s1", 10, 30)]), // starts 18:50
+        ],
+        links: [
+          { before: "dish:a:s1", after: "dish:b:s1" },
+          { before: "dish:b:s1", after: "dish:c:s1" },
+        ],
+      }),
+    );
+
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([
+      ["dish:a:s1", at(0, 18, 30)],
+      ["dish:c:s1", at(0, 18, 50)],
+    ]);
+    expect(plan.unplaced.map((u) => [u.key, u.reason.kind])).toEqual([
+      ["dish:b:s1", "WindowTooTight"],
+    ]);
+  });
+
   describe("Decision 7: malformed input throws SchedulerInputError", () => {
     const base = () =>
       model({

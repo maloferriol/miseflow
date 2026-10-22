@@ -55,6 +55,20 @@ describe("POST /mutate", () => {
     expect(await db.select().from(menus).where(eq(menus.id, mutation.args.menuId))).toHaveLength(0);
   });
 
+  it("answers a new mutation id that reuses an existing menuId with 409", async () => {
+    const menuId = crypto.randomUUID();
+    expect((await postMutation(createMenu(menuId))).status).toBe(200);
+    const again = createMenu(menuId);
+
+    const res = await postMutation(again);
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("CONFLICT");
+    expect(
+      await db.select().from(appliedMutations).where(eq(appliedMutations.id, again.id)),
+    ).toHaveLength(0);
+  });
+
   it("rolls back every row when the mutator throws", async () => {
     const failing = defineMutator({
       name: "createMenuThenFail",

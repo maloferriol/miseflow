@@ -55,6 +55,9 @@ export function mutateRoute(db: Db, registry: Record<string, Mutator<any>>) {
       });
     } catch (error) {
       if (error instanceof NotFoundError) return c.json(errorBody("NOT_FOUND", error.message), 404);
+      if (isUniqueViolation(error)) {
+        return c.json(errorBody("CONFLICT", "A row with one of these ids already exists"), 409);
+      }
       throw error;
     }
 
@@ -63,4 +66,12 @@ export function mutateRoute(db: Db, registry: Record<string, Mutator<any>>) {
     }
     return c.json({ ok: true as const, id }, 200);
   });
+}
+
+// Postgres unique_violation, e.g. a browser-made row id that is already taken. Drizzle wraps
+// the driver's error, so the code sits on the error or on its `cause`.
+// Source: https://www.postgresql.org/docs/current/errcodes-appendix.html
+function isUniqueViolation(error: unknown): boolean {
+  const code = (e: unknown) => (e as { code?: unknown } | null)?.code;
+  return code(error) === "23505" || code((error as { cause?: unknown } | null)?.cause) === "23505";
 }

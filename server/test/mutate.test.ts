@@ -97,6 +97,32 @@ describe("POST /mutate", () => {
   });
 });
 
+describe("positions", () => {
+  it("gives parallel addCourse calls on one Menu distinct, ordered positions", async () => {
+    const menuId = crypto.randomUUID();
+    expect((await postMutation(createMenu(menuId))).status).toBe(200);
+    const courseIds = Array.from({ length: 5 }, () => crypto.randomUUID());
+
+    const statuses = await Promise.all(
+      courseIds.map(async (courseId, i) =>
+        (
+          await postMutation({
+            id: crypto.randomUUID(),
+            name: "addCourse",
+            args: { courseId, menuId, name: `Course ${i}` },
+          })
+        ).status,
+      ),
+    );
+
+    expect(statuses).toEqual(Array(5).fill(200));
+    const positions = (
+      await db.select({ position: courses.position }).from(courses).where(eq(courses.menuId, menuId))
+    ).map((r) => r.position);
+    expect(new Set(positions).size).toBe(5);
+  });
+});
+
 describe("owner stamping", () => {
   it("stamps owner_id with the token's sub on every row written", async () => {
     const sub = decode(await getToken()).payload.sub;

@@ -27,7 +27,7 @@ export const addCourse = defineMutator({
   name: "addCourse",
   args: z.strictObject({ courseId: z.uuid(), menuId: z.uuid(), name }),
   async run(tx, args, { ownerId }) {
-    await requireOwned(tx, menus, args.menuId, ownerId, "Menu");
+    await requireOwned(tx, menus, args.menuId, ownerId, "Menu", { lock: true });
     // Soft-deleted siblings count too, so a new key never repeats one of theirs.
     const [last] = await tx
       .select({ position: courses.position })
@@ -49,7 +49,7 @@ export const addDish = defineMutator({
   name: "addDish",
   args: z.strictObject({ dishId: z.uuid(), courseId: z.uuid(), recipeId: z.uuid() }),
   async run(tx, args, { ownerId }) {
-    await requireOwned(tx, courses, args.courseId, ownerId, "Course");
+    await requireOwned(tx, courses, args.courseId, ownerId, "Course", { lock: true });
     await requireOwned(tx, recipes, args.recipeId, ownerId, "Recipe");
     const [last] = await tx
       .select({ position: dishes.position })
@@ -68,16 +68,20 @@ export const addDish = defineMutator({
 });
 
 // A parent row must exist, be live and belong to the caller; anything else reads as missing.
+// `lock` takes a row lock on the parent until the transaction ends, so concurrent appends to the
+// same parent read the last sibling one after another and never get the same position.
 async function requireOwned(
   tx: Tx,
   table: typeof menus | typeof courses | typeof recipes,
   id: string,
   ownerId: string,
   what: string,
+  { lock = false } = {},
 ) {
-  const [row] = await tx
+  const query = tx
     .select({ id: table.id })
     .from(table)
     .where(and(eq(table.id, id), eq(table.ownerId, ownerId), isNull(table.deletedAt)));
+  const [row] = lock ? await query.for("update") : await query;
   if (!row) throw new NotFoundError(what);
 }

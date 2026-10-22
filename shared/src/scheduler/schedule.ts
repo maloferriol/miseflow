@@ -81,7 +81,7 @@ function nearestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute
   const lo = ceilGrid(lower);
   const hi = floorGrid(upper - task.duration);
   if (hi < lo) return null;
-  const from = Math.min(Math.max(previous, lo), hi);
+  const from = Math.min(Math.max(Math.round(previous / GRID) * GRID, lo), hi);
   const reach = Math.max(hi - from, from - lo);
   for (let d = 0; d <= reach; d += GRID) {
     if (from + d <= hi && fitsAt(free, task, from + d)) return from + d;

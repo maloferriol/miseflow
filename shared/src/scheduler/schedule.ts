@@ -182,8 +182,9 @@ export function schedule(model: PlanningModel): Plan {
     }
   }
   if (unfinished.size > 0) {
+    // What is left: the Tasks on a cycle plus every Task upstream of one.
     const keys = [...unfinished.keys()].sort();
-    throw new SchedulerInputError("Cycle", `Dependency cycle among ${keys.join(", ")}`, keys);
+    throw new SchedulerInputError("Cycle", `Dependency cycle reachable from ${keys.join(", ")}`, keys);
   }
 
   // Previous starts of Tasks that still exist and are not pinned.

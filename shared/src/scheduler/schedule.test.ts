@@ -812,6 +812,34 @@ describe("schedule", () => {
       expect(codeOf(input)).toBe("Cycle");
     });
 
+    it("Cycle error names every Task that reaches the cycle, upstream ones included", () => {
+      const input = {
+        ...base(),
+        tasks: [
+          dishTask("a", [step("s1", 10)]),
+          dishTask("b", [step("s1", 10)]),
+          dishTask("up", [step("s1", 10)]),
+        ],
+        links: [
+          { before: "dish:up:s1", after: "dish:a:s1" },
+          { before: "dish:a:s1", after: "dish:b:s1" },
+          { before: "dish:b:s1", after: "dish:a:s1" },
+        ],
+      };
+      const error = (() => {
+        try {
+          schedule(input);
+        } catch (e) {
+          return e as SchedulerInputError;
+        }
+      })();
+      expect(error?.code).toBe("Cycle");
+      expect(error?.keys).toEqual(["dish:a:s1", "dish:b:s1", "dish:up:s1"]);
+      expect(error?.message).toBe(
+        "Dependency cycle reachable from dish:a:s1, dish:b:s1, dish:up:s1",
+      );
+    });
+
     it("Decision 7: cycle through a pin throws Cycle", () => {
       const input = {
         ...base(),

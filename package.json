@@ -1,0 +1,20 @@
+{
+  "name": "miseflow",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w web",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w shared && npm run build -w web && npm run build -w server",
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w web",
+    "test": "npm run test -w shared"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

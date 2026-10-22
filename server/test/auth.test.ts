@@ -1,5 +1,5 @@
 import { sign } from "hono/jwt";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { getToken, issuer, testApp } from "./helpers.ts";
 
 const mutateWith = (headers: Record<string, string>) =>
@@ -46,5 +46,64 @@ describe("auth", () => {
     const res = await testApp().request("/health");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
+  });
+});
+
+describe("auth claims", () => {
+  // A key pair of our own, handed to the app through AuthConfig.keys, so tests can sign tokens
+  // with any claims.
+  const kid = "test-key";
+  let privateJwk: JsonWebKey;
+  let app: ReturnType<typeof testApp>;
+
+  beforeAll(async () => {
+    const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+      "sign",
+      "verify",
+    ]);
+    privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+    const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
+    app = testApp({ auth: { issuer, keys: async () => [{ ...publicJwk, kid, alg: "ES256" }] } });
+  });
+
+  const valid = () => ({
+    sub: crypto.randomUUID(),
+    iss: issuer,
+    aud: "authenticated",
+    exp: Math.floor(Date.now() / 1000) + 600,
+  });
+
+  async function mutateAs(claims: Record<string, unknown>) {
+    const token = await sign(claims, { ...privateJwk, kid, alg: "ES256" }, "ES256");
+    return app.request("/mutate", {
+      method: "POST",
+      body: "{}",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+    });
+  }
+
+  it("lets a token with valid claims through", async () => {
+    expect((await mutateAs(valid())).status).not.toBe(401);
+  });
+
+  it("rejects a token from another issuer with 401", async () => {
+    expect((await mutateAs({ ...valid(), iss: "http://evil.test/auth/v1" })).status).toBe(401);
+  });
+
+  it("rejects a token for another audience with 401", async () => {
+    expect((await mutateAs({ ...valid(), aud: "anon" })).status).toBe(401);
+  });
+
+  it("rejects an expired token with 401", async () => {
+    expect((await mutateAs({ ...valid(), exp: Math.floor(Date.now() / 1000) - 60 })).status).toBe(401);
+  });
+
+  it("rejects a token without a sub with 401", async () => {
+    const { sub: _sub, ...claims } = valid();
+    expect((await mutateAs(claims)).status).toBe(401);
+  });
+
+  it("rejects a token whose sub is not a uuid with 401", async () => {
+    expect((await mutateAs({ ...valid(), sub: "user-1" })).status).toBe(401);
   });
 });

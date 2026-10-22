@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { schedule, taskKey } from "./index.ts";
 import { at, batchTask, dishTask, model, step } from "./fixtures.ts";
+import type { Plan } from "./index.ts";
+
+function keysOnce(plan: Plan): string[] {
+  return [...plan.placements.map((p) => p.key), ...plan.unplaced.map((u) => u.key)].sort();
+}
 
 describe("schedule", () => {
   it("AC2: last-minute Task starts on the Service date and finishes by Service time", () => {
@@ -128,5 +133,73 @@ describe("schedule", () => {
     const cooling = { start: skim!.start + 20, end: skim!.end };
     expect(free.some((iv) => iv.start < cooling.end && cooling.start < iv.end)).toBe(false);
     expect(plate!.approximate).toBe(true);
+  });
+
+  it("AC6: Unplaced NoAvailability carries minutes needed and the interval searched; the rest of the Plan stands", () => {
+    const service = { dayStart: at(0, 0, 0), at: at(0, 19, 30) };
+    const plan = schedule(
+      model({
+        service,
+        // Only 30-minute gaps: a 60-minute active stretch never fits.
+        free: [
+          { start: at(0, 17, 0), end: at(0, 17, 30) },
+          { start: at(0, 18, 0), end: at(0, 18, 30) },
+          { start: at(0, 19, 0), end: at(0, 19, 30) },
+        ],
+        tasks: [
+          dishTask("roast", [step("s1", 60)]),
+          dishTask("garnish", [step("s1", 20)]),
+          dishTask("prep", [step("s1", 30)]), // must finish before the roast
+        ],
+        links: [{ before: "dish:prep:s1", after: "dish:roast:s1" }],
+      }),
+    );
+
+    expect(plan.unplaced).toEqual([
+      { key: "dish:roast:s1", reason: { kind: "NoAvailability", minutesNeeded: 60, searched: { start: service.dayStart, end: service.at } } },
+    ]);
+    // The rest still stands; the unplaced roast's predecessor is planned against Service.
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([
+      ["dish:garnish:s1", at(0, 19, 10)],
+      ["dish:prep:s1", at(0, 18, 0)],
+    ]);
+    expect(keysOnce(plan)).toEqual(["dish:garnish:s1", "dish:prep:s1", "dish:roast:s1"]);
+  });
+
+  it("AC6: Unplaced BlockedByPin names the pin", () => {
+    const service = { dayStart: at(0, 0, 0), at: at(0, 19, 30) };
+    const plan = schedule(
+      model({
+        service,
+        free: [{ start: at(0, 18, 0), end: at(0, 19, 30) }],
+        tasks: [dishTask("pinned", [step("s1", 90)]), dishTask("late", [step("s1", 30)])],
+        previous: [{ key: "dish:pinned:s1", start: at(0, 18, 0), cookId: "c1", pinned: true }],
+      }),
+    );
+
+    expect(plan.placements.map((p) => p.key)).toEqual(["dish:pinned:s1"]);
+    expect(plan.unplaced).toEqual([
+      { key: "dish:late:s1", reason: { kind: "BlockedByPin", pin: "dish:pinned:s1", searched: { start: service.dayStart, end: service.at } } },
+    ]);
+    expect(keysOnce(plan)).toEqual(["dish:late:s1", "dish:pinned:s1"]);
+  });
+
+  it("AC6: Unplaced WindowTooTight carries the window", () => {
+    const plan = schedule(
+      model({
+        service: { dayStart: at(0, 0, 0), at: at(0, 19, 30) },
+        free: [{ start: at(0, 9, 0), end: at(0, 19, 30) }],
+        tasks: [
+          batchTask("dough", [step("s1", 30, 30)], at(0, 19, 0)), // 60 minutes, may start only at 19:00
+          dishTask("salad", [step("s1", 15)]),
+        ],
+      }),
+    );
+
+    expect(plan.unplaced).toEqual([
+      { key: "batch:dough:s1", reason: { kind: "WindowTooTight", minutesNeeded: 60, window: { start: at(0, 19, 0), end: at(0, 19, 30) } } },
+    ]);
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([["dish:salad:s1", at(0, 19, 15)]]);
+    expect(keysOnce(plan)).toEqual(["batch:dough:s1", "dish:salad:s1"]);
   });
 });

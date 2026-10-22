@@ -4,3 +4,8 @@ node_modules/
 *.log
 .claude/
 dist/
+.env.local
+supabase/signing_keys.json
+supabase/.temp
+test-results/
+playwright-report/

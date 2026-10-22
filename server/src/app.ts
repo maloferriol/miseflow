@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { type AuthConfig, type AuthEnv, requireAuth } from "./auth.ts";
 import type { Db } from "./db.ts";
 import { errorBody } from "./errors.ts";
+import { menusRoute } from "./routes/menus.ts";
 import { mutateRoute } from "./routes/mutate.ts";
 
 export type AppOptions = {
@@ -18,7 +19,8 @@ export function createApp({ auth, db, mutators = defaultMutators }: AppOptions) 
     // Public. Registered before the auth middleware, which guards every other route.
     .get("/health", (c) => c.json({ ok: true }))
     .use("*", requireAuth(auth))
-    .route("/mutate", mutateRoute(db, mutators));
+    .route("/mutate", mutateRoute(db, mutators))
+    .route("/menus", menusRoute(db));
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse();

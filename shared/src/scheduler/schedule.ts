@@ -140,6 +140,22 @@ export function schedule(model: PlanningModel): Plan {
   }
   const waitingOn = new Map([...successors].map(([k, after]) => [k, new Set(after)]));
 
+  // Kahn's check over every link before pins are placed, so a cycle through a pin is caught too.
+  const unfinished = new Map([...successors].map(([k, after]) => [k, after.length]));
+  const ready = [...unfinished].filter(([, n]) => n === 0).map(([k]) => k);
+  for (let k = ready.pop(); k !== undefined; k = ready.pop()) {
+    unfinished.delete(k);
+    for (const pred of predecessors.get(k)!) {
+      const n = unfinished.get(pred)! - 1;
+      unfinished.set(pred, n);
+      if (n === 0) ready.push(pred);
+    }
+  }
+  if (unfinished.size > 0) {
+    const keys = [...unfinished.keys()].sort();
+    throw new SchedulerInputError("Cycle", `Dependency cycle among ${keys.join(", ")}`, keys);
+  }
+
   // Previous starts of Tasks that still exist and are not pinned.
   const previousStart = new Map<TaskKey, Minute>();
   for (const prev of model.previous) if (!prev.pinned && tasks.has(prev.key)) previousStart.set(prev.key, prev.start);
@@ -220,11 +236,8 @@ export function schedule(model: PlanningModel): Plan {
       const candidate = { key, upper: upperOf(key), previous: previousStart.get(key) };
       if (!next || before(candidate, next)) next = candidate;
     }
-    if (!next) {
-      const keys = [...waitingOn.keys()].sort();
-      throw new SchedulerInputError("Cycle", `Dependency cycle among ${keys.join(", ")}`, keys);
-    }
-    const { key, upper, previous } = next;
+    // The graph is acyclic (checked above), so some Task is always eligible.
+    const { key, upper, previous } = next!;
     const task = tasks.get(key)!;
     const lower = lowerOf(task);
 

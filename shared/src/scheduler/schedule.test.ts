@@ -730,6 +730,20 @@ describe("schedule", () => {
       expect(codeOf(input)).toBe("Cycle");
     });
 
+    it("Decision 7: cycle through a pin throws Cycle", () => {
+      const input = {
+        ...base(),
+        links: [
+          { before: "dish:a:s1", after: "dish:b:s1" },
+          { before: "dish:b:s1", after: "dish:a:s1" },
+        ],
+        previous: [
+          { key: "dish:a:s1", start: at(0, 18, 0), cookId: "c1", pinned: true },
+        ],
+      };
+      expect(codeOf(input)).toBe("Cycle");
+    });
+
     it("throws DuplicateTask for two Tasks with the same key", () => {
       const input = {
         ...base(),

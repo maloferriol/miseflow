@@ -235,4 +235,43 @@ describe("schedule", () => {
       { key: "dish:sear:s1", start: at(1, 19, 0), end: at(1, 19, 30), cookId: "c1", pinned: true, approximate: false },
     ]);
   });
+
+  it("AC5: stability – only the changed Task and what it pushes move", () => {
+    // Saturday has eleven 30-minute islands (09:00, 10:00, …, 19:00); Friday evening is free for prep-ahead work.
+    const service = { dayStart: at(1, 0, 0), at: at(1, 19, 30) };
+    const free = [
+      { start: at(0, 18, 0), end: at(0, 22, 0) },
+      ...Array.from({ length: 11 }, (_, i) => ({ start: at(1, 9 + i, 0), end: at(1, 9 + i, 30) })),
+    ];
+    const links = [{ before: "batch:base:s1", after: "dish:jus:s1" }];
+    const unrelated = Array.from({ length: 9 }, (_, i) => dishTask(`u0${i + 1}`, [step("s1", 30)]));
+    const tasksWith = (jusActive: number) => [
+      batchTask("base", [step("s1", 30)], at(0, 9, 0)),
+      dishTask("jus", [step("s1", jusActive)], at(0, 9, 0)),
+      ...unrelated,
+    ];
+    const startsOf = (plan: Plan) => new Map(plan.placements.map((p) => [p.key, p.start]));
+
+    const first = schedule(model({ service, free, tasks: tasksWith(30), links }));
+    expect(first.unplaced).toEqual([]);
+    expect(startsOf(first).get("dish:jus:s1")).toBe(at(1, 19, 0));
+    expect(startsOf(first).get("batch:base:s1")).toBe(at(1, 9, 0));
+    const previous = first.placements.map((p) => ({ key: p.key, start: p.start, cookId: p.cookId, pinned: false }));
+
+    // Unchanged model: exactly the same starts.
+    const again = schedule(model({ service, free, tasks: tasksWith(30), links, previous }));
+    expect(startsOf(again)).toEqual(startsOf(first));
+
+    // The jus gains 20 minutes of active time. Worked by hand: 50 minutes fit no Saturday island, so
+    // the nearest fit is Friday 21:10; that pushes its base to Friday 20:40. Every unrelated Task keeps
+    // its start, though planning from scratch would slide each one into the island the jus left.
+    const edited = schedule(model({ service, free, tasks: tasksWith(50), links, previous }));
+    expect(edited.unplaced).toEqual([]);
+    const before = startsOf(first);
+    const after = startsOf(edited);
+    const moved = [...after].filter(([key, start]) => before.get(key) !== start).map(([key]) => key);
+    expect(moved.sort()).toEqual(["batch:base:s1", "dish:jus:s1"]);
+    expect(after.get("dish:jus:s1")).toBe(at(0, 21, 10));
+    expect(after.get("batch:base:s1")).toBe(at(0, 20, 40));
+  });
 });

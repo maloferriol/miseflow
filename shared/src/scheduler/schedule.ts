@@ -68,6 +68,20 @@ function latestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute)
   return null;
 }
 
+/** The previous start if it still fits, else the nearest start that does (the later one on a tie). */
+function nearestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute, previous: Minute): Minute | null {
+  const lo = ceilGrid(lower);
+  const hi = floorGrid(upper - task.duration);
+  if (hi < lo) return null;
+  const from = Math.min(Math.max(previous, lo), hi);
+  const reach = Math.max(hi - from, from - lo);
+  for (let d = 0; d <= reach; d += GRID) {
+    if (from + d <= hi && fitsAt(free, task, from + d)) return from + d;
+    if (d > 0 && from - d >= lo && fitsAt(free, task, from - d)) return from - d;
+  }
+  return null;
+}
+
 function occupy(free: Timeline, task: Prepared, start: Minute): Timeline {
   for (const s of task.stretches) free = subtract(free, start + s.offset, start + s.offset + s.minutes);
   return free;
@@ -77,6 +91,20 @@ function occupy(free: Timeline, task: Prepared, start: Minute): Timeline {
 interface Bound {
   at: Minute;
   pin: TaskKey | null;
+}
+
+interface Candidate {
+  key: TaskKey;
+  upper: Bound;
+  previous: Minute | undefined;
+}
+
+/** Placement order among eligible Tasks: true when `a` goes before `b`. */
+function before(a: Candidate, b: Candidate): boolean {
+  if ((a.previous === undefined) !== (b.previous === undefined)) return a.previous !== undefined;
+  if (a.previous !== undefined && b.previous !== undefined && a.previous !== b.previous) return a.previous > b.previous;
+  if (a.upper.at !== b.upper.at) return a.upper.at > b.upper.at;
+  return a.key < b.key;
 }
 
 export function schedule(model: PlanningModel): Plan {
@@ -92,6 +120,10 @@ export function schedule(model: PlanningModel): Plan {
     predecessors.get(link.after)!.push(link.before);
   }
   const waitingOn = new Map([...successors].map(([k, after]) => [k, new Set(after)]));
+
+  // Previous starts of Tasks that still exist and are not pinned.
+  const previousStart = new Map<TaskKey, Minute>();
+  for (const prev of model.previous) if (!prev.pinned && tasks.has(prev.key)) previousStart.set(prev.key, prev.start);
 
   const bounds = new Map<TaskKey, Bound>();
   const placements: Placement[] = [];
@@ -147,17 +179,21 @@ export function schedule(model: PlanningModel): Plan {
   };
 
   while (waitingOn.size > 0) {
-    // Eligible: every successor is done. Latest upper bound first, then key.
-    let next: { key: TaskKey; upper: Bound } | null = null;
+    // Eligible: every successor is done. Tasks with a previous start first, latest previous start
+    // first; then latest upper bound; then key.
+    let next: Candidate | null = null;
     for (const [key, waiting] of waitingOn) {
       if (waiting.size > 0) continue;
-      const upper = upperOf(key);
-      if (!next || upper.at > next.upper.at || (upper.at === next.upper.at && key < next.key)) next = { key, upper };
+      const candidate = { key, upper: upperOf(key), previous: previousStart.get(key) };
+      if (!next || before(candidate, next)) next = candidate;
     }
-    const { key, upper } = next!;
+    const { key, upper, previous } = next!;
     const task = tasks.get(key)!;
 
-    const start = latestFit(free, task, task.lower, upper.at);
+    const start =
+      previous === undefined
+        ? latestFit(free, task, task.lower, upper.at)
+        : nearestFit(free, task, task.lower, upper.at, previous);
     if (start !== null) {
       place(task, start, false);
     } else {

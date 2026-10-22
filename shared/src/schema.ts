@@ -394,3 +394,14 @@ export const shoppingMarks = pgTable(
   },
   (t) => [unique("shopping_marks_line").on(t.serviceId, t.ingredientId)],
 );
+
+// Append-only. One row per applied named mutation, so a retried mutation id is applied once
+// (ADR 0007). Its id is the mutation's id. Claimed inside the mutation's own transaction.
+export const appliedMutations = pgTable("applied_mutations", {
+  id,
+  ownerId: uuid("owner_id").notNull(),
+  name: text("name").notNull(),
+  appliedAt: timestamp("applied_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

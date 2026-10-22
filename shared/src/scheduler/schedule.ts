@@ -34,10 +34,24 @@ const floorGrid = (minute: Minute) => Math.floor(minute / GRID) * GRID;
 const ceilGrid = (minute: Minute) => Math.ceil(minute / GRID) * GRID;
 const byKey = <T extends { key: TaskKey }>(a: T, b: T) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
+function assertTime(minute: Minute, what: string, keys: TaskKey[] = []): void {
+  if (!Number.isFinite(minute)) throw new SchedulerInputError("InvalidTime", `${what} is ${minute}`, keys);
+}
+
 function prepare(model: PlanningModel): Prepared[] {
+  assertTime(model.service.at, "Service time");
+  assertTime(model.service.dayStart, "Service date start");
+  for (const cook of model.cooks) {
+    for (const iv of cook.free) {
+      assertTime(iv.start, `Free interval start of Cook ${cook.id}`);
+      assertTime(iv.end, `Free interval end of Cook ${cook.id}`);
+    }
+  }
+  for (const prev of model.previous) assertTime(prev.start, `Previous start of ${prev.key}`, [prev.key]);
   return model.tasks.map((task) => {
     if (task.steps.length === 0) throw new SchedulerInputError("EmptyTask", "A Task needs at least one Step");
     const key = taskKey(task.owner, task.steps[0]!.stepId);
+    if (task.earliestStart !== null) assertTime(task.earliestStart, `Earliest start of ${key}`, [key]);
     let offset = 0;
     let approximate = false;
     const stretches: Stretch[] = [];
@@ -118,8 +132,8 @@ function before(a: Candidate, b: Candidate): boolean {
 /**
  * Plans a whole Service backward from Service time. Pure and deterministic.
  * Throws `SchedulerInputError` for input it cannot plan: not exactly one Cook, an empty or
- * duplicate Task, a negative or non-finite duration, a link to an unknown Task, a duplicate previous
- * placement, or a dependency cycle.
+ * duplicate Task, a negative or non-finite duration, a non-finite time, a link to an unknown Task,
+ * a duplicate previous placement, or a dependency cycle.
  */
 export function schedule(model: PlanningModel): Plan {
   if (model.cooks.length !== 1) {

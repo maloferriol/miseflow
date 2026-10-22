@@ -867,6 +867,43 @@ describe("schedule", () => {
       );
     });
 
+    it.each<[string, (input: PlanningModel) => PlanningModel]>([
+      ["service.at", (m) => ({ ...m, service: { ...m.service, at: NaN } })],
+      [
+        "service.dayStart",
+        (m) => ({ ...m, service: { ...m.service, dayStart: NaN } }),
+      ],
+      [
+        "earliestStart",
+        (m) => ({ ...m, tasks: [dishTask("a", [step("s1", 10)], NaN)] }),
+      ],
+      [
+        "previous[].start",
+        (m) => ({
+          ...m,
+          previous: [
+            { key: "dish:a:s1", start: NaN, cookId: "c1", pinned: false },
+          ],
+        }),
+      ],
+      [
+        "cooks[].free start",
+        (m) => ({
+          ...m,
+          cooks: [{ id: "c1", free: [{ start: NaN, end: at(0, 19, 30) }] }],
+        }),
+      ],
+      [
+        "cooks[].free end",
+        (m) => ({
+          ...m,
+          cooks: [{ id: "c1", free: [{ start: at(0, 9, 0), end: Infinity }] }],
+        }),
+      ],
+    ])("throws InvalidTime for a non-finite %s", (_, corrupt) => {
+      expect(codeOf(corrupt(base()))).toBe("InvalidTime");
+    });
+
     it("throws DuplicatePrevious for two previous placements with the same key", () => {
       const input = {
         ...base(),

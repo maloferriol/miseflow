@@ -172,6 +172,18 @@ export function schedule(model: PlanningModel): Plan {
     }
     return best;
   };
+  // Binding lower bound: the latest end of a pinned predecessor (ties by key), passive time
+  // included, when that is later than the Task's own lower bound.
+  const lowerOf = (task: Prepared): Bound => {
+    let best: Bound = { at: task.lower, pin: null };
+    for (const before of predecessors.get(task.key)!) {
+      const pin = pins.find((p) => p.task.key === before);
+      if (!pin) continue;
+      const end = pin.start + pin.task.duration;
+      if (end > best.at || (end === best.at && best.pin !== null && before < best.pin)) best = { at: end, pin: before };
+    }
+    return best;
+  };
 
   // Pins first: fixed occupants, never searched. A pin for a Task that no longer exists is ignored.
   for (const prev of [...model.previous].sort(byKey)) {
@@ -182,9 +194,11 @@ export function schedule(model: PlanningModel): Plan {
     done(task.key);
   }
 
-  const reasonFor = (task: Prepared, lower: Minute, upper: Bound): UnplacedReason => {
+  const reasonFor = (task: Prepared, lowerBound: Bound, upper: Bound): UnplacedReason => {
+    const lower = lowerBound.at;
     const window: Interval = { start: lower, end: upper.at };
     if (upper.pin !== null) return { kind: "BlockedByPin", pin: upper.pin, searched: window };
+    if (lowerBound.pin !== null) return { kind: "BlockedByPin", pin: lowerBound.pin, searched: window };
     if (upper.at - lower < task.duration) return { kind: "WindowTooTight", minutesNeeded: task.duration, window };
     for (const pin of pins) {
       const pinStart = pin.start;
@@ -212,15 +226,16 @@ export function schedule(model: PlanningModel): Plan {
     }
     const { key, upper, previous } = next;
     const task = tasks.get(key)!;
+    const lower = lowerOf(task);
 
     const start =
       previous === undefined
-        ? latestFit(free, task, task.lower, upper.at)
-        : nearestFit(free, task, task.lower, upper.at, previous);
+        ? latestFit(free, task, lower.at, upper.at)
+        : nearestFit(free, task, lower.at, upper.at, previous);
     if (start !== null) {
       place(task, start, false);
     } else {
-      unplaced.push({ key, reason: reasonFor(task, task.lower, upper) });
+      unplaced.push({ key, reason: reasonFor(task, lower, upper) });
       // Predecessors are planned against this Task's own limit: the next placed successor, or Service.
       bounds.set(key, upper);
     }

@@ -1,4 +1,4 @@
-import { courses, menus } from "@miseflow/shared";
+import { courses, dishes, menus } from "@miseflow/shared";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db, getToken, testApp } from "./helpers.ts";
@@ -52,6 +52,24 @@ describe("GET /menus/:menuId", () => {
 
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe("NOT_FOUND");
+  });
+
+  it("leaves out another owner's Course under the caller's Menu and Dish under the caller's Course", async () => {
+    const [menuId, courseId, recipeId] = Array.from({ length: 3 }, () => crypto.randomUUID());
+    await mutate("createMenu", { menuId, name: "Saturday dinner", guestCount: 6 });
+    await mutate("addCourse", { courseId, menuId, name: "Starter" });
+    await mutate("createRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Velouté" });
+    const stranger = crypto.randomUUID();
+    await db
+      .insert(courses)
+      .values({ id: crypto.randomUUID(), ownerId: stranger, menuId, name: "Theirs", position: "a1" });
+    await db
+      .insert(dishes)
+      .values({ id: crypto.randomUUID(), ownerId: stranger, courseId, recipeId, position: "a0" });
+
+    const body = await (await send("GET", `/menus/${menuId}`)).json();
+
+    expect(body.menu.courses).toEqual([{ id: courseId, name: "Starter", position: "a0", dishes: [] }]);
   });
 
   it("answers 404 for an id that is not a uuid", async () => {

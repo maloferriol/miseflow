@@ -66,6 +66,8 @@ const REFETCH_COOLDOWN_MS = 30_000;
 
 // Caches a JWKS for TTL_MS, refetches early for an unknown kid (key rotation), and shares one
 // in-flight fetch between concurrent requests. A failed refetch keeps serving the old keys.
+// Tradeoff: there is no cap on how stale they get, so through a JWKS outage the old keys stay
+// trusted, and a revoked key is only dropped once the JWKS is reachable again.
 export function createJwksCache(
   url: string,
   {

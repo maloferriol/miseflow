@@ -1,7 +1,8 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { schedule, taskKey } from "./index.ts";
 import { at, batchTask, dishTask, model, step } from "./fixtures.ts";
-import type { Plan } from "./index.ts";
+import type { Plan, PlanningModel } from "./index.ts";
 
 function keysOnce(plan: Plan): string[] {
   return [...plan.placements.map((p) => p.key), ...plan.unplaced.map((u) => u.key)].sort();
@@ -273,5 +274,63 @@ describe("schedule", () => {
     expect(moved.sort()).toEqual(["batch:base:s1", "dish:jus:s1"]);
     expect(after.get("dish:jus:s1")).toBe(at(0, 21, 10));
     expect(after.get("batch:base:s1")).toBe(at(0, 20, 40));
+  });
+
+  it("AC7: same input gives byte-identical output", () => {
+    const input: PlanningModel = model({
+      service: { dayStart: at(1, 0, 0), at: at(1, 19, 30) },
+      free: [
+        { start: at(0, 18, 0), end: at(0, 22, 0) },
+        { start: at(1, 16, 0), end: at(1, 19, 30) },
+      ],
+      tasks: [
+        batchTask("stock", [step("s1", 30, 180)], at(0, 18, 0)),
+        dishTask("soup", [step("s1", 30), step("s2", null)]),
+        dishTask("bread", [step("s1", 20, 60)], at(0, 18, 0)),
+        dishTask("salad", [step("s1", 15)]),
+        dishTask("roast", [step("s1", 300)]), // never fits: Unplaced
+      ],
+      links: [
+        { before: "batch:stock:s1", after: "dish:soup:s1" },
+        { before: "dish:bread:s1", after: "dish:soup:s1" },
+      ],
+      previous: [{ key: "dish:salad:s1", start: at(1, 19, 0), cookId: "c1", pinned: true }],
+    });
+    const reversed: PlanningModel = {
+      ...input,
+      tasks: [...input.tasks].reverse(),
+      links: [...input.links].reverse(),
+      previous: [...input.previous].reverse(),
+    };
+
+    const once = JSON.stringify(schedule(input));
+    expect(JSON.stringify(schedule(input))).toBe(once);
+    expect(JSON.stringify(schedule(reversed))).toBe(once);
+  });
+
+  it("AC7: ties broken by Task key", () => {
+    // Two identical Tasks compete for the last slot before Service: the lower key gets the later one.
+    const plan = schedule(
+      model({
+        service: { dayStart: at(0, 0, 0), at: at(0, 19, 30) },
+        free: [{ start: at(0, 18, 30), end: at(0, 19, 30) }],
+        tasks: [dishTask("b", [step("s1", 30)]), dishTask("a", [step("s1", 30)])],
+      }),
+    );
+
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([
+      ["dish:a:s1", at(0, 19, 0)],
+      ["dish:b:s1", at(0, 18, 30)],
+    ]);
+  });
+
+  it("AC7: scheduler source has no clock or random calls", () => {
+    const dir = new URL(".", import.meta.url);
+    const sources = readdirSync(dir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && f !== "fixtures.ts");
+    expect(sources.sort()).toEqual(["index.ts", "schedule.ts", "timeline.ts", "types.ts"]);
+    for (const file of sources) {
+      const text = readFileSync(new URL(file, dir), "utf8");
+      expect(text, file).not.toMatch(/\bDate\b|Math\.random|\bperformance\b|process\.hrtime/);
+    }
   });
 });

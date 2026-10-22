@@ -699,6 +699,40 @@ describe("schedule", () => {
     ]);
   });
 
+  it("AC4: a pin two links back bounds the whole chain", () => {
+    const plan = schedule(
+      model({
+        service: { dayStart: at(0, 0, 0), at: at(0, 20, 0) },
+        free: [{ start: at(0, 9, 0), end: at(0, 20, 0) }],
+        tasks: [
+          dishTask("p", [step("s1", 60)]),
+          dishTask("b", [step("s1", 30)]),
+          dishTask("a", [step("s1", 10)]),
+        ],
+        links: [
+          { before: "dish:p:s1", after: "dish:b:s1" },
+          { before: "dish:b:s1", after: "dish:a:s1" },
+        ],
+        previous: [
+          { key: "dish:p:s1", start: at(0, 18, 0), cookId: "c1", pinned: true }, // ends 19:00
+          {
+            key: "dish:a:s1",
+            start: at(0, 12, 0),
+            cookId: "c1",
+            pinned: false,
+          },
+        ],
+      }),
+    );
+
+    expect(plan.unplaced).toEqual([]);
+    expect(plan.placements.map((p) => [p.key, p.start, p.end])).toEqual([
+      ["dish:a:s1", at(0, 19, 30), at(0, 19, 40)],
+      ["dish:b:s1", at(0, 19, 0), at(0, 19, 30)],
+      ["dish:p:s1", at(0, 18, 0), at(0, 19, 0)],
+    ]);
+  });
+
   it("Decision 2: a predecessor of an Unplaced Task is planned against the next placed successor", () => {
     const plan = schedule(
       model({

@@ -157,8 +157,10 @@ export function schedule(model: PlanningModel): Plan {
   // Kahn's check over every link before pins are placed, so a cycle through a pin is caught too.
   const unfinished = new Map([...successors].map(([k, after]) => [k, after.length]));
   const ready = [...unfinished].filter(([, n]) => n === 0).map(([k]) => k);
+  const sinksFirst: TaskKey[] = [];
   for (let k = ready.pop(); k !== undefined; k = ready.pop()) {
     unfinished.delete(k);
+    sinksFirst.push(k);
     for (const pred of predecessors.get(k)!) {
       const n = unfinished.get(pred)! - 1;
       unfinished.set(pred, n);
@@ -202,18 +204,6 @@ export function schedule(model: PlanningModel): Plan {
     }
     return best;
   };
-  // Binding lower bound: the latest end of a pinned predecessor (ties by key), passive time
-  // included, when that is later than the Task's own lower bound.
-  const lowerOf = (task: Prepared): Bound => {
-    let best: Bound = { at: task.lower, pin: null };
-    for (const before of predecessors.get(task.key)!) {
-      const pin = pins.find((p) => p.task.key === before);
-      if (!pin) continue;
-      const end = pin.start + pin.task.duration;
-      if (end > best.at || (end === best.at && best.pin !== null && before < best.pin)) best = { at: end, pin: before };
-    }
-    return best;
-  };
 
   // Pins first: fixed occupants, never searched. A pin for a Task that no longer exists is ignored.
   for (const prev of [...model.previous].sort(byKey)) {
@@ -223,6 +213,29 @@ export function schedule(model: PlanningModel): Plan {
     pins.push({ task, start: prev.start });
     done(task.key);
   }
+
+  // Earliest start set by pins, forward in dependency order: no Task starts before a pin anywhere
+  // upstream has finished, passive time and the Tasks in between included. Ties go to the lower
+  // pin key. Only pins propagate: a predecessor's own lower bound does not push its successors
+  // (decision 2), since that predecessor may end up Unplaced.
+  const pinStart = new Map(pins.map((p) => [p.task.key, p.start]));
+  const pinBound = new Map<TaskKey, { at: Minute; pin: TaskKey } | null>();
+  for (const key of [...sinksFirst].reverse()) {
+    let best: { at: Minute; pin: TaskKey } | null = null;
+    for (const before of predecessors.get(key)!) {
+      const pinned = pinStart.get(before);
+      const from = pinned !== undefined ? { at: pinned, pin: before } : pinBound.get(before)!;
+      if (!from) continue;
+      const end = from.at + tasks.get(before)!.duration;
+      if (!best || end > best.at || (end === best.at && from.pin < best.pin)) best = { at: end, pin: from.pin };
+    }
+    pinBound.set(key, best);
+  }
+  // Binding lower bound: the pin bound when it is later than the Task's own lower bound.
+  const lowerOf = (task: Prepared): Bound => {
+    const bound = pinBound.get(task.key)!;
+    return bound && bound.at > task.lower ? bound : { at: task.lower, pin: null };
+  };
 
   const reasonFor = (task: Prepared, lowerBound: Bound, upper: Bound): UnplacedReason => {
     const lower = lowerBound.at;

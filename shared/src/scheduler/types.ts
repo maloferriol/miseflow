@@ -25,8 +25,12 @@ export interface Interval {
 export interface PlanningModel {
   /** `dayStart`: start of the Service date. `at`: Service time. */
   service: { dayStart: Minute; at: Minute };
-  /** MVP: exactly one Cook. Free intervals are already expanded by the mapper. */
-  cooks: { id: string; free: Interval[] }[];
+  /** MVP: exactly one Cook. */
+  cooks: {
+    id: string;
+    /** The Cook's Availability expanded to free intervals. */
+    free: Interval[];
+  }[];
   tasks: TaskSpec[];
   /** Finish-to-start: `after` may start once `before` has finished, passive time included. */
   links: { before: TaskKey; after: TaskKey }[];

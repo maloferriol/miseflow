@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { createApp } from "../src/app.ts";
+import { type AppOptions, createApp } from "../src/app.ts";
 import { authConfigFromEnv } from "../src/auth.ts";
+import { createDb, databaseUrlFromEnv } from "../src/db.ts";
 
 export function requireEnv(name: string): string {
   const value = process.env[name];
@@ -10,8 +11,10 @@ export function requireEnv(name: string): string {
 
 export const issuer = authConfigFromEnv().issuer;
 
-export function testApp() {
-  return createApp({ auth: authConfigFromEnv() });
+export const db = createDb(databaseUrlFromEnv());
+
+export function testApp(options: Partial<AppOptions> = {}) {
+  return createApp({ auth: authConfigFromEnv(), db, ...options });
 }
 
 let token: Promise<string> | undefined;

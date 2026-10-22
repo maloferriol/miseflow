@@ -9,5 +9,6 @@ export default defineConfig({
   test: {
     // Integration tests share one local database.
     fileParallelism: false,
+    globalSetup: ["./test/global-setup.ts"],
   },
 });

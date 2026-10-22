@@ -202,4 +202,37 @@ describe("schedule", () => {
     expect(plan.placements.map((p) => [p.key, p.start])).toEqual([["dish:salad:s1", at(0, 19, 15)]]);
     expect(keysOnce(plan)).toEqual(["batch:dough:s1", "dish:salad:s1"]);
   });
+
+  it("AC4: pinned Task stays exactly where it is, outside Availability and before its dependency, and the rest fits around it", () => {
+    const plan = schedule(
+      model({
+        service: { dayStart: at(1, 0, 0), at: at(1, 19, 30) },
+        free: [
+          { start: at(0, 18, 0), end: at(0, 22, 0) },
+          { start: at(1, 9, 0), end: at(1, 19, 30) },
+        ],
+        tasks: [
+          batchTask("brine", [step("s1", 30)], at(0, 18, 0)),
+          dishTask("cure", [step("s1", 30, 60)], at(0, 18, 0)), // pinned at 03:00, no Availability then
+          dishTask("sear", [step("s1", 30)]), // pinned at 19:00, inside Availability
+          dishTask("salad", [step("s1", 20)]), // unrelated, last-minute
+        ],
+        links: [{ before: "batch:brine:s1", after: "dish:cure:s1" }],
+        previous: [
+          { key: "dish:cure:s1", start: at(1, 3, 0), cookId: "c1", pinned: true },
+          { key: "dish:sear:s1", start: at(1, 19, 0), cookId: "gone", pinned: true }, // unknown Cook: remapped
+        ],
+      }),
+    );
+
+    expect(plan.unplaced).toEqual([]);
+    expect(plan.placements).toEqual([
+      // Without the pin, brine would sit late on Saturday; it must finish before the pinned cure starts.
+      { key: "batch:brine:s1", start: at(0, 21, 30), end: at(0, 22, 0), cookId: "c1", pinned: false, approximate: false },
+      { key: "dish:cure:s1", start: at(1, 3, 0), end: at(1, 4, 30), cookId: "c1", pinned: true, approximate: false },
+      // The salad avoids the sear pin's active time.
+      { key: "dish:salad:s1", start: at(1, 18, 40), end: at(1, 19, 0), cookId: "c1", pinned: false, approximate: false },
+      { key: "dish:sear:s1", start: at(1, 19, 0), end: at(1, 19, 30), cookId: "c1", pinned: true, approximate: false },
+    ]);
+  });
 });

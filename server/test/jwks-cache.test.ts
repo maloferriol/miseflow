@@ -71,4 +71,21 @@ describe("JWKS cache", () => {
 
     expect(server.fetches).toBe(1);
   });
+
+  it("retries after a fetch that throws synchronously", async () => {
+    const { server, fetch: serve } = fakeJwks(["k1"]);
+    let calls = 0;
+    const fetch = (): Promise<Response> => {
+      calls += 1;
+      if (calls === 1) throw new Error("synchronous failure");
+      return serve();
+    };
+    const keys = createJwksCache(url, { fetch, now: () => 0 });
+
+    await expect(keys("k1")).rejects.toThrow("synchronous failure");
+    const found = await keys("k1");
+
+    expect(found.map((key) => key.kid)).toEqual(["k1"]);
+    expect(server.fetches).toBe(1);
+  });
 });

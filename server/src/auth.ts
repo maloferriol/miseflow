@@ -76,25 +76,36 @@ export function createJwksCache(
   let fetchedAt = 0;
   let inFlight: Promise<Jwk[]> | undefined;
 
-  const refresh = () =>
-    (inFlight ??= (async () => {
-      try {
-        const res = await fetch(url);
-        if (!res.ok)
-          throw new Error(`Failed to fetch JWKS from ${url}: ${res.status}`);
-        const body: { keys?: unknown } = await res.json();
-        if (!Array.isArray(body.keys))
-          throw new Error(`Invalid JWKS from ${url}: no keys array`);
-        keys = body.keys as Jwk[];
-        fetchedAt = now();
-        return keys;
-      } catch (error) {
-        if (keys) return keys;
-        throw error;
-      } finally {
-        inFlight = undefined;
-      }
-    })());
+  const load = async (): Promise<Jwk[]> => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok)
+        throw new Error(`Failed to fetch JWKS from ${url}: ${res.status}`);
+      const body: { keys?: unknown } = await res.json();
+      if (!Array.isArray(body.keys))
+        throw new Error(`Invalid JWKS from ${url}: no keys array`);
+      keys = body.keys as Jwk[];
+      fetchedAt = now();
+      return keys;
+    } catch (error) {
+      if (keys) return keys;
+      throw error;
+    }
+  };
+
+  // Assigned before it is cleared, even when `fetch` throws synchronously.
+  const refresh = () => {
+    if (!inFlight) {
+      const pending = load();
+      inFlight = pending;
+      pending
+        .finally(() => {
+          inFlight = undefined;
+        })
+        .catch(() => {});
+    }
+    return inFlight;
+  };
 
   return async (kid) => {
     if (!keys || now() - fetchedAt >= TTL_MS) return refresh();

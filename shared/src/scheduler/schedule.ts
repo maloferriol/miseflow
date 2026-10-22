@@ -1,5 +1,6 @@
 import { fits, normalize, subtract, type Timeline } from "./timeline.ts";
 import {
+  SchedulerInputError,
   taskKey,
   type Interval,
   type Minute,
@@ -35,6 +36,7 @@ const byKey = <T extends { key: TaskKey }>(a: T, b: T) => (a.key < b.key ? -1 : 
 
 function prepare(model: PlanningModel): Prepared[] {
   return model.tasks.map((task) => {
+    if (task.steps.length === 0) throw new SchedulerInputError("EmptyTask", "A Task needs at least one Step");
     let offset = 0;
     let approximate = false;
     const stretches: Stretch[] = [];
@@ -107,10 +109,27 @@ function before(a: Candidate, b: Candidate): boolean {
   return a.key < b.key;
 }
 
+/**
+ * Plans a whole Service backward from Service time. Pure and deterministic.
+ * Throws `SchedulerInputError` for input it cannot plan: not exactly one Cook, an empty or
+ * duplicate Task, a link to an unknown Task, or a dependency cycle.
+ */
 export function schedule(model: PlanningModel): Plan {
+  if (model.cooks.length !== 1) {
+    throw new SchedulerInputError("CookCount", `Expected exactly one Cook, got ${model.cooks.length}`);
+  }
   const cook = model.cooks[0]!;
   const cookFree = normalize(cook.free);
-  const tasks = new Map(prepare(model).map((t) => [t.key, t]));
+  const tasks = new Map<TaskKey, Prepared>();
+  for (const task of prepare(model)) {
+    if (tasks.has(task.key)) throw new SchedulerInputError("DuplicateTask", `Duplicate Task ${task.key}`, [task.key]);
+    tasks.set(task.key, task);
+  }
+  const unknown = model.links.flatMap((l) => [l.before, l.after]).filter((k) => !tasks.has(k));
+  if (unknown.length > 0) {
+    const keys = [...new Set(unknown)].sort();
+    throw new SchedulerInputError("UnknownLinkTask", `Link to unknown Task ${keys.join(", ")}`, keys);
+  }
 
   // successors[k]: Tasks that may start only once k has finished; predecessors is the reverse.
   const successors = new Map<TaskKey, TaskKey[]>([...tasks.keys()].map((k) => [k, []]));
@@ -187,7 +206,11 @@ export function schedule(model: PlanningModel): Plan {
       const candidate = { key, upper: upperOf(key), previous: previousStart.get(key) };
       if (!next || before(candidate, next)) next = candidate;
     }
-    const { key, upper, previous } = next!;
+    if (!next) {
+      const keys = [...waitingOn.keys()].sort();
+      throw new SchedulerInputError("Cycle", `Dependency cycle among ${keys.join(", ")}`, keys);
+    }
+    const { key, upper, previous } = next;
     const task = tasks.get(key)!;
 
     const start =

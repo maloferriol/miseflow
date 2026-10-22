@@ -87,7 +87,8 @@ export type SchedulerInputErrorCode =
   | "DuplicateTask"
   | "UnknownLinkTask"
   | "EmptyTask"
-  | "CookCount";
+  | "CookCount"
+  | "InvalidDuration";
 
 /** Thrown for malformed input the scheduler cannot plan at all. */
 export class SchedulerInputError extends Error {

@@ -37,10 +37,16 @@ const byKey = <T extends { key: TaskKey }>(a: T, b: T) => (a.key < b.key ? -1 : 
 function prepare(model: PlanningModel): Prepared[] {
   return model.tasks.map((task) => {
     if (task.steps.length === 0) throw new SchedulerInputError("EmptyTask", "A Task needs at least one Step");
+    const key = taskKey(task.owner, task.steps[0]!.stepId);
     let offset = 0;
     let approximate = false;
     const stretches: Stretch[] = [];
     for (const s of task.steps) {
+      for (const minutes of [s.activeMinutes, s.passiveMinutes]) {
+        if (minutes !== null && !(Number.isFinite(minutes) && minutes >= 0)) {
+          throw new SchedulerInputError("InvalidDuration", `Step ${s.stepId} of ${key} has duration ${minutes}`, [key]);
+        }
+      }
       const passive = s.passiveMinutes === null ? 0 : roundUp(s.passiveMinutes);
       // No duration at all: a 10-minute active placeholder. Passive only: active 0.
       const unknown = s.activeMinutes === null && passive === 0;
@@ -50,7 +56,7 @@ function prepare(model: PlanningModel): Prepared[] {
       offset += active + passive;
     }
     return {
-      key: taskKey(task.owner, task.steps[0]!.stepId),
+      key,
       duration: offset,
       stretches,
       approximate,
@@ -112,7 +118,7 @@ function before(a: Candidate, b: Candidate): boolean {
 /**
  * Plans a whole Service backward from Service time. Pure and deterministic.
  * Throws `SchedulerInputError` for input it cannot plan: not exactly one Cook, an empty or
- * duplicate Task, a link to an unknown Task, or a dependency cycle.
+ * duplicate Task, a negative or non-finite duration, a link to an unknown Task, or a dependency cycle.
  */
 export function schedule(model: PlanningModel): Plan {
   if (model.cooks.length !== 1) {

@@ -772,6 +772,19 @@ describe("schedule", () => {
       );
     });
 
+    it.each([
+      ["NaN active", step("s1", NaN)],
+      ["Infinity active", step("s1", Infinity)],
+      ["-5 active", step("s1", -5)],
+      ["NaN passive", step("s1", 10, NaN)],
+      ["Infinity passive", step("s1", 10, Infinity)],
+      ["-5 passive", step("s1", 10, -5)],
+    ])("throws InvalidDuration for %s", (_, bad) => {
+      expect(codeOf({ ...base(), tasks: [dishTask("a", [bad])] })).toBe(
+        "InvalidDuration",
+      );
+    });
+
     it("throws UnknownLinkTask for a link to a Task that does not exist", () => {
       expect(
         codeOf({

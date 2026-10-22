@@ -35,3 +35,38 @@ export function model(input: {
     previous: input.previous ?? [],
   };
 }
+
+/** Deterministic LCG (Numerical Recipes constants), so generated Services are reproducible. */
+function lcg(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 2 ** 32;
+  };
+}
+
+/**
+ * A Service on day `days` at 19:30 with `n` Tasks: Dishes and Batches, some prep-ahead up to
+ * `days` days early, about half of them linked to a later Task, and one Cook free 08:00–22:00 daily.
+ */
+export function generatedService(n: number, seed = 1, days = 7): PlanningModel {
+  const random = lcg(seed);
+  const pick = (max: number) => Math.floor(random() * max);
+  const free = Array.from({ length: days + 1 }, (_, day) => ({ start: at(day, 8, 0), end: at(day, 22, 0) }));
+  const tasks: TaskSpec[] = [];
+  const keys: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const owner = `o${String(i).padStart(4, "0")}`;
+    const steps = Array.from({ length: 1 + pick(2) }, (_, s) =>
+      step(`s${s}`, random() < 0.05 ? null : 5 * pick(5), random() < 0.3 ? 5 * pick(24) : 0),
+    );
+    const earliest = random() < 0.9 ? at(pick(2), 8, 0) : null;
+    tasks.push(i % 3 === 0 ? batchTask(owner, steps, earliest) : dishTask(owner, steps, earliest));
+    keys.push(`${i % 3 === 0 ? "batch" : "dish"}:${owner}:s0`);
+  }
+  const links = [];
+  for (let i = 0; i < n - 1; i++) {
+    if (random() < 0.5) links.push({ before: keys[i]!, after: keys[i + 1 + pick(Math.min(10, n - i - 1))]! });
+  }
+  return model({ service: { dayStart: at(days, 0, 0), at: at(days, 19, 30) }, free, tasks, links });
+}

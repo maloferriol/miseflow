@@ -152,7 +152,7 @@ export function schedule(model: PlanningModel): Plan {
 
   const done = (key: TaskKey) => {
     waitingOn.delete(key);
-    for (const before of predecessors.get(key)!) waitingOn.get(before)?.delete(key);
+    for (const pred of predecessors.get(key)!) waitingOn.get(pred)?.delete(key);
   };
   const place = (task: Prepared, start: Minute, pinned: boolean) => {
     free = occupy(free, task, start);
@@ -165,7 +165,7 @@ export function schedule(model: PlanningModel): Plan {
     let bestKey: TaskKey | null = null;
     for (const after of successors.get(key)!) {
       const b = bounds.get(after)!;
-      if (b.at < best.at || (b.at === best.at && bestKey !== null && after < bestKey)) {
+      if (b.at < best.at || (b.at === best.at && (bestKey === null || after < bestKey))) {
         best = b;
         bestKey = after;
       }

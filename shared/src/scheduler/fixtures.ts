@@ -46,8 +46,8 @@ function lcg(seed: number): () => number {
 }
 
 /**
- * A Service on day `days` at 19:30 with `n` Tasks: Dishes and Batches, some prep-ahead up to
- * `days` days early, about half of them linked to a later Task, and one Cook free 08:00–22:00 daily.
+ * A Service on day `days` at 19:30 with `n` Tasks: Dishes and Batches, nine in ten prep-ahead
+ * (from day 0 or 1), about half of them linked to a later Task, and one Cook free 08:00–22:00 daily.
  */
 export function generatedService(n: number, seed = 1, days = 7): PlanningModel {
   const random = lcg(seed);

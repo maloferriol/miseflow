@@ -4,6 +4,9 @@ import { inRollback } from "../../test/db.ts";
 import { courses, dishes, menus, recipes } from "../schema.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
+// A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
+const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
+
 const ownerId = crypto.randomUUID();
 
 describe("mutator registry", () => {
@@ -48,6 +51,7 @@ describe("createMenu", () => {
       await mutator.run(tx, mutator.args.parse({ menuId, name: "Saturday dinner", guestCount: 6 }), {
         ownerId,
         timeZone: "Europe/Paris",
+        now: () => FIXED_NOW,
       });
       const rows = await tx.select().from(menus).where(eq(menus.id, menuId));
       expect(rows).toMatchObject([{ name: "Saturday dinner", guestCount: 6, ownerId }]);
@@ -57,7 +61,7 @@ describe("createMenu", () => {
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
 }
 
 describe("addCourse", () => {

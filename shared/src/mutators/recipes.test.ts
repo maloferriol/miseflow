@@ -5,11 +5,14 @@ import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipeRevisions, recipes } from "../schema.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
+// A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
+const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
+
 const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
 }
 
 async function revisionsOf(tx: Tx, recipeId: string) {
@@ -25,6 +28,7 @@ describe("createRecipe", () => {
       await mutator.run(tx, mutator.args.parse({ recipeId, revisionId, name: "Velouté", servings: 4 }), {
         ownerId,
         timeZone: "Europe/Paris",
+        now: () => FIXED_NOW,
       });
 
       const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));

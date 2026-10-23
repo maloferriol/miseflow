@@ -12,14 +12,17 @@ import {
   kitchenSettings,
   menus,
   services,
+  stepEvents,
   taskPlacements,
 } from "../schema.ts";
 import { formatFactor, toBatchRead, type BatchRead } from "./batches.ts";
 import { loadBatchRows, loadScaleRows, recipeAndAncestors, reconcileBatches } from "./batch-rows.ts";
 import { diffPlacements, placementId, type StoredPlacement } from "./diff.ts";
 import { deriveScale, type Hours, type PlanRows, type TaskInfo, toPlanningModel } from "./model.ts";
+import { behindTasks } from "./behind.ts";
+import { stepKey, stepStates } from "./progress.ts";
 import { describeConflict, describeUnplaced } from "./reasons.ts";
-import { formatMinuteOfDay, fromTimeColumn, type LocalDate, localParts } from "./time.ts";
+import { formatInstant, formatMinuteOfDay, fromTimeColumn, type LocalDate, localParts } from "./time.ts";
 
 // Re-plan against the database: read a Service's rows, run the pure scheduler, write the diff.
 
@@ -129,6 +132,11 @@ async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = 
   return service;
 }
 
+/** The caller's live Service, row-locked (D6), for a mutator that writes before re-planning it. */
+export function lockService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
+  return findService(tx, ownerId, serviceId, { lock: true });
+}
+
 type LoadedRows = PlanRows & { service: PlanRows["service"] & { menuId: string; timeIsDefault: boolean } };
 
 /** Everything one Service's re-plan reads. Reads only: the implicit Cook's id is the owner's (D1). */
@@ -153,7 +161,26 @@ export async function loadPlanRows(tx: Tx, ownerId: string, service: ServiceRow)
     ...scale,
     batches: await loadBatchRows(tx, service.id),
     previous: stored.filter((p) => p.live).map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned })),
+    progress: await loadProgress(tx, service.id),
   };
+}
+
+// Every Step event of the Service, reduced to each Step's state. Events of a removed Step, Dish
+// or Batch match no Task and are ignored downstream.
+async function loadProgress(tx: Tx, serviceId: string) {
+  const events = await tx
+    .select({ id: stepEvents.id, dishId: stepEvents.dishId, batchId: stepEvents.batchId, stepId: stepEvents.stepId, kind: stepEvents.kind, at: stepEvents.at })
+    .from(stepEvents)
+    .where(eq(stepEvents.serviceId, serviceId));
+  return stepStates(
+    events.map((e) => ({
+      id: e.id,
+      owner: e.dishId !== null ? { kind: "dish" as const, dishId: e.dishId } : { kind: "batch" as const, batchId: e.batchId! },
+      stepId: e.stepId,
+      kind: e.kind,
+      at: e.at,
+    })),
+  );
 }
 
 // Every placement row of the Service, soft-deleted ones too (a Task's row is unique across them).
@@ -279,10 +306,17 @@ export async function replanAffected(tx: Tx, ctx: MutatorContext, scope: ReplanS
 
 export type PlanTask = {
   key: TaskKey;
+  /** What `tickStep` takes. */
+  owner: { kind: "dish"; dishId: string } | { kind: "batch"; batchId: string };
   /** null on a Batch's Task. */
   dish: { id: string; name: string } | null;
   batch: { id: string; label: string } | null;
-  steps: { id: string; text: string }[];
+  /** `doneAt`: the tick's time in the kitchen's zone ("19:40"). */
+  steps: { id: string; text: string; done: boolean; doneAt: string | null }[];
+  /** Every Step is done. */
+  done: boolean;
+  /** Past due with a Step not done (#88 D5); `label`: "<Dish or Batch label> · <Step texts>". */
+  behind: { dueAt: string; dueDate: LocalDate; holdsUp: { key: TaskKey; label: string }[] } | null;
   start: string;
   end: string;
   endDate: LocalDate;
@@ -294,6 +328,10 @@ export type PlanTask = {
 
 export type PlanRead = {
   service: { id: string; menuId: string; date: LocalDate; time: string; timeIsDefault: boolean };
+  /** The kitchen's IANA zone, for "Printed at". */
+  timeZone: string;
+  /** When behind was measured ("Sat 31 Oct 17:35"). */
+  asOf: string;
   /** Any placed Task is approximate. */
   approximate: boolean;
   /** Days in the kitchen's zone, Tasks by start. */
@@ -323,10 +361,10 @@ export type PlanRead = {
 
 /**
  * The Plan as stored (ADR 0010, D9): placed Tasks from `task_placements`, ends and ≈ from the
- * Steps, and Unplaced Tasks derived on read by one scheduler run over the same rows.
+ * Steps, and Unplaced Tasks derived on read by one scheduler run over the same rows. Step
+ * progress and behind (measured at `now`) are derived on read too; the read never writes (#88 D8).
  */
-
-export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZone: string): Promise<PlanRead> {
+export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZone: string, now: Date): Promise<PlanRead> {
   const service = await findService(tx, ownerId, serviceId);
   const rows = await loadPlanRows(tx, ownerId, service);
   const { model, tasks, scale } = toPlanningModel(rows, timeZone);
@@ -346,15 +384,33 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
     return { date: p.date, time: formatMinuteOfDay(p.minuteOfDay) };
   };
 
+  // "Duck breast with beurre blanc · Sear the duck", as the Plan screen's line.
+  const lineOf = (key: TaskKey) => {
+    const d = describe(tasks.get(key)!);
+    return `${d.batch?.label ?? d.dish?.name} · ${d.steps.map((s) => s.text).join(", ")}`;
+  };
+  const behind = behindTasks({ placements: rows.previous, tasks, links: model.links, states: rows.progress, now: now.getTime() / 60_000 });
   const placed: (PlanTask & { at: number; date: LocalDate })[] = [];
   for (const p of rows.previous) {
     const task = tasks.get(p.key);
     if (!task) continue;
     const start = clock(p.start);
     const end = clock(p.start + task.activeMinutes + task.passiveMinutes);
+    const described = describe(task);
+    const steps = described.steps.map((step) => {
+      const state = rows.progress.get(stepKey(task.owner, step.id));
+      const doneAt = state?.done && state.doneAt ? clock(Math.floor(state.doneAt.getTime() / 60_000)).time : null;
+      return { ...step, done: state?.done ?? false, doneAt };
+    });
+    const late = behind.get(p.key);
+    const due = late ? clock(late.dueAt) : null;
     placed.push({
       key: p.key,
-      ...describe(task),
+      owner: task.owner,
+      ...described,
+      steps,
+      done: steps.every((step) => step.done),
+      behind: late ? { dueAt: due!.time, dueDate: due!.date, holdsUp: late.holdsUp.map((key) => ({ key, label: lineOf(key) })) } : null,
       start: start.time,
       end: end.time,
       endDate: end.date,
@@ -412,6 +468,8 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
       time: formatMinuteOfDay(rows.service.time ?? rows.defaultServiceTime),
       timeIsDefault: rows.service.timeIsDefault,
     },
+    timeZone,
+    asOf: formatInstant(now, timeZone),
     approximate: placed.some((t) => t.approximate),
     days,
     batches,

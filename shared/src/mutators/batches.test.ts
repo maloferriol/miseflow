@@ -13,12 +13,15 @@ import { batches, dishes, services, taskPlacements } from "../schema.ts";
 import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 import { lockRecipe } from "./revision.ts";
 
+// A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
+const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
+
 const ownerId = crypto.randomUUID();
 const timeZone = "Europe/Paris";
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone, now: () => FIXED_NOW });
 }
 
 // The stock walkthrough with its Service and Availability, inside the test's transaction.
@@ -78,7 +81,7 @@ describe("Batches in the re-plan", () => {
       const rows = await liveBatches(tx, serviceId);
       const stock = rows.filter((b) => b.subRecipeId === w.recipes.stock);
       expect(stock).toEqual([{ id: await batchId(serviceId, w.recipes.stock!), subRecipeId: w.recipes.stock, deletedAt: null }]);
-      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(plan.batches[0]!.label).toBe(`Chicken stock ${s} ×1.5 · for: Velouté ${s}, Beurre blanc ${s}`);
       expect(plan.batches[1]!.label).toBe(`Beurre blanc ${s} ×1 · for: Duck breast with beurre blanc ${s}`);
     });
@@ -100,7 +103,7 @@ describe("Batches in the re-plan", () => {
       // Stands in for #90's removeDish.
       await tx.update(dishes).set({ deletedAt: sql`now()` }).where(eq(dishes.id, w.dishes.veloute));
       await run(tx, "replanService", { serviceId });
-      expect((await readPlan(tx, ownerId, serviceId, timeZone)).batches.map((b) => b.label)).toEqual([
+      expect((await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW)).batches.map((b) => b.label)).toEqual([
         `Beurre blanc ${s} ×1 · for: Duck breast with beurre blanc ${s}`,
         `Chicken stock ${s} ×0.38 · for: Beurre blanc ${s}`,
       ]);
@@ -235,7 +238,7 @@ describe("setDishScale", () => {
       const { w, s, serviceId } = await stockWalkthrough(tx);
       const rows = await versions(tx, serviceId);
       await run(tx, "setDishScale", { dishId: w.dishes.veloute, scale: { kind: "factor", factor: 3 } });
-      expect((await readPlan(tx, ownerId, serviceId, timeZone)).batches[0]!.label).toBe(
+      expect((await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW)).batches[0]!.label).toBe(
         `Chicken stock ${s} ×2.63 · for: Velouté ${s}, Beurre blanc ${s}`,
       );
       expect(await versions(tx, serviceId)).toEqual(rows);
@@ -251,7 +254,7 @@ describe("Batch conflicts and fixes", () => {
       await run(tx, "setMakeAhead", { target: { kind: "recipe", recipeId: w.recipes.stock! }, revisionId: revisionId(), window: { beforeDays: 3, shelfLifeDays: 1 } });
       const after = await placements(tx, serviceId);
       expect(after).toEqual(before);
-      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(plan.unplaced).toEqual([]);
       const v3 = `dish:${w.dishes.veloute}:${w.steps.V3}`;
       // Only the finished stock (S3, the Batch's last Task) must keep; S1 and S2 feed S3.
@@ -266,7 +269,7 @@ describe("Batch conflicts and fixes", () => {
     await inRollback(async (tx) => {
       const { w, serviceId } = await stockWalkthrough(tx);
       await run(tx, "setMakeAhead", { target: { kind: "recipe", recipeId: w.recipes.stock! }, revisionId: revisionId(), window: { beforeDays: 3, shelfLifeDays: 2 } });
-      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(plan.unplaced).toEqual([]);
       expect(plan.conflicts).toEqual([]);
     });
@@ -286,7 +289,7 @@ describe("Batch conflicts and fixes", () => {
         const moved = p.batchId === stockId ? p.start - 3 * 1440 : p.start;
         expect(after.get(stepId)!.start).toBe(moved);
       }
-      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(plan.unplaced).toEqual([]);
       expect(plan.conflicts.map((c) => [c.steps[0]!.id, c.kind])).toEqual([[w.steps.S3, "ShelfLifeExceeded"]]);
     });
@@ -296,7 +299,7 @@ describe("Batch conflicts and fixes", () => {
     await inRollback(async (tx) => {
       const { w, s, serviceId } = await stockWalkthrough(tx);
       await run(tx, "setYield", { recipeId: w.recipes.stock!, revisionId: revisionId(), yield: null });
-      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(plan.batches[0]).toMatchObject({ factor: 1, scalable: false, fix: "add a yield", label: `Chicken stock ${s} ×1 · for: Velouté ${s}, Beurre blanc ${s}` });
       const menu = await readMenuScale(tx, ownerId, w.menuId);
       const fix = { subRecipe: { id: w.recipes.stock, name: `Chicken stock ${s}` }, text: "add a yield" };

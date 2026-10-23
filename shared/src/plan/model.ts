@@ -11,6 +11,7 @@ import {
   taskKey,
 } from "../scheduler/types.ts";
 import { deriveBatches } from "./batches.ts";
+import { stepKey, type StepState } from "./progress.ts";
 import { addDays, type LocalDate, weekdayOf, zonedMinute } from "./time.ts";
 
 // Pure: the rows a re-plan reads, turned into the scheduler's PlanningModel. No drizzle here.
@@ -60,6 +61,8 @@ export type PlanRows = {
   batches: { batchId: string; subRecipeId: string }[];
   /** The live stored placements, as scheduler input. */
   previous: PreviousPlacement[];
+  /** Each Step's progress by `stepKey`, from the Service's `step_events`; a Step with no events is absent. */
+  progress: Map<string, StepState>;
 };
 
 /** What the Plan read shows for a Task, besides its placement. */
@@ -141,9 +144,14 @@ export function toPlanningModel(
         // 24-hour days (D2).
         keepsMinutes = Math.min(...windows.map((w) => w!.shelfLifeDays)) * 1440;
       }
+      // A done Step's tick, in whole minutes (rounded up), is frozen for the scheduler (#88).
+      const doneAt = (stepId: string) => {
+        const state = rows.progress.get(stepKey(owner, stepId));
+        return state?.done && state.doneAt ? { doneAt: Math.ceil(state.doneAt.getTime() / 60_000) } : {};
+      };
       specs.push({
         owner,
-        steps: steps.map((s) => ({ stepId: s.id, activeMinutes: s.activeMinutes, passiveMinutes: s.passiveMinutes })),
+        steps: steps.map((s) => ({ stepId: s.id, activeMinutes: s.activeMinutes, passiveMinutes: s.passiveMinutes, ...doneAt(s.id) })),
         earliestStart,
         keepsMinutes,
       });

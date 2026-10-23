@@ -19,19 +19,21 @@ export type AppOptions = {
   mutators?: Record<string, Mutator<any>>;
   /** The kitchen's IANA time zone (D2). */
   timeZone: string;
+  /** The server's clock, for Step events and behind (#88). Tests inject a fixed one. */
+  now?: () => Date;
 };
 
-export function createApp({ auth, db, mutators = defaultMutators, timeZone }: AppOptions) {
+export function createApp({ auth, db, mutators = defaultMutators, timeZone, now = () => new Date() }: AppOptions) {
   const app = new Hono<AuthEnv>()
     // Public. Registered before the auth middleware, which guards every other route.
     .get("/health", (c) => c.json({ ok: true }))
     .use("*", requireAuth(auth))
-    .route("/mutate", mutateRoute(db, mutators, timeZone))
+    .route("/mutate", mutateRoute(db, mutators, timeZone, now))
     .route("/menus", menusRoute(db))
     .route("/recipes", recipesRoute(db))
     .route("/ingredients", ingredientsRoute(db))
     .route("/shopping-categories", shoppingCategoriesRoute(db))
-    .route("/services", servicesRoute(db, timeZone))
+    .route("/services", servicesRoute(db, timeZone, now))
     .route("/availability", availabilityRoute(db, timeZone));
 
   app.onError((error, c) => {

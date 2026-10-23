@@ -319,7 +319,7 @@ describe("Planning pass (read and /mutate)", () => {
     expect(recipe.latestRevision).toBe(10);
   });
 
-  it("/mutate addStepDependency across Recipes is 400 INVALID_ARGS and appends nothing", async () => {
+  it("/mutate refuses a dependency across Recipes with 400 INVALID_ARGS and appends nothing", async () => {
     const a = await chickenStock();
     const b = await chickenStock();
     const before = await revisionState(a.recipeId);
@@ -341,7 +341,7 @@ describe("Planning pass (read and /mutate)", () => {
     expect(await revisionState(b.recipeId)).toEqual(beforeB);
   });
 
-  it("/mutate addStepDependency making a cycle is 400 with the cycle in the message", async () => {
+  it("/mutate refuses a dependency making a cycle with 400, the cycle in the message", async () => {
     const r = await chickenStock();
     await ok("addStepDependency", {
       dependencyId: crypto.randomUUID(),

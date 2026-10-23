@@ -147,14 +147,9 @@ describe("GET /ingredients search", () => {
 
   it("never shows another owner's Ingredients", async () => {
     const name = `${crypto.randomUUID().slice(0, 8)} theirs`;
-    await db
-      .insert(ingredients)
-      .values({
-        id: crypto.randomUUID(),
-        ownerId: crypto.randomUUID(),
-        name,
-        source: "own",
-      });
+    const id = crypto.randomUUID();
+    await db.insert(ingredients).values({ id, ownerId: crypto.randomUUID(), name, source: "own" });
+    created.ingredients.push(id);
 
     expect(await search(name)).toEqual([]);
   });

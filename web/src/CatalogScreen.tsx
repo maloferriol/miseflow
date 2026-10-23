@@ -23,6 +23,7 @@ export function CatalogScreen() {
         Search ingredients{" "}
         <input
           type="search"
+          maxLength={200}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

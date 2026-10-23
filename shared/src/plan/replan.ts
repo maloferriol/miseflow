@@ -131,9 +131,9 @@ async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = 
 
 type LoadedRows = PlanRows & { service: PlanRows["service"] & { menuId: string; timeIsDefault: boolean }; snapshots: Map<string, RecipeSnapshot> };
 
-/** Everything one Service's re-plan reads. */
+/** Everything one Service's re-plan reads. Reads only: the implicit Cook's id is the owner's (D1). */
 export async function loadPlanRows(tx: Tx, ownerId: string, service: ServiceRow): Promise<LoadedRows> {
-  const cookId = await ensureCook(tx, ownerId);
+  const cookId = ownerId;
   const defaultTime = await loadDefaultServiceTime(tx, ownerId);
   const availability = await loadAvailability(tx, ownerId);
   const dishRows = await tx
@@ -205,6 +205,8 @@ async function loadStored(tx: Tx, serviceId: string): Promise<StoredPlacement[]>
  */
 export async function replan(tx: Tx, ctx: MutatorContext, serviceId: string) {
   const service = await findService(tx, ctx.ownerId, serviceId, { lock: true });
+  // Placements reference the Cook row.
+  await ensureCook(tx, ctx.ownerId);
   const rows = await loadPlanRows(tx, ctx.ownerId, service);
   const { model, tasks } = toPlanningModel(rows, ctx.timeZone);
   const plan = schedule(model);

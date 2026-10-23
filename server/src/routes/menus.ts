@@ -1,4 +1,4 @@
-import { courses, dishes, menus, recipes } from "@miseflow/shared";
+import { courses, dishes, fromTimeColumn, menus, recipes, services } from "@miseflow/shared";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -9,7 +9,8 @@ import { errorBody } from "../errors.ts";
 const menuIdParam = z.uuid();
 
 // GET /menus: the caller's live Menus, most recently changed first.
-// GET /menus/:menuId: one Menu with its Courses and Dishes, only the caller's live rows.
+// GET /menus/:menuId: one Menu with its Courses and Dishes, only the caller's live rows, and its
+// Service (time as a minute of day, null for the kitchen's default) or null.
 // Chained, so the web app's hc<AppType> client gets the response type (Hono RPC).
 // Source: https://hono.dev/docs/guides/rpc
 export function menusRoute(db: Db) {
@@ -64,10 +65,16 @@ export function menusRoute(db: Db) {
             .orderBy(asc(sql`${dishes.position} collate "C"`))
         : [];
 
+      const [service] = await db
+        .select({ id: services.id, date: services.date, time: services.time })
+        .from(services)
+        .where(and(eq(services.menuId, menu.id), eq(services.ownerId, ownerId), isNull(services.deletedAt)));
+
       return c.json(
         {
           menu: {
             ...menu,
+            service: service ? { ...service, time: service.time === null ? null : fromTimeColumn(service.time) } : null,
             courses: courseRows.map((course) => ({
               ...course,
               dishes: dishRows

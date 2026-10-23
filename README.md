@@ -27,6 +27,8 @@ second checkout resets that user's password: copy the first checkout's `.env` in
 - `npm test` runs every workspace's tests against the local stack.
 - `npm run e2e` runs the Playwright test (`npx playwright install chromium` once).
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
+- `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
+  Service times and Availability. Unset, the server uses its own zone and warns on startup.
 - `npm test`, `npm run e2e` and `npm run setup:local` refuse a `.env` whose `DATABASE_URL`,
   `SUPABASE_URL` or `VITE_SUPABASE_URL` is not on the local stack, so they never touch cloud data.
 

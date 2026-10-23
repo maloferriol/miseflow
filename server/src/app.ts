@@ -5,9 +5,11 @@ import { type AuthConfig, type AuthEnv, requireAuth } from "./auth.ts";
 import type { Db } from "./db.ts";
 import { errorBody } from "./errors.ts";
 import { ingredientsRoute } from "./routes/ingredients.ts";
+import { availabilityRoute } from "./routes/availability.ts";
 import { menusRoute } from "./routes/menus.ts";
 import { mutateRoute } from "./routes/mutate.ts";
 import { recipesRoute } from "./routes/recipes.ts";
+import { servicesRoute } from "./routes/services.ts";
 import { shoppingCategoriesRoute } from "./routes/shopping-categories.ts";
 
 export type AppOptions = {
@@ -28,7 +30,9 @@ export function createApp({ auth, db, mutators = defaultMutators, timeZone }: Ap
     .route("/menus", menusRoute(db))
     .route("/recipes", recipesRoute(db))
     .route("/ingredients", ingredientsRoute(db))
-    .route("/shopping-categories", shoppingCategoriesRoute(db));
+    .route("/shopping-categories", shoppingCategoriesRoute(db))
+    .route("/services", servicesRoute(db, timeZone))
+    .route("/availability", availabilityRoute(db, timeZone));
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse();

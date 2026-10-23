@@ -55,6 +55,7 @@ describe("GET /menus/:menuId", () => {
         id: menuId,
         name: "Saturday dinner",
         guestCount: 6,
+        service: null,
         courses: [
           {
             id: courseId,

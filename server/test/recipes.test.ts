@@ -1,4 +1,4 @@
-import { ingredientAliases, recipeRevisions, recipes } from "@miseflow/shared";
+import { getMutator, ingredientAliases, recipeRevisions, recipes } from "@miseflow/shared";
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadSeed, readSeed } from "../src/seed.ts";
@@ -30,12 +30,35 @@ const seedId = (name: string) =>
 
 // Aliases taught here are soft-deleted afterwards, so the next run's near match is still near.
 const createdAliases: string[] = [];
+// Other owners' Recipes made here, soft-deleted afterwards like the aliases.
+const othersRecipes: string[] = [];
+
+// Another owner's Recipe, made the way the app makes one: with its Revision 1.
+async function theirRecipe() {
+  const recipeId = crypto.randomUUID();
+  const createRecipe = getMutator("createRecipe")!;
+  await db.transaction((tx) =>
+    createRecipe.run(
+      tx,
+      createRecipe.args.parse({ recipeId, revisionId: crypto.randomUUID(), name: "Not yours" }),
+      { ownerId: crypto.randomUUID() },
+    ),
+  );
+  othersRecipes.push(recipeId);
+  return recipeId;
+}
 
 beforeAll(async () => {
   await loadSeed(db);
 });
 
 afterAll(async () => {
+  if (othersRecipes.length) {
+    await db
+      .update(recipes)
+      .set({ deletedAt: sql`now()` })
+      .where(inArray(recipes.id, othersRecipes));
+  }
   if (createdAliases.length) {
     await db
       .update(ingredientAliases)
@@ -135,10 +158,7 @@ describe("GET /recipes/:recipeId", () => {
   });
 
   it("reads another owner's Recipe, a missing one and a bad id as 404", async () => {
-    const theirs = crypto.randomUUID();
-    await db
-      .insert(recipes)
-      .values({ id: theirs, ownerId: crypto.randomUUID(), name: "Not yours" });
+    const theirs = await theirRecipe();
 
     expect((await send("GET", `/recipes/${theirs}`)).status).toBe(404);
     expect((await send("GET", `/recipes/${crypto.randomUUID()}`)).status).toBe(
@@ -151,10 +171,7 @@ describe("GET /recipes/:recipeId", () => {
 describe("GET /recipes", () => {
   it("lists the caller's live Recipes only, by name", async () => {
     const mine = await newRecipe();
-    const theirs = crypto.randomUUID();
-    await db
-      .insert(recipes)
-      .values({ id: theirs, ownerId: crypto.randomUUID(), name: "Not yours" });
+    const theirs = await theirRecipe();
 
     const res = await send("GET", "/recipes");
 

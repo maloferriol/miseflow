@@ -141,6 +141,12 @@ test("won't save an unmatched name until it is linked: a near match adds an alia
       from recipes r
       where r.id = ${recipeId} and a.owner_id = r.owner_id
         and a.name = 'butte' and a.deleted_at is null`;
+    // And the Ingredient this run created, so the test user's catalog doesn't grow every run.
+    await sql`
+      update ingredients i set deleted_at = now()
+      from recipes r
+      where r.id = ${recipeId} and i.owner_id = r.owner_id
+        and i.name = ${fresh} and i.deleted_at is null`;
     await sql.end();
   }
 });
@@ -162,7 +168,10 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
   const dropped = new Set<string>();
   await page.route("**/api/mutate", async (route) => {
     const mutation = route.request().postDataJSON() as { name: string };
-    if (["addStep", "editStep"].includes(mutation.name) && !dropped.has(mutation.name)) {
+    if (
+      ["addStep", "editStep"].includes(mutation.name) &&
+      !dropped.has(mutation.name)
+    ) {
       dropped.add(mutation.name);
       await route.fetch();
       await route.abort("failed");
@@ -188,7 +197,10 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
   expect([...dropped]).toEqual(["addStep", "editStep"]);
 
   const recipeId = new URL(page.url()).searchParams.get("recipe")!;
-  const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
+  const sql = postgres(process.env.DATABASE_URL!, {
+    max: 1,
+    onnotice: () => {},
+  });
   try {
     const [row] = await sql`
       select r.latest_revision, count(v.*)::int as count
@@ -196,7 +208,8 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
       where r.id = ${recipeId} group by r.id`;
     // createRecipe, addStep, editStep: three Revisions, not five.
     expect(row).toMatchObject({ latest_revision: 3, count: 3 });
-    const steps = await sql`select id from steps where recipe_id = ${recipeId} and deleted_at is null`;
+    const steps =
+      await sql`select id from steps where recipe_id = ${recipeId} and deleted_at is null`;
     expect(steps).toHaveLength(1);
   } finally {
     await sql.end();

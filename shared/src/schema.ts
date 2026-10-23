@@ -81,19 +81,24 @@ export const ingredientAliases = pgTable(
 );
 
 // Your changes to a seed Ingredient live here, so the ODbL seed stays untouched.
-export const ingredientOverrides = pgTable("ingredient_overrides", {
-  id,
-  ownerId,
-  ingredientId: uuid("ingredient_id")
-    .notNull()
-    .references(() => ingredients.id),
-  mainUnit: text("main_unit"),
-  shoppingCategoryId: uuid("shopping_category_id").references(
-    () => shoppingCategories.id,
-  ),
-  updatedAt,
-  deletedAt,
-});
+// One row per owner and Ingredient, so an override is an atomic upsert.
+export const ingredientOverrides = pgTable(
+  "ingredient_overrides",
+  {
+    id,
+    ownerId,
+    ingredientId: uuid("ingredient_id")
+      .notNull()
+      .references(() => ingredients.id),
+    mainUnit: text("main_unit"),
+    shoppingCategoryId: uuid("shopping_category_id").references(
+      () => shoppingCategories.id,
+    ),
+    updatedAt,
+    deletedAt,
+  },
+  (t) => [unique("ingredient_overrides_owner_ingredient").on(t.ownerId, t.ingredientId)],
+);
 
 export const conversions = pgTable("conversions", {
   id,

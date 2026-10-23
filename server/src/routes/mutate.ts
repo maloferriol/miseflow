@@ -1,4 +1,11 @@
-import { appliedMutations, getMutator, type Mutator, NotFoundError } from "@miseflow/shared";
+import {
+  appliedMutations,
+  ConflictError,
+  getMutator,
+  InvalidArgsError,
+  type Mutator,
+  NotFoundError,
+} from "@miseflow/shared";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -55,6 +62,10 @@ export function mutateRoute(db: Db, registry: Record<string, Mutator<any>>) {
       });
     } catch (error) {
       if (error instanceof NotFoundError) return c.json(errorBody("NOT_FOUND", error.message), 404);
+      if (error instanceof ConflictError) return c.json(errorBody("CONFLICT", error.message), 409);
+      if (error instanceof InvalidArgsError) {
+        return c.json(errorBody("INVALID_ARGS", error.message), 400);
+      }
       if (isUniqueViolation(error)) {
         return c.json(errorBody("CONFLICT", "A row with one of these ids already exists"), 409);
       }

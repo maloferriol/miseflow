@@ -28,3 +28,19 @@ export class NotFoundError extends Error {
     this.name = "NotFoundError";
   }
 }
+
+/** The write would duplicate something the kitchen already has, such as an Ingredient's name. */
+export class ConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ConflictError";
+  }
+}
+
+/** Args that parse but don't fit the rows they refer to, such as a unit of the wrong kind. */
+export class InvalidArgsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidArgsError";
+  }
+}

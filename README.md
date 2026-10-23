@@ -11,6 +11,7 @@ npm install
 cp .env.example .env        # local-only values, including the test user
 npm run setup:local         # ES256 signing key (git-ignored), starts the stack, seeds the test user
 npm run db:migrate          # drizzle-kit migrate; Supabase CLI migrations are not used
+npm run seed -w server      # the shared Ingredient seed (ODbL); safe to run again
 npm run dev:server          # API on http://localhost:8787
 npm run dev:web             # web app on http://localhost:5173
 ```

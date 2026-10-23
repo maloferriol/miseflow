@@ -11,8 +11,8 @@ import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { Db } from "./db.ts";
 
-// The shared, read-only Ingredient seed (ADR 0003, ADR 0010). Published under ODbL; the
-// notice lives in the file itself.
+// The shared, read-only Ingredient seed (ADR 0003, ADR 0010). Its data licence and
+// notice live in the seed file itself, which covers that file only.
 const seedFile = new URL("../seed/ingredient-seed.json", import.meta.url);
 
 const kind = z.enum(["mass", "volume", "count"]);

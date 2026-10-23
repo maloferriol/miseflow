@@ -33,3 +33,17 @@ export async function mutate(id: string, name: string, args: Record<string, unkn
     throw new Error(body?.error?.message ?? `${name} failed (${res.status})`);
   }
 }
+
+export async function fetchIngredients(q: string) {
+  const res = await api.ingredients.$get({ query: { q, limit: "20" } });
+  if (!res.ok) throw new Error(`Could not search the catalog (${res.status})`);
+  return (await res.json()).ingredients;
+}
+
+export type CatalogIngredient = Awaited<ReturnType<typeof fetchIngredients>>[number];
+
+export async function fetchShoppingCategories() {
+  const res = await api["shopping-categories"].$get();
+  if (!res.ok) throw new Error(`Could not load the Shopping categories (${res.status})`);
+  return (await res.json()).shoppingCategories;
+}

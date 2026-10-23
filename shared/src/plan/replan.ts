@@ -117,12 +117,14 @@ export async function loadDefaultServiceTime(tx: Tx, ownerId: string): Promise<{
 type ServiceRow = { id: string; menuId: string; date: LocalDate; time: string | null };
 
 // The caller's live Service on a live Menu, row-locked when asked (D6); anything else is missing.
+// FOR NO KEY UPDATE: rows that reference the Service (Step events, placements, Batches) take
+// FOR KEY SHARE on it when inserted, which FOR UPDATE would wait on (#88 owner decision 1).
 async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = false } = {}): Promise<ServiceRow> {
   const query = tx
     .select({ id: services.id, menuId: services.menuId, date: services.date, time: services.time })
     .from(services)
     .where(and(eq(services.id, serviceId), eq(services.ownerId, ownerId), isNull(services.deletedAt)));
-  const [service] = lock ? await query.for("update") : await query;
+  const [service] = lock ? await query.for("no key update") : await query;
   if (!service) throw new NotFoundError("Service");
   const [menu] = await tx
     .select({ id: menus.id })
@@ -292,7 +294,7 @@ export async function servicesInScope(tx: Tx, ownerId: string, scope: ReplanScop
 export async function lockServices(tx: Tx, ownerId: string, scope: ReplanScope): Promise<string[]> {
   const ids = await servicesInScope(tx, ownerId, scope);
   if (ids.length)
-    await tx.select({ id: services.id }).from(services).where(inArray(services.id, ids)).orderBy(asc(services.id)).for("update");
+    await tx.select({ id: services.id }).from(services).where(inArray(services.id, ids)).orderBy(asc(services.id)).for("no key update");
   return ids;
 }
 

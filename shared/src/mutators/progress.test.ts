@@ -1,6 +1,8 @@
 import { and, eq, isNull, sql, TransactionRollbackError } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { describe, expect, it } from "vitest";
-import { inRollback } from "../../test/db.ts";
+import { db, inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability } from "../../test/walkthrough.ts";
 import { batchId } from "../plan/batch-rows.ts";
 import { readPlan, type PlanRead } from "../plan/replan.ts";
@@ -283,5 +285,76 @@ describe("Progress in the re-plan", () => {
       await run(tx, "untickStep", tick(serviceId, veloute, w.steps.V2), { now: () => tickAt });
       expect((await readPlan(tx, ownerId, serviceId, timeZone, tickAt)).conflicts).toEqual([]);
     });
+  });
+});
+
+// Two transactions on two connections, ordered with awaits. The rows are committed, so they're
+// soft-deleted afterwards (the Step events stay: the table is append-only). Sources:
+// https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-ROWS (FOR KEY SHARE conflicts
+// with FOR UPDATE only), https://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW
+describe("Service locks", () => {
+  // replanService locks the Service with findService, a week's save with lockServices.
+  const replanIt = (tx: Tx, serviceId: string, owner: string) => run(tx, "replanService", { serviceId }, { owner });
+  const saveWeek = (tx: Tx, _serviceId: string, owner: string) => setWalkthroughAvailability((name, args) => run(tx, name, args, { owner }));
+  it.each([
+    ["re-plans", "saves the week", replanIt, saveWeek],
+    ["saves the week", "saves the week", saveWeek, saveWeek],
+  ] as const)("two writers that each add a Step event of a Service and then lock it don't deadlock: A %s, B %s", async (_a, _b, first, second) => {
+    const owner = crypto.randomUUID();
+    const clients = [0, 1].map(() => postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} }));
+    const [a, b] = clients.map((client) => drizzle({ client }));
+    const as = (tx: Tx) => (name: string, args: Record<string, unknown>) => run(tx, name, args, { owner });
+    const serviceId = crypto.randomUUID();
+    try {
+      let w!: Awaited<ReturnType<typeof buildWalkthrough>>;
+      await db.transaction(async (tx) => {
+        w = await buildWalkthrough(as(tx), owner.slice(0, 8));
+        await setWalkthroughAvailability(as(tx));
+        await as(tx)("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+      });
+      const [{ pid: pidOfA }] = (await clients[0]!`select pg_backend_pid() as pid`) as unknown as { pid: number }[];
+      // Inserting a row that references the Service takes FOR KEY SHARE on it.
+      const addEvent = (tx: Tx) =>
+        tx.insert(stepEvents).values({ id: crypto.randomUUID(), ownerId: owner, serviceId, dishId: w.dishes.veloute, stepId: w.steps.V1, kind: "done", at: FIXED_NOW });
+
+      let addedA!: () => void;
+      const aAdded = new Promise<void>((resolve) => (addedA = resolve));
+      let addedB!: () => void;
+      const bAdded = new Promise<void>((resolve) => (addedB = resolve));
+      let goOn!: () => void;
+      const aWaitsOrIsDone = new Promise<void>((resolve) => (goOn = resolve));
+      let settled = false;
+      // A locks the Service once B holds its key share.
+      const txA = a
+        .transaction(async (tx) => {
+          await addEvent(tx);
+          addedA();
+          await bAdded;
+          await first(tx, serviceId, owner);
+        })
+        .finally(() => (settled = true));
+      // B locks it once A is waiting for, or has, the Service's lock.
+      const txB = b.transaction(async (tx) => {
+        await aAdded;
+        await addEvent(tx);
+        addedB();
+        await aWaitsOrIsDone;
+        await second(tx, serviceId, owner);
+      });
+      await bAdded;
+      while (!settled) {
+        const [row] = (await db.execute(sql`select wait_event_type from pg_stat_activity where pid = ${pidOfA}`)) as unknown as Row[];
+        if (row?.wait_event_type === "Lock") break;
+      }
+      goOn();
+
+      const results = await Promise.allSettled([txA, txB]);
+      expect(results.map((r) => (r.status === "rejected" ? String((r.reason as Error).cause ?? r.reason) : "ok"))).toEqual(["ok", "ok"]);
+    } finally {
+      await db.execute(sql`update services set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await db.execute(sql`update menus set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await db.execute(sql`update recipes set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await Promise.all(clients.map((c) => c.end()));
+    }
   });
 });

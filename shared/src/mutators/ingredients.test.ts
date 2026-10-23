@@ -254,6 +254,32 @@ describe("overrideIngredient", () => {
     });
   });
 
+  it("leaves a field it isn't given alone, and clears one given as null", async () => {
+    await inRollback(async (tx) => {
+      const { ingredientId } = await seedFixture(tx);
+      const other = await seedFixture(tx);
+      const override = (args: Record<string, unknown>) =>
+        run(tx, "overrideIngredient", { overrideId: crypto.randomUUID(), ingredientId, ...args });
+      const current = async () =>
+        (
+          await tx
+            .select({ mainUnit: ingredientOverrides.mainUnit, shoppingCategoryId: ingredientOverrides.shoppingCategoryId })
+            .from(ingredientOverrides)
+            .where(eq(ingredientOverrides.ingredientId, ingredientId))
+        )[0];
+
+      await override({ mainUnit: "kg", shoppingCategoryId: other.categoryId });
+      await override({ mainUnit: "lb" });
+      expect(await current()).toEqual({ mainUnit: "lb", shoppingCategoryId: other.categoryId });
+
+      await override({ mainUnit: null });
+      expect(await current()).toEqual({ mainUnit: null, shoppingCategoryId: other.categoryId });
+
+      await override({ shoppingCategoryId: null });
+      expect(await current()).toEqual({ mainUnit: null, shoppingCategoryId: null });
+    });
+  });
+
   it("updates the kitchen's own Ingredient in place", async () => {
     await inRollback(async (tx) => {
       const { tag, categoryId } = await seedFixture(tx);

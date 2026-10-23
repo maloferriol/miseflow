@@ -2,6 +2,7 @@ import {
   ingredientAliases,
   ingredientOverrides,
   ingredients,
+  shoppingCategories,
 } from "@miseflow/shared";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -163,6 +164,21 @@ describe("GET /ingredients search", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe("INVALID_QUERY");
   });
+
+  it.each(["0", "51", "1.5"])("answers 400 for limit=%s", async (limit) => {
+    const res = await send("GET", `/ingredients?q=salt&limit=${limit}`);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("INVALID_QUERY");
+  });
+
+  it("allows a kitchen alias equal to a seed name, and ranks it first", async () => {
+    const ingredientId = await createOwn(`${crypto.randomUUID().slice(0, 8)} cultured butter`);
+    expect((await addAlias(ingredientId, "Butter")).status).toBe(200);
+
+    const results = await search("butter");
+    expect(results[0]).toMatchObject({ id: ingredientId, exact: true, matchedBy: "alias" });
+    expect(results).toContainEqual(expect.objectContaining({ name: "butter", source: "seed", exact: true }));
+  });
 });
 
 describe("overrideIngredient", () => {
@@ -252,5 +268,31 @@ describe("seed rows", () => {
     });
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe("CONFLICT");
+  });
+});
+
+describe("GET /shopping-categories", () => {
+  it("lists the seed categories in order, then the caller's own, and hides other owners' and deleted ones", async () => {
+    const token = await getToken();
+    const ownerId = JSON.parse(Buffer.from(token.split(".")[1]!, "base64url").toString()).sub as string;
+    const tag = crypto.randomUUID().slice(0, 8);
+    const rows = [
+      { id: crypto.randomUUID(), ownerId, name: `${tag} mine`, position: "b0" },
+      { id: crypto.randomUUID(), ownerId, name: `${tag} deleted`, position: "b1", deletedAt: new Date() },
+      { id: crypto.randomUUID(), ownerId: crypto.randomUUID(), name: `${tag} theirs`, position: "b2" },
+    ];
+    await db.insert(shoppingCategories).values(rows);
+    try {
+      const res = await send("GET", "/shopping-categories");
+
+      expect(res.status).toBe(200);
+      const names = ((await res.json()).shoppingCategories as { name: string }[]).map((c) => c.name);
+      expect(names).toEqual([...seed.shoppingCategories.map((c) => c.name), `${tag} mine`]);
+    } finally {
+      await db
+        .update(shoppingCategories)
+        .set({ deletedAt: sql`now()` })
+        .where(inArray(shoppingCategories.id, rows.map((row) => row.id)));
+    }
   });
 });

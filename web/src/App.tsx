@@ -1,21 +1,25 @@
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import { AvailabilityScreen } from "./AvailabilityScreen.tsx";
 import { CatalogScreen } from "./CatalogScreen.tsx";
 import { MenuScreen } from "./MenuScreen.tsx";
+import { PlanScreen } from "./PlanScreen.tsx";
 import { RecipeScreen } from "./RecipeScreen.tsx";
 import { RecipesScreen } from "./RecipesScreen.tsx";
 import { SignIn } from "./SignIn.tsx";
 import { supabase } from "./supabase.ts";
 
-type View = "menu" | "catalog" | "recipes" | "recipe";
-const VIEWS: View[] = ["menu", "catalog", "recipes", "recipe"];
+type View = "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan";
+const VIEWS: View[] = ["menu", "catalog", "recipes", "recipe", "availability", "plan"];
 
-// The open view lives in the URL (?view=catalog, ?view=recipe&recipe=<id>) next to ?menu=,
-// so a reload keeps them.
+// The open view lives in the URL (?view=catalog, ?view=recipe&recipe=<id>,
+// ?view=plan&service=<id>) next to ?menu=, so a reload keeps them.
 function viewFromUrl(): View {
   const params = new URLSearchParams(window.location.search);
   const view = VIEWS.find((v) => v === params.get("view")) ?? "menu";
-  return view === "recipe" && !params.get("recipe") ? "recipes" : view;
+  if (view === "recipe" && !params.get("recipe")) return "recipes";
+  if (view === "plan" && !params.get("service")) return "menu";
+  return view;
 }
 
 export function App() {
@@ -29,6 +33,7 @@ export function App() {
   }, []);
 
   const [recipeId, setRecipeId] = useState(() => new URLSearchParams(window.location.search).get("recipe"));
+  const serviceId = new URLSearchParams(window.location.search).get("service");
 
   function open(next: View, nextRecipeId?: string) {
     const params = new URLSearchParams(window.location.search);
@@ -36,6 +41,7 @@ export function App() {
     else params.set("view", next);
     if (nextRecipeId) params.set("recipe", nextRecipeId);
     else params.delete("recipe");
+    params.delete("service");
     setRecipeId(nextRecipeId ?? null);
     const search = params.toString();
     window.history.replaceState(null, "", search ? `?${search}` : window.location.pathname);
@@ -60,9 +66,16 @@ export function App() {
             <button type="button" aria-pressed={view === "catalog"} onClick={() => open("catalog")}>
               Catalog
             </button>
+            <button type="button" aria-pressed={view === "availability"} onClick={() => open("availability")}>
+              Availability
+            </button>
           </nav>
           {view === "catalog" ? (
             <CatalogScreen />
+          ) : view === "availability" ? (
+            <AvailabilityScreen />
+          ) : view === "plan" && serviceId ? (
+            <PlanScreen key={serviceId} serviceId={serviceId} />
           ) : view === "recipes" ? (
             <RecipesScreen onOpen={(id) => open("recipe", id)} />
           ) : view === "recipe" && recipeId ? (

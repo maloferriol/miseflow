@@ -18,6 +18,8 @@ export default defineConfig({
     {
       command: "npm run start -w server",
       url: "http://localhost:8787/health",
+      // The e2e's Plan days are Paris dates, whatever the machine's zone.
+      env: { KITCHEN_TIME_ZONE: "Europe/Paris" },
       reuseExistingServer: !process.env.CI,
     },
     {

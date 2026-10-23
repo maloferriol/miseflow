@@ -11,3 +11,8 @@ export * from "./recipe/snapshot.ts";
 export * from "./recipe/derive.ts";
 export * from "./recipe/planning.ts";
 export * from "./recipe/subrecipes.ts";
+export * from "./plan/time.ts";
+export * from "./plan/model.ts";
+export * from "./plan/diff.ts";
+export * from "./plan/reasons.ts";
+export * from "./plan/replan.ts";

@@ -5,6 +5,7 @@ import {
   makeAheadSchema,
   stepPlainText,
 } from "../recipe/planning.ts";
+import { replanAffected } from "../plan/replan.ts";
 import { loadRecipeSnapshot, type RecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipes, stepDependencies, steps } from "../schema.ts";
 import {
@@ -17,7 +18,7 @@ import {
 import { appendRevision, lockRecipe, lockStep } from "./revision.ts";
 
 // The Planning pass (spec §2): what the scheduler needs, each change one named mutation that
-// appends one Revision. #86 adds its re-plan call here.
+// appends one Revision and re-plans every Service that uses the Recipe (#86).
 
 // Whole minutes, up to a week. Null: not set; both null is "missing a duration".
 const minutes = z.int().min(0).max(10080).nullable();
@@ -30,7 +31,8 @@ export const setStepTimes = defineMutator({
     activeMinutes: minutes,
     passiveMinutes: minutes,
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const step = await lockStep(tx, ownerId, args.stepId);
     await tx
       .update(steps)
@@ -41,6 +43,7 @@ export const setStepTimes = defineMutator({
       })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: step.recipeId });
   },
 });
 
@@ -55,7 +58,8 @@ export const setMakeAhead = defineMutator({
     revisionId: z.uuid(),
     window: makeAheadSchema.nullable(),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const values = {
       makeAheadBeforeDays: args.window?.beforeDays ?? null,
       shelfLifeDays: args.window?.shelfLifeDays ?? null,
@@ -74,6 +78,7 @@ export const setMakeAhead = defineMutator({
         .where(eq(steps.id, args.target.stepId));
     }
     await appendRevision(tx, ownerId, recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId });
   },
 });
 
@@ -84,7 +89,8 @@ export const setGroupWithPrevious = defineMutator({
     revisionId: z.uuid(),
     value: z.boolean(),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const step = await lockStep(tx, ownerId, args.stepId);
     if (args.value) {
       const snapshot = await loadRecipeSnapshot(tx, ownerId, step.recipeId);
@@ -102,6 +108,7 @@ export const setGroupWithPrevious = defineMutator({
       .set({ groupWithPrevious: args.value, updatedAt: sql`now()` })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: step.recipeId });
   },
 });
 
@@ -114,7 +121,8 @@ export const addStepDependency = defineMutator({
     beforeStepId: z.uuid(),
     afterStepId: z.uuid(),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     // Compared before any lock, so only the one Recipe is ever locked.
     const [before, after] = await liveSteps(tx, ownerId, args);
     if (before.recipeId !== after.recipeId)
@@ -155,13 +163,15 @@ export const addStepDependency = defineMutator({
       .returning({ id: stepDependencies.id });
     if (!written.length) throw new ConflictError("These Steps are already linked");
     await appendRevision(tx, ownerId, recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId });
   },
 });
 
 export const removeStepDependency = defineMutator({
   name: "removeStepDependency",
   args: z.strictObject({ dependencyId: z.uuid(), revisionId: z.uuid() }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const find = () =>
       tx
         .select({ recipeId: stepDependencies.recipeId })
@@ -182,6 +192,7 @@ export const removeStepDependency = defineMutator({
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
       .where(eq(stepDependencies.id, args.dependencyId));
     await appendRevision(tx, ownerId, dependency.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: dependency.recipeId });
   },
 });
 

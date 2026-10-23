@@ -47,6 +47,7 @@ describe("createMenu", () => {
       const mutator = getMutator("createMenu")!;
       await mutator.run(tx, mutator.args.parse({ menuId, name: "Saturday dinner", guestCount: 6 }), {
         ownerId,
+        timeZone: "Europe/Paris",
       });
       const rows = await tx.select().from(menus).where(eq(menus.id, menuId));
       expect(rows).toMatchObject([{ name: "Saturday dinner", guestCount: 6, ownerId }]);
@@ -56,7 +57,7 @@ describe("createMenu", () => {
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
 }
 
 describe("addCourse", () => {

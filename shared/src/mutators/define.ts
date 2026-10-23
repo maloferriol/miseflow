@@ -8,6 +8,8 @@ export type Tx = PgDatabase<PgQueryResultHKT>;
 export type MutatorContext = {
   /** The signed-in user's id (the token's `sub`), stamped on every row written. */
   ownerId: string;
+  /** The kitchen's IANA time zone (KITCHEN_TIME_ZONE), for Service times and Availability. */
+  timeZone: string;
 };
 
 export type Mutator<Args = unknown> = {

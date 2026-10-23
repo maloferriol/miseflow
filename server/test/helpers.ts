@@ -14,7 +14,7 @@ export const issuer = authConfigFromEnv().issuer;
 export const db = createDb(databaseUrlFromEnv());
 
 export function testApp(options: Partial<AppOptions> = {}) {
-  return createApp({ auth: authConfigFromEnv(), db, ...options });
+  return createApp({ auth: authConfigFromEnv(), db, timeZone: "Europe/Paris", ...options });
 }
 
 let token: Promise<string> | undefined;

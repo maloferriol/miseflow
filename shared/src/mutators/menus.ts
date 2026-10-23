@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { replanAffected } from "../plan/replan.ts";
 import { courses, dishes, menus, recipes } from "../schema.ts";
 import { defineMutator, NotFoundError, type Tx } from "./define.ts";
 import { positionAfter } from "./position.ts";
@@ -48,7 +49,8 @@ export const addCourse = defineMutator({
 export const addDish = defineMutator({
   name: "addDish",
   args: z.strictObject({ dishId: z.uuid(), courseId: z.uuid(), recipeId: z.uuid() }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     await requireOwned(tx, courses, args.courseId, ownerId, "Course", { lock: true });
     await requireOwned(tx, recipes, args.recipeId, ownerId, "Recipe");
     const [last] = await tx
@@ -64,6 +66,8 @@ export const addDish = defineMutator({
       recipeId: args.recipeId,
       position: positionAfter(last?.position ?? null),
     });
+    const [course] = await tx.select({ menuId: courses.menuId }).from(courses).where(eq(courses.id, args.courseId));
+    await replanAffected(tx, ctx, { menuId: course!.menuId });
   },
 });
 

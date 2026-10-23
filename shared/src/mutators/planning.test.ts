@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
-import { effectiveMakeAhead } from "../recipe/planning.ts";
+import { effectiveMakeAhead, stepGroups } from "../recipe/planning.ts";
 import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
-import { recipeRevisions, recipes, steps } from "../schema.ts";
-import { getMutator, NotFoundError, type Tx } from "./registry.ts";
+import { recipeRevisions, recipes, stepDependencies, steps } from "../schema.ts";
+import { ConflictError, getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 
 const ownerId = crypto.randomUUID();
 
@@ -192,6 +192,128 @@ describe("setStepTimes", () => {
           crypto.randomUUID(),
         ),
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+});
+
+// Runs a mutation that should be refused in a savepoint, so the checks after it can still run.
+async function refused(tx: Tx, name: string, args: unknown, error: new (...a: any[]) => Error) {
+  let thrown: unknown;
+  await tx.transaction(async (sp) => run(sp, name, args)).catch((e) => (thrown = e));
+  expect(thrown).toBeInstanceOf(error);
+  return thrown as Error;
+}
+
+const link = (beforeStepId: string, afterStepId: string) => ({
+  dependencyId: crypto.randomUUID(),
+  revisionId: crypto.randomUUID(),
+  beforeStepId,
+  afterStepId,
+});
+
+describe("setGroupWithPrevious", () => {
+  it("refuses grouping the first Step, and appends nothing", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await chickenStock(tx);
+      const error = await refused(
+        tx,
+        "setGroupWithPrevious",
+        { stepId: stepIds[0], revisionId: crypto.randomUUID(), value: true },
+        InvalidArgsError,
+      );
+      expect(error.message).toBe("The first Step has no previous Step to group with");
+      expect(await revisions(tx, recipeId)).toMatchObject({ latest: 4, count: 4 });
+    });
+  });
+
+  it("grouping Step 2 makes Step 1 the Task's key Step", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await chickenStock(tx);
+      await run(tx, "setGroupWithPrevious", { stepId: stepIds[1], revisionId: crypto.randomUUID(), value: true });
+      const snapshot = await loadRecipeSnapshot(tx, ownerId, recipeId);
+      expect(stepGroups(snapshot.steps)).toEqual([
+        { keyStepId: stepIds[0], stepIds: [stepIds[0], stepIds[1]] },
+        { keyStepId: stepIds[2], stepIds: [stepIds[2]] },
+      ]);
+    });
+  });
+
+  it("refuses a grouping that makes a cycle with the links", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await chickenStock(tx);
+      const [one, two, three] = stepIds;
+      await run(tx, "addStepDependency", link(one, three));
+      await run(tx, "addStepDependency", link(three, two));
+      await refused(tx, "setGroupWithPrevious", { stepId: two, revisionId: crypto.randomUUID(), value: true }, InvalidArgsError);
+      expect(await revisions(tx, recipeId)).toMatchObject({ latest: 6, count: 6 });
+    });
+  });
+});
+
+describe("addStepDependency", () => {
+  it("refuses a dependency between Steps of different Recipes, and appends nothing", async () => {
+    await inRollback(async (tx) => {
+      const stock = await chickenStock(tx);
+      const other = await chickenStock(tx);
+      const error = await refused(tx, "addStepDependency", link(other.stepIds[0], stock.stepIds[1]), InvalidArgsError);
+      expect(error.message).toBe("A dependency links Steps of one Recipe");
+      expect(await revisions(tx, stock.recipeId)).toMatchObject({ latest: 4, count: 4 });
+      expect(await revisions(tx, other.recipeId)).toMatchObject({ latest: 4, count: 4 });
+    });
+  });
+
+  it("refuses a dependency that makes a cycle, naming its Steps, and appends nothing", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await chickenStock(tx);
+      const [one, two, three] = stepIds;
+      await refused(tx, "addStepDependency", link(one, one), InvalidArgsError);
+      await run(tx, "addStepDependency", link(one, two));
+      await refused(tx, "addStepDependency", link(two, one), InvalidArgsError);
+      await run(tx, "addStepDependency", link(two, three));
+      const error = await refused(tx, "addStepDependency", link(three, one), InvalidArgsError);
+      expect(error.message).toBe(
+        "This would make a cycle: Roast the bones → Simmer for four hours → Strain and cool → Roast the bones",
+      );
+      expect(await revisions(tx, recipeId)).toMatchObject({ latest: 6, count: 6 });
+    });
+  });
+
+  it("refuses a live duplicate with ConflictError", async () => {
+    await inRollback(async (tx) => {
+      const { stepIds } = await chickenStock(tx);
+      await run(tx, "addStepDependency", link(stepIds[0], stepIds[1]));
+      await refused(tx, "addStepDependency", link(stepIds[0], stepIds[1]), ConflictError);
+    });
+  });
+
+  it("re-adding a removed pair brings its row back", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await chickenStock(tx);
+      const first = link(stepIds[0], stepIds[2]);
+      await run(tx, "addStepDependency", first);
+      await run(tx, "removeStepDependency", { dependencyId: first.dependencyId, revisionId: crypto.randomUUID() });
+      expect((await loadRecipeSnapshot(tx, ownerId, recipeId)).dependencies).toEqual([]);
+
+      await run(tx, "addStepDependency", link(stepIds[0], stepIds[2]));
+      const rows = await tx.select().from(stepDependencies).where(eq(stepDependencies.recipeId, recipeId));
+      expect(rows).toEqual([expect.objectContaining({ id: first.dependencyId, deletedAt: null })]);
+      expect((await loadRecipeSnapshot(tx, ownerId, recipeId)).dependencies).toEqual([
+        { id: first.dependencyId, beforeStepId: stepIds[0], afterStepId: stepIds[2] },
+      ]);
+    });
+  });
+});
+
+describe("removeStepDependency", () => {
+  it("refuses an unknown dependency with NotFoundError", async () => {
+    await inRollback(async (tx) => {
+      await chickenStock(tx);
+      await refused(
+        tx,
+        "removeStepDependency",
+        { dependencyId: crypto.randomUUID(), revisionId: crypto.randomUUID() },
+        NotFoundError,
+      );
     });
   });
 });

@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchRecipe, mutate } from "./api.ts";
+import { ExtractToSubRecipe } from "./ExtractToSubRecipe.tsx";
 import { useIntent } from "./intent.ts";
 import { PlanningPass } from "./PlanningPass.tsx";
 import { amountText, StepEditor } from "./StepEditor.tsx";
+import { YieldField } from "./YieldField.tsx";
 
 type Mode = "write" | "plan";
 
@@ -20,6 +22,8 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
     queryFn: () => fetchRecipe(recipeId),
   });
   const [adding, setAdding] = useState(false);
+  // Steps ticked for Extract to sub-recipe.
+  const [selected, setSelected] = useState<string[]>([]);
   const [mode, setMode] = useState(modeFromUrl);
   const switchMode = (next: Mode) => {
     const params = new URLSearchParams(window.location.search);
@@ -105,6 +109,7 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
         </button>
         {editRecipe.error && <p role="alert">{editRecipe.error.message}</p>}
       </form>
+      <YieldField recipe={recipe.data} />
 
       <div role="group" aria-label="Mode">
         <button type="button" aria-pressed={mode === "write"} onClick={() => switchMode("write")}>
@@ -123,6 +128,16 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
           <ol aria-label="Steps">
             {steps.map((step, index) => (
               <li key={step.id}>
+                <input
+                  type="checkbox"
+                  aria-label={`Select Step ${index + 1}`}
+                  checked={selected.includes(step.id)}
+                  onChange={(e) =>
+                    setSelected((prev) =>
+                      e.target.checked ? [...prev, step.id] : prev.filter((id) => id !== step.id),
+                    )
+                  }
+                />
                 <StepEditor recipeId={recipeId} step={step} />
                 <button
                   type="button"
@@ -165,6 +180,12 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
               Add Step
             </button>
           )}
+          <ExtractToSubRecipe
+            recipeId={recipeId}
+            stepIds={steps.map((s) => s.id)}
+            selected={selected.filter((id) => steps.some((s) => s.id === id))}
+            onDone={() => setSelected([])}
+          />
           {(moveStep.error ?? removeStep.error) && (
             <p role="alert">{(moveStep.error ?? removeStep.error)!.message}</p>
           )}

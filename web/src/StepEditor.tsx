@@ -1,4 +1,4 @@
-import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
+import { normaliseName, searchCatalog } from "@miseflow/shared/src/catalog/match.ts";
 import { UNITS_BY_KIND } from "@miseflow/shared/src/catalog/units.ts";
 import { parseQuantity } from "@miseflow/shared/src/recipe/quantity.ts";
 import {
@@ -13,15 +13,20 @@ import { flushSync } from "react-dom";
 import {
   type CatalogIngredient,
   fetchIngredients,
+  fetchRecipes,
   fetchShoppingCategories,
   mutate,
   type RecipeLine,
+  type RecipeListItem,
   type RecipeStep,
 } from "./api.ts";
 import { IngredientPicker } from "./IngredientPicker.tsx";
 import { useIntent } from "./intent.ts";
 
 type Ref = Extract<StepTextPart, { type: "ref" }>;
+
+/** What a line links to: one Ingredient, or one Recipe used as a sub-recipe (#84). */
+type Target = { ingredientId: string } | { subRecipeId: string };
 
 /** "2", "30 g", "2-3 clove", "a pinch". */
 export function amountText(
@@ -40,11 +45,15 @@ function unknownUnit(unit: string | null) {
 }
 
 function chipText(line: RecipeLine) {
+  // A line whose sub-recipe MiseFlow can't find still shows, and editing it treats it as unlinked.
+  if (line.missingSubRecipe) return `Missing sub-recipe: ${line.wording ?? ""}`;
   return [
     `${line.wording ?? ""} ${amountText(line)}`.trim(),
     line.preparation,
     line.fixedQuantity && "fixed",
     unknownUnit(line.unit) && "unknown unit",
+    line.subRecipe && "sub-recipe",
+    line.subRecipe && line.subRecipe.yield === null && "needs a yield",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -119,11 +128,16 @@ function StepForm({
   );
   // The "@" the picker replaces, while it is open.
   const [pickerAt, setPickerAt] = useState<number | null>(null);
-  // Ingredient ids by normalised ref name: picked, matched exactly, aliased or created.
-  const [links, setLinks] = useState(() => new Map<string, string>());
-  // Ref names that found no exact match on the last Save, with their near matches.
+  // Targets by normalised ref name: picked, matched exactly, aliased or created.
+  const [links, setLinks] = useState(() => new Map<string, Target>());
+  // Ref names that found no single exact match on the last Save, with their near matches.
   const [unlinked, setUnlinked] = useState<
-    { name: string; amount: string; near: CatalogIngredient[] }[]
+    {
+      name: string;
+      amount: string;
+      near: CatalogIngredient[];
+      nearRecipes: RecipeListItem[];
+    }[]
   >([]);
   const refs = parseStepText(text).filter((p): p is Ref => p.type === "ref");
   const pending = unlinked.filter(
@@ -131,8 +145,8 @@ function StepForm({
       !links.has(normaliseName(u.name)) &&
       refs.some((r) => normaliseName(r.name) === normaliseName(u.name)),
   );
-  const link = (name: string, ingredientId: string) =>
-    setLinks((prev) => new Map(prev).set(normaliseName(name), ingredientId));
+  const link = (name: string, target: Target) =>
+    setLinks((prev) => new Map(prev).set(normaliseName(name), target));
 
   // One set of ids per intended save of this text, so a retry replays it (see useIntent).
   const intent = useIntent();
@@ -142,41 +156,56 @@ function StepForm({
       const id = (name: string) => intent.id(text, name);
       // (1) A ref keeps an earlier line with the same wording, in order: its id and its link.
       const unused = [...(step?.lines ?? [])];
-      const resolved = new Map<
-        Ref,
-        { lineId: string; ingredientId?: string }
-      >();
+      const resolved = new Map<Ref, { lineId: string; target?: Target }>();
       for (const [ordinal, part] of parts.entries()) {
         if (part.type !== "ref") continue;
         const index = unused.findIndex(
           (l) => normaliseName(l.wording ?? "") === normaliseName(part.name),
         );
         const kept = index >= 0 ? unused.splice(index, 1)[0] : undefined;
+        // A Missing sub-recipe (no live target) counts as unlinked (Q9).
+        const keptTarget: Target | undefined = kept?.ingredient
+          ? { ingredientId: kept.ingredient.id }
+          : kept?.subRecipe
+            ? { subRecipeId: kept.subRecipe.id }
+            : undefined;
         resolved.set(part, {
           lineId: kept?.id ?? id(`line ${ordinal}`),
-          ingredientId:
-            kept?.ingredient?.id ?? links.get(normaliseName(part.name)),
+          target: keptTarget ?? links.get(normaliseName(part.name)),
         });
       }
-      // (2) An exact name or alias links on its own; (3) anything else waits for the cook.
+      // (2) One exact Ingredient (name or alias) and no exact Recipe, or one exact Recipe and no
+      // exact Ingredient, links on its own (Q5); (3) anything else waits for the cook.
       const found = new Map(links);
       const missing: typeof unlinked = [];
+      let recipeEntries: (RecipeListItem & { source: "own"; aliases: [] })[] | undefined;
       for (const [ref, line] of resolved) {
         const key = normaliseName(ref.name);
         if (
-          line.ingredientId ||
+          line.target ||
           found.has(key) ||
           missing.some((m) => normaliseName(m.name) === key)
         )
           continue;
+        recipeEntries ??= (
+          await queryClient.fetchQuery({ queryKey: ["recipes"], queryFn: fetchRecipes })
+        )
+          .filter((r) => r.id !== recipeId)
+          .map((r) => ({ ...r, source: "own" as const, aliases: [] as [] }));
         const results = await fetchIngredients(ref.name);
         const exact = results.find((r) => r.exact);
-        if (exact) found.set(key, exact.id);
+        const recipeHits = searchCatalog(recipeEntries, ref.name, 5);
+        const exactRecipes = recipeHits.filter((h) => h.exact);
+        if (exact && !exactRecipes.length) found.set(key, { ingredientId: exact.id });
+        else if (!exact && exactRecipes.length === 1)
+          found.set(key, { subRecipeId: exactRecipes[0]!.entry.id });
         else
           missing.push({
             name: ref.name,
             amount: ref.amount,
-            near: results.filter((r) => !r.exact).slice(0, 5),
+            // When several match exactly, every exact one is offered too.
+            near: results.filter((r) => !r.exact || exactRecipes.length > 0).slice(0, 5),
+            nearRecipes: recipeHits.map((h) => h.entry),
           });
       }
       setLinks(found);
@@ -190,7 +219,7 @@ function StepForm({
       );
       const lines = [...resolved].map(([ref, line]) => ({
         lineId: line.lineId,
-        ingredientId: line.ingredientId ?? found.get(normaliseName(ref.name))!,
+        ...(line.target ?? found.get(normaliseName(ref.name))!),
         amount: ref.amount,
         wording: ref.name,
         preparation: ref.preparation,
@@ -239,8 +268,17 @@ function StepForm({
   function onPick(ingredient: CatalogIngredient) {
     // A kitchen's own name may hold characters the shorthand can't ("Pepper (black)").
     const wording = refName(ingredient.name) || "ingredient";
-    link(wording, ingredient.id);
+    link(wording, { ingredientId: ingredient.id });
     backToText(`${wording}{}`, 1);
+  }
+
+  // A Recipe with a yield prefills its unit, the caret before the "%" (Q4).
+  function onPickRecipe(recipe: RecipeListItem) {
+    const wording = refName(recipe.name) || "sub-recipe";
+    link(wording, { subRecipeId: recipe.id });
+    const unit = recipe.yield?.unit;
+    if (unit) backToText(`${wording}{%${unit}}`, unit.length + 2);
+    else backToText(`${wording}{}`, 1);
   }
 
   return (
@@ -263,13 +301,15 @@ function StepForm({
       </label>
       <p>
         <small>
-          Type @ to add an Ingredient: @name{"{"}qty%unit{"}"}(preparation); "="
-          fixes a quantity.
+          Type @ to add an Ingredient or a sub-recipe: @name{"{"}qty%unit{"}"}(preparation);
+          "=" fixes a quantity.
         </small>
       </p>
       {pickerAt !== null && (
         <IngredientPicker
+          recipeId={recipeId}
           onPick={onPick}
+          onPickRecipe={onPickRecipe}
           onClose={(typed) => backToText(typed, 0)}
         />
       )}
@@ -277,7 +317,7 @@ function StepForm({
         <LinkChoice
           key={normaliseName(u.name)}
           {...u}
-          onLinked={(id) => link(u.name, id)}
+          onLinked={(target) => link(u.name, target)}
         />
       ))}
       <button type="submit" disabled={save.isPending || pending.length > 0}>
@@ -302,18 +342,24 @@ function kindFor(amount: string) {
   return "mass";
 }
 
-// "Link 'X'": pick a near match, which teaches X as its alias, or create X as an Ingredient.
-// Each is its own mutation, sent before the Step save (Decision 5).
+// "Name" as a new Recipe's name: "chicken stock" → "Chicken stock".
+const capitalised = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
+
+// "Link 'X'": pick a near match, which teaches X as its alias, use one of the kitchen's Recipes,
+// or create X as an Ingredient or as a sub-recipe. Each is its own mutation, sent before the Step
+// save (Decision 5, #84 Q1).
 function LinkChoice({
   name,
   amount,
   near,
+  nearRecipes,
   onLinked,
 }: {
   name: string;
   amount: string;
   near: CatalogIngredient[];
-  onLinked: (ingredientId: string) => void;
+  nearRecipes: RecipeListItem[];
+  onLinked: (target: Target) => void;
 }) {
   const queryClient = useQueryClient();
   const categories = useQuery({
@@ -322,6 +368,8 @@ function LinkChoice({
   });
   const addAlias = useMutation({
     mutationFn: async (ingredient: CatalogIngredient) => {
+      // An exact match, offered because a Recipe matches too, needs no alias.
+      if (ingredient.exact) return ingredient.id;
       await mutate(crypto.randomUUID(), "addAlias", {
         aliasId: crypto.randomUUID(),
         ingredientId: ingredient.id,
@@ -331,7 +379,7 @@ function LinkChoice({
     },
     onSuccess: async (id) => {
       await queryClient.invalidateQueries({ queryKey: ["ingredients"] });
-      onLinked(id);
+      onLinked({ ingredientId: id });
     },
   });
   const createIngredient = useMutation({
@@ -349,12 +397,28 @@ function LinkChoice({
     },
     onSuccess: async (id) => {
       await queryClient.invalidateQueries({ queryKey: ["ingredients"] });
-      onLinked(id);
+      onLinked({ ingredientId: id });
+    },
+  });
+  const createSubRecipe = useMutation({
+    mutationFn: async (recipeName: string) => {
+      const subRecipeId = crypto.randomUUID();
+      await mutate(crypto.randomUUID(), "createSubRecipe", {
+        recipeId: subRecipeId,
+        revisionId: crypto.randomUUID(),
+        name: recipeName,
+      });
+      return subRecipeId;
+    },
+    onSuccess: async (id) => {
+      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
+      onLinked({ subRecipeId: id });
     },
   });
 
   // Inside the Step's form, so these are plain fields rather than a nested <form>.
   const [newName, setNewName] = useState(name);
+  const [subRecipeName, setSubRecipeName] = useState(() => capitalised(name));
   const [kind, setKind] = useState(() => kindFor(amount));
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const chosenCategory = categoryId ?? categories.data?.find((c) => c.name === "Other")?.id;
@@ -368,6 +432,17 @@ function LinkChoice({
             <li key={ingredient.id}>
               <button type="button" disabled={addAlias.isPending} onClick={() => addAlias.mutate(ingredient)}>
                 Use {ingredient.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {nearRecipes.length > 0 && (
+        <ul aria-label={`Recipes matching ${name}`}>
+          {nearRecipes.map((recipe) => (
+            <li key={recipe.id}>
+              <button type="button" onClick={() => onLinked({ subRecipeId: recipe.id })}>
+                Use Recipe {recipe.name}
               </button>
             </li>
           ))}
@@ -410,9 +485,27 @@ function LinkChoice({
       >
         Create Ingredient
       </button>
+      <label>
+        Name for the sub-recipe{" "}
+        <input
+          value={subRecipeName}
+          maxLength={200}
+          onChange={(e) => setSubRecipeName(e.target.value)}
+        />
+      </label>
+      <button
+        type="button"
+        disabled={createSubRecipe.isPending}
+        onClick={() => createSubRecipe.mutate(subRecipeName.trim() || capitalised(name))}
+      >
+        Create sub-recipe
+      </button>
       {addAlias.error && <p role="alert">{addAlias.error.message}</p>}
       {createIngredient.error && (
         <p role="alert">{createIngredient.error.message}</p>
+      )}
+      {createSubRecipe.error && (
+        <p role="alert">{createSubRecipe.error.message}</p>
       )}
     </fieldset>
   );

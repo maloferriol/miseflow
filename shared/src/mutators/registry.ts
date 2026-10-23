@@ -1,6 +1,7 @@
 import type { Mutator } from "./define.ts";
 import { addAlias, createIngredient, overrideIngredient } from "./ingredients.ts";
 import { addCourse, addDish, createMenu } from "./menus.ts";
+import { setMakeAhead, setStepTimes } from "./planning.ts";
 import { createRecipe, editRecipe } from "./recipes.ts";
 import { addStep, editStep, moveStep, removeStep } from "./steps.ts";
 
@@ -17,6 +18,8 @@ export const mutators: Record<string, Mutator<any>> = {
   editStep,
   moveStep,
   removeStep,
+  setStepTimes,
+  setMakeAhead,
   addDish,
   createIngredient,
   addAlias,

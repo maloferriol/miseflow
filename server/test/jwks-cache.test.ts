@@ -3,6 +3,9 @@ import { createJwksCache } from "../src/auth.ts";
 
 const url = "http://auth.test/.well-known/jwks.json";
 
+// Lets a refetch started in the background finish.
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 // A JWKS endpoint that counts its fetches and serves whatever `kids` holds at the time, or a
 // 503 while `down`.
 function fakeJwks(kids: string[]) {
@@ -108,7 +111,7 @@ describe("JWKS cache", () => {
     expect(server.fetches).toBe(2);
   });
 
-  it("times out a fetch that hangs and serves the stale keys", async () => {
+  it("times out a hanging fetch that a new kid waits on, and serves the stale keys", async () => {
     const { server, fetch: serve } = fakeJwks(["k1"]);
     let hang = false;
     // Never answers while `hang` is set; only the abort signal ends it.
@@ -123,8 +126,8 @@ describe("JWKS cache", () => {
     await keys("k1");
 
     hang = true;
-    now = 11 * 60_000;
-    const stale = await keys("k1");
+    now = 60_000;
+    const stale = await keys("k2");
 
     expect(stale.map((key) => key.kid)).toEqual(["k1"]);
     expect(server.fetches).toBe(1);
@@ -151,9 +154,14 @@ describe("JWKS cache", () => {
 
     server.kids = ["k1"];
     now = 11 * 60_000;
+    const cached = await keys("k1");
+    await settle();
     const found = await keys("k1");
 
+    // The expired lookup answers from the cache at once and refetches in the background.
+    expect(cached.map((key) => key.kid)).toEqual(["k1", "k2"]);
     expect(found.map((key) => key.kid)).toEqual(["k1"]);
+    expect(server.fetches).toBe(2);
   });
 
   it("makes concurrent lookups for a new kid wait for the pending refetch", async () => {
@@ -188,6 +196,7 @@ describe("JWKS cache", () => {
     await keys("k1");
     now = 11 * 60_000;
     await keys("k1");
+    await settle();
 
     now += 31_000;
     await keys("k1");
@@ -203,6 +212,7 @@ describe("JWKS cache", () => {
     server.down = true;
     now = 11 * 60_000;
     await keys("k1");
+    await settle();
 
     server.down = false;
     server.kids = ["k2"];

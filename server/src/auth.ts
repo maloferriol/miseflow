@@ -120,12 +120,16 @@ export function createJwksCache(
   };
 
   return async (kid) => {
-    if (!keys || inFlight) return refresh();
-    if (now() - attemptedAt < REFETCH_COOLDOWN_MS) return keys;
-    const expired = now() - fetchedAt >= TTL_MS;
+    if (!keys) return refresh();
     const unknownKid =
       kid !== undefined && !keys.some((key) => key.kid === kid);
-    return expired || unknownKid ? refresh() : keys;
+    // Only a lookup the cached keys can't answer waits on a fetch; a known kid never does.
+    if (inFlight) return unknownKid ? inFlight : keys;
+    if (now() - attemptedAt < REFETCH_COOLDOWN_MS) return keys;
+    if (unknownKid) return refresh();
+    // Past the TTL, refetch in the background and answer from the cache meanwhile.
+    if (now() - fetchedAt >= TTL_MS) void refresh();
+    return keys;
   };
 }
 

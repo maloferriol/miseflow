@@ -1,8 +1,14 @@
 # MiseFlow
 
-## Delegating narrow tasks to Haiku subagents
+@AGENTS.md
 
-Run these through a subagent on the Haiku model (`model: "haiku"` on the Agent tool). Use the `Explore` agent type for searches.
+## Picking a subagent's model
+
+Every Agent call sets `model`: `"haiku"` or `"sonnet"`. A subagent with no `model` inherits the orchestrator's, which is the most expensive one. The orchestrator itself keeps synthesis and owner decisions.
+
+### Haiku: narrow tasks
+
+Run these on Haiku (`model: "haiku"`). Use the `Explore` agent type for searches.
 
 Narrow tasks have a clear spec and a checkable result:
 
@@ -13,4 +19,17 @@ Narrow tasks have a clear spec and a checkable result:
 * Formatting or converting data
 * Reading or writing to GitHub (issues, PRs, comments) via `gh`
 
-Tell the subagent exactly what to run or change and what a passing result looks like, and ask it to return a short summary, not raw output.
+Tell the subagent exactly what to run or change and what a passing result looks like, and ask it to return a short summary, not raw output. Copy the exact commands from `docs/agents/workflow.md` into the brief, `-w <workspace>` and "report both workspaces' totals" included: the Haiku test agents in #86 and #87 read only their brief and broke both rules.
+
+### Sonnet: judgement tasks
+
+Run these on Sonnet (`model: "sonnet"`). They need judgement, or the spec has gaps the agent must fill:
+
+* Planning a ticket (the Plan agent)
+* Implementing a ticket, and its fix rounds
+* Reviewing a PR or a diff for defects
+* Diagnosing a failure whose cause is unknown
+* Reviewing one transcript in a retrospective
+* Writing or rewording docs and agent instructions
+
+When a Haiku task comes back confused, or breaks a rule its brief gave it, rerun it on Sonnet rather than retrying on Haiku.

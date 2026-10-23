@@ -733,6 +733,40 @@ describe("schedule", () => {
     ]);
   });
 
+  it("AC4: two pins that end together bound a Task, and BlockedByPin names the lower key", () => {
+    // Raw minutes. Z and Q both end at 1970; X needs 60 and only 1970–2000 is left.
+    const plan = schedule(
+      model({
+        service: { dayStart: 0, at: 2000 },
+        free: [{ start: 0, end: 2000 }],
+        tasks: [
+          dishTask("Z", [step("s1", 30, 40)]),
+          dishTask("Q", [step("s1", 30)]),
+          dishTask("X", [step("s1", 60)]),
+        ],
+        links: [
+          { before: "dish:Z:s1", after: "dish:X:s1" }, // Z first, so the tie-break decides
+          { before: "dish:Q:s1", after: "dish:X:s1" },
+        ],
+        previous: [
+          { key: "dish:Z:s1", start: 1900, cookId: "c1", pinned: true },
+          { key: "dish:Q:s1", start: 1940, cookId: "c1", pinned: true },
+        ],
+      }),
+    );
+
+    expect(plan.unplaced).toEqual([
+      {
+        key: "dish:X:s1",
+        reason: {
+          kind: "BlockedByPin",
+          pin: "dish:Q:s1",
+          searched: { start: 1970, end: 2000 },
+        },
+      },
+    ]);
+  });
+
   it("Decision 2: a predecessor of an Unplaced Task is planned against the next placed successor", () => {
     const plan = schedule(
       model({

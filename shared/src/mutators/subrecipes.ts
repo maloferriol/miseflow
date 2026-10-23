@@ -67,6 +67,25 @@ export const createSubRecipe = defineMutator({
   },
 });
 
+/** Sets or clears (null) the Quantity a Recipe makes, appending one Revision. */
+export const setYield = defineMutator({
+  name: "setYield",
+  args: z.strictObject({
+    recipeId: z.uuid(),
+    revisionId: z.uuid(),
+    yield: yieldText.nullable(),
+  }),
+  async run(tx, args, { ownerId }) {
+    const value = args.yield === null ? null : readYield(args.yield);
+    await lockRecipe(tx, ownerId, args.recipeId);
+    await tx
+      .update(recipes)
+      .set({ ...yieldColumns(value), updatedAt: sql`now()` })
+      .where(and(eq(recipes.id, args.recipeId), eq(recipes.ownerId, ownerId)));
+    await appendRevision(tx, ownerId, args.recipeId, args.revisionId);
+  },
+});
+
 // One owner's sub-recipe links are written one transaction at a time, so two concurrent links
 // can't each pass the cycle check and together close a cycle. A transaction-level advisory lock,
 // keyed by a namespace and the owner id's first 32 bits; a collision only adds waiting.

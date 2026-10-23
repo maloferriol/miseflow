@@ -208,3 +208,30 @@ describe("sub-recipe cycle", () => {
     });
   });
 });
+
+describe("setYield", () => {
+  it("stores 1.5 L and appends one Revision whose snapshot has the yield; null clears it", async () => {
+    await inRollback(async (tx) => {
+      const stock = await createRecipe(tx, "Chicken stock");
+      await run(tx, "setYield", { recipeId: stock, revisionId: crypto.randomUUID(), yield: "1.5 L" });
+      const [row] = await tx.select().from(recipes).where(eq(recipes.id, stock));
+      expect(row).toMatchObject({ yieldQuantity: "1.5", yieldUnit: "L" });
+      const after = await revisions(tx, stock);
+      expect(after).toMatchObject({ latest: 2, count: 2 });
+      const revision2 = after.rows.find((r) => r.number === 2)!;
+      expect(revision2.snapshot).toMatchObject({ yield: { quantity: 1.5, unit: "L" } });
+
+      await run(tx, "setYield", { recipeId: stock, revisionId: crypto.randomUUID(), yield: null });
+      expect((await loadRecipeSnapshot(tx, ownerId, stock)).yield).toBeNull();
+      expect(await revisions(tx, stock)).toMatchObject({ latest: 3, count: 3 });
+    });
+  });
+
+  it("refuses a pinch, and appends nothing", async () => {
+    await inRollback(async (tx) => {
+      const stock = await createRecipe(tx, "Chicken stock");
+      await refused(tx, "setYield", { recipeId: stock, revisionId: crypto.randomUUID(), yield: "a pinch" }, InvalidArgsError);
+      expect(await revisions(tx, stock)).toMatchObject({ latest: 1, count: 1 });
+    });
+  });
+});

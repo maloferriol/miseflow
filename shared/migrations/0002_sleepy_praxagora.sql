@@ -1,0 +1,1 @@
+ALTER TABLE "ingredient_overrides" ADD CONSTRAINT "ingredient_overrides_owner_ingredient" UNIQUE("owner_id","ingredient_id");

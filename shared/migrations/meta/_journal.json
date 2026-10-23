@@ -15,6 +15,13 @@
       "when": 1792707077285,
       "tag": "0001_old_raza",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792736678210,
+      "tag": "0002_sleepy_praxagora",
+      "breakpoints": true
     }
   ]
 }

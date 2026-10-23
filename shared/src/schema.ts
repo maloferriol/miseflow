@@ -119,7 +119,11 @@ export const recipes = pgTable("recipes", {
   ownerId,
   name: text("name").notNull(),
   servings: numeric("servings"),
+  // Unused since #84 (Q7): the yield is the Quantity below. Dropped in a later cleanup.
   yieldText: text("yield_text"),
+  // The Quantity the Recipe makes; a sub-recipe needs one. A null unit with a quantity is pieces.
+  yieldQuantity: numeric("yield_quantity"),
+  yieldUnit: text("yield_unit"),
   makeAheadBeforeDays: integer("make_ahead_before_days"),
   shelfLifeDays: integer("shelf_life_days"),
   source: text("source"),

@@ -170,21 +170,18 @@ function CourseView({
               {dish.recipe.name}
             </a>{" "}
             {formatFactor(dish.scale.factor)}
-            {dish.fixes.length > 0 && (
-              <ul aria-label={`Fixes for ${dish.recipe.name}`}>
-                {dish.fixes.map((fix) => (
-                  <li key={`${fix.subRecipe?.id ?? ""}:${fix.text}`}>
-                    {fix.subRecipe ? (
-                      <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: fix.subRecipe.id })}`}>
-                        {fix.subRecipe.name}: {fix.text}
-                      </a>
-                    ) : (
-                      `${dish.recipe.name}: ${fix.text}`
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/* Paragraphs, not a list, so each Dish stays one list item. */}
+            {dish.fixes.map((fix) => (
+              <p key={`${fix.subRecipe?.id ?? ""}:${fix.text}`}>
+                {fix.subRecipe ? (
+                  <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: fix.subRecipe.id })}`}>
+                    {fix.subRecipe.name}: {fix.text}
+                  </a>
+                ) : (
+                  `${dish.recipe.name}: ${fix.text}`
+                )}
+              </p>
+            ))}
             <DishScale dish={dish} onChanged={onChanged} />
           </li>
         ))}

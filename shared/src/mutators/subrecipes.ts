@@ -1,19 +1,40 @@
-import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
+import { stepGroups } from "../recipe/planning.ts";
+import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
 import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
 import {
+  areConsecutive,
   findSubRecipeCycle,
   parseYield,
   type SubRecipeEdges,
   type Yield,
 } from "../recipe/subrecipes.ts";
-import { ingredientLines, recipeRevisions, recipes, steps } from "../schema.ts";
+import { refName } from "../recipe/tokens.ts";
+import {
+  ingredientLines,
+  recipeRevisions,
+  recipes,
+  stepDependencies,
+  steps,
+} from "../schema.ts";
 import {
   defineMutator,
   InvalidArgsError,
   NotFoundError,
   type Tx,
 } from "./define.ts";
+import { positionAfter } from "./position.ts";
 import { appendRevision, lockRecipe } from "./revision.ts";
 
 // Sub-recipes (units spec §5): a line can use another of the kitchen's Recipes instead of an
@@ -82,6 +103,147 @@ export const setYield = defineMutator({
       .update(recipes)
       .set({ ...yieldColumns(value), updatedAt: sql`now()` })
       .where(and(eq(recipes.id, args.recipeId), eq(recipes.ownerId, ownerId)));
+    await appendRevision(tx, ownerId, args.recipeId, args.revisionId);
+  },
+});
+
+/**
+ * Moves consecutive Steps of a Recipe into a new sub-recipe, in one transaction: the Steps keep
+ * their ids, positions, text and lines, and one new Step in their place holds a single line using
+ * the sub-recipe (Q3). Dependency links inside the moved Steps move with them, links crossing out
+ * are soft-deleted, and a group the extract splits is cleared (Q11). Both Recipes get a Revision.
+ */
+export const extractToSubRecipe = defineMutator({
+  name: "extractToSubRecipe",
+  args: z.strictObject({
+    recipeId: z.uuid(),
+    revisionId: z.uuid(),
+    stepIds: z.array(z.uuid()).min(1).max(200),
+    subRecipeId: z.uuid(),
+    subRecipeRevisionId: z.uuid(),
+    name,
+    /** The new Step left in place of the moved ones, and its one line. */
+    stepId: z.uuid(),
+    lineId: z.uuid(),
+    amount: z
+      .string()
+      .max(100)
+      .refine((amount) => isValidQuantity(parseQuantity(amount)), {
+        message: "An amount can't divide by zero or have a range whose end is below its start",
+      })
+      .default("1"),
+  }),
+  async run(tx, args, { ownerId }) {
+    await lockRecipe(tx, ownerId, args.recipeId);
+    await lockSubRecipeGraph(tx, ownerId);
+
+    const live = await tx
+      .select({
+        id: steps.id,
+        position: steps.position,
+        groupWithPrevious: steps.groupWithPrevious,
+      })
+      .from(steps)
+      .where(
+        and(
+          eq(steps.recipeId, args.recipeId),
+          eq(steps.ownerId, ownerId),
+          isNull(steps.deletedAt),
+        ),
+      )
+      .orderBy(asc(sql`${steps.position} collate "C"`), asc(steps.id));
+    const moved = new Set(args.stepIds);
+    if (![...moved].every((id) => live.some((s) => s.id === id)))
+      throw new NotFoundError("Step");
+    if (!areConsecutive(live.map((s) => s.id), [...moved]))
+      throw new InvalidArgsError("Only consecutive Steps can become a sub-recipe");
+    const ids = [...moved];
+    const first = live.find((s) => moved.has(s.id))!;
+
+    // A group with Steps on both sides of the extract no longer holds together: clear it.
+    const split = stepGroups(live).filter(
+      (g) => g.stepIds.some((id) => moved.has(id)) && g.stepIds.some((id) => !moved.has(id)),
+    );
+    const ungrouped = split.flatMap((g) => g.stepIds);
+    if (ungrouped.length)
+      await tx
+        .update(steps)
+        .set({ groupWithPrevious: false, updatedAt: sql`now()` })
+        .where(and(inArray(steps.id, ungrouped), eq(steps.groupWithPrevious, true)));
+
+    const touching = and(
+      eq(stepDependencies.recipeId, args.recipeId),
+      eq(stepDependencies.ownerId, ownerId),
+      isNull(stepDependencies.deletedAt),
+    );
+    await tx
+      .update(stepDependencies)
+      .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(
+        and(
+          touching,
+          or(
+            and(
+              inArray(stepDependencies.beforeStepId, ids),
+              notInArray(stepDependencies.afterStepId, ids),
+            ),
+            and(
+              inArray(stepDependencies.afterStepId, ids),
+              notInArray(stepDependencies.beforeStepId, ids),
+            ),
+          ),
+        ),
+      );
+
+    await tx.insert(recipes).values({
+      id: args.subRecipeId,
+      ownerId,
+      name: args.name,
+      latestRevision: 1,
+    });
+    await tx
+      .update(stepDependencies)
+      .set({ recipeId: args.subRecipeId, updatedAt: sql`now()` })
+      .where(
+        and(
+          touching,
+          inArray(stepDependencies.beforeStepId, ids),
+          inArray(stepDependencies.afterStepId, ids),
+        ),
+      );
+    await tx
+      .update(steps)
+      .set({ recipeId: args.subRecipeId, updatedAt: sql`now()` })
+      .where(inArray(steps.id, ids));
+
+    await tx.insert(steps).values({
+      id: args.stepId,
+      ownerId,
+      recipeId: args.recipeId,
+      position: first.position,
+      body: [{ type: "line", lineId: args.lineId }],
+    });
+    const q = parseQuantity(args.amount);
+    await tx.insert(ingredientLines).values({
+      id: args.lineId,
+      ownerId,
+      stepId: args.stepId,
+      subRecipeId: args.subRecipeId,
+      quantity: q.value === null ? null : String(q.value),
+      quantityMax: q.max === null ? null : String(q.max),
+      unit: q.unit,
+      wording: refName(args.name) || "sub-recipe",
+      fixedQuantity: q.fixed,
+      position: positionAfter(null),
+    });
+
+    await tx.insert(recipeRevisions).values({
+      id: args.subRecipeRevisionId,
+      ownerId,
+      recipeId: args.subRecipeId,
+      number: 1,
+      snapshot: await loadRecipeSnapshot(tx, ownerId, args.subRecipeId),
+    });
     await appendRevision(tx, ownerId, args.recipeId, args.revisionId);
   },
 });

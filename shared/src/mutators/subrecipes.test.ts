@@ -2,7 +2,14 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
 import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
-import { ingredientLines, recipeRevisions, recipes } from "../schema.ts";
+import {
+  ingredientLines,
+  ingredients,
+  recipeRevisions,
+  recipes,
+  stepDependencies,
+  steps,
+} from "../schema.ts";
 import {
   getMutator,
   InvalidArgsError,
@@ -232,6 +239,146 @@ describe("setYield", () => {
       const stock = await createRecipe(tx, "Chicken stock");
       await refused(tx, "setYield", { recipeId: stock, revisionId: crypto.randomUUID(), yield: "a pinch" }, InvalidArgsError);
       expect(await revisions(tx, stock)).toMatchObject({ latest: 1, count: 1 });
+    });
+  });
+});
+
+// Tarte tatin with Steps s1..s4; s2 and s3 each hold one Ingredient line.
+async function tarteTatin(tx: Tx) {
+  const tag = crypto.randomUUID().slice(0, 8);
+  const flour = crypto.randomUUID();
+  const butter = crypto.randomUUID();
+  await tx.insert(ingredients).values([
+    { id: flour, ownerId: null, name: `${tag} flour`, source: "seed", preferredKind: "mass" },
+    { id: butter, ownerId: null, name: `${tag} butter`, source: "seed", preferredKind: "mass" },
+  ]);
+  const recipeId = await createRecipe(tx, "Tarte tatin");
+  const stepIds: string[] = [];
+  const lineIds: string[] = [];
+  const texts: [string, string | null][] = [
+    ["Peel the apples", null],
+    ["Rub in ", flour],
+    ["Add ", butter],
+    ["Bake", null],
+  ];
+  for (const [text, ingredientId] of texts) {
+    const stepId = crypto.randomUUID();
+    const lineId = crypto.randomUUID();
+    await run(tx, "addStep", {
+      recipeId,
+      stepId,
+      revisionId: crypto.randomUUID(),
+      body: ingredientId
+        ? [{ type: "text", text }, { type: "line", lineId }]
+        : [{ type: "text", text }],
+      lines: ingredientId ? [{ lineId, ingredientId, amount: "100%g", wording: "x" }] : [],
+    });
+    stepIds.push(stepId);
+    if (ingredientId) lineIds.push(lineId);
+  }
+  return { recipeId, stepIds, lineIds };
+}
+
+function extract(recipeId: string, stepIds: string[]) {
+  return {
+    recipeId,
+    revisionId: crypto.randomUUID(),
+    stepIds,
+    subRecipeId: crypto.randomUUID(),
+    subRecipeRevisionId: crypto.randomUUID(),
+    name: "Pastry",
+    stepId: crypto.randomUUID(),
+    lineId: crypto.randomUUID(),
+  };
+}
+
+describe("extractToSubRecipe", () => {
+  it("moves two Steps of Tarte tatin into Pastry with the same ids and leaves one line using it, with a Revision for each", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds, lineIds } = await tarteTatin(tx);
+      const [s1, s2, s3, s4] = stepIds as [string, string, string, string];
+      const args = extract(recipeId, [s2, s3]);
+
+      await run(tx, "extractToSubRecipe", args);
+
+      const pastry = await loadRecipeSnapshot(tx, ownerId, args.subRecipeId);
+      expect(pastry.name).toBe("Pastry");
+      expect(pastry.steps.map((s) => s.id)).toEqual([s2, s3]);
+      expect(pastry.steps.flatMap((s) => s.lines.map((l) => l.id))).toEqual(lineIds);
+      const tarte = await loadRecipeSnapshot(tx, ownerId, recipeId);
+      expect(tarte.steps.map((s) => s.id)).toEqual([s1, args.stepId, s4]);
+      expect(tarte.steps[1]!.body).toEqual([{ type: "line", lineId: args.lineId }]);
+      expect(tarte.steps[1]!.lines).toEqual([
+        expect.objectContaining({ id: args.lineId, subRecipeId: args.subRecipeId, ingredientId: null, quantity: 1, unit: null, wording: "Pastry" }),
+      ]);
+
+      const pastryRevisions = await revisions(tx, args.subRecipeId);
+      expect(pastryRevisions).toMatchObject({ latest: 1, count: 1 });
+      expect(pastryRevisions.rows[0]!.snapshot).toEqual(pastry);
+      const tarteRevisions = await revisions(tx, recipeId);
+      expect(tarteRevisions).toMatchObject({ latest: 6, count: 6 });
+      expect(tarteRevisions.rows.find((r) => r.number === 6)!.snapshot).toEqual(tarte);
+    });
+  });
+
+  it("refuses Steps that aren't consecutive, and writes nothing", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await tarteTatin(tx);
+      const before = await loadRecipeSnapshot(tx, ownerId, recipeId);
+      const args = extract(recipeId, [stepIds[0]!, stepIds[2]!]);
+      await refused(tx, "extractToSubRecipe", args, InvalidArgsError);
+      expect(await loadRecipeSnapshot(tx, ownerId, recipeId)).toEqual(before);
+      expect(await revisions(tx, recipeId)).toMatchObject({ latest: 5, count: 5 });
+      expect(await tx.select().from(recipes).where(eq(recipes.id, args.subRecipeId))).toEqual([]);
+    });
+  });
+
+  it("refuses another Recipe's Step", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId } = await tarteTatin(tx);
+      const other = await tarteTatin(tx);
+      await refused(tx, "extractToSubRecipe", extract(recipeId, [other.stepIds[1]!]), NotFoundError);
+      expect(await revisions(tx, recipeId)).toMatchObject({ latest: 5, count: 5 });
+    });
+  });
+
+  it("moves a dependency link between two extracted Steps into the sub-recipe", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await tarteTatin(tx);
+      const dependencyId = crypto.randomUUID();
+      await run(tx, "addStepDependency", { dependencyId, revisionId: crypto.randomUUID(), beforeStepId: stepIds[1], afterStepId: stepIds[2] });
+      const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
+      await run(tx, "extractToSubRecipe", args);
+      expect((await loadRecipeSnapshot(tx, ownerId, args.subRecipeId)).dependencies).toEqual([
+        { id: dependencyId, beforeStepId: stepIds[1], afterStepId: stepIds[2] },
+      ]);
+      expect((await loadRecipeSnapshot(tx, ownerId, recipeId)).dependencies).toEqual([]);
+    });
+  });
+
+  it("soft-deletes a dependency link that crosses out of the extracted Steps", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await tarteTatin(tx);
+      const dependencyId = crypto.randomUUID();
+      await run(tx, "addStepDependency", { dependencyId, revisionId: crypto.randomUUID(), beforeStepId: stepIds[0], afterStepId: stepIds[2] });
+      const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
+      await run(tx, "extractToSubRecipe", args);
+      const [row] = await tx.select().from(stepDependencies).where(eq(stepDependencies.id, dependencyId));
+      expect(row!.deletedAt).not.toBeNull();
+      expect((await loadRecipeSnapshot(tx, ownerId, args.subRecipeId)).dependencies).toEqual([]);
+    });
+  });
+
+  it("clears a group the extract splits, on both sides", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await tarteTatin(tx);
+      // Groups: [s1, s2] and [s3, s4]; extracting [s2, s3] splits both.
+      for (const stepId of [stepIds[1], stepIds[3]])
+        await run(tx, "setGroupWithPrevious", { stepId, revisionId: crypto.randomUUID(), value: true });
+      const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
+      await run(tx, "extractToSubRecipe", args);
+      const grouped = await tx.select({ id: steps.id, groupWithPrevious: steps.groupWithPrevious }).from(steps).where(eq(steps.groupWithPrevious, true));
+      expect(grouped.filter((s) => stepIds.includes(s.id))).toEqual([]);
     });
   });
 });

@@ -42,7 +42,7 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
 
   if (plan.isPending) return <p>Loading…</p>;
   if (plan.isError) return <p role="alert">{plan.error.message}</p>;
-  const { service, days, unplaced, approximate } = plan.data;
+  const { service, days, unplaced, approximate, batches, conflicts } = plan.data;
 
   return (
     <>
@@ -78,6 +78,26 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
         </ul>
       ) : (
         <p>Every Task is planned</p>
+      )}
+      <h3>Conflicts</h3>
+      {conflicts.length ? (
+        <ul aria-label="Conflicts">
+          {conflicts.map((c) => (
+            <li key={`${c.key}:${c.kind}`}>{c.sentence}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No conflicts</p>
+      )}
+      <h3>Batches</h3>
+      {batches.length ? (
+        <ul aria-label="Batches">
+          {batches.map((b) => (
+            <li key={b.subRecipe.id}>{b.label}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No Batches</p>
       )}
     </>
   );

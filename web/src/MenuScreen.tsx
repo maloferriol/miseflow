@@ -151,7 +151,12 @@ function CourseView({
       <h3>{course.name}</h3>
       <ul>
         {course.dishes.map((dish) => (
-          <li key={dish.id}>{dish.recipe.name}</li>
+          <li key={dish.id}>
+            {/* A full load: App reads the view from the URL. ?menu= stays for the way back. */}
+            <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: dish.recipe.id })}`}>
+              {dish.recipe.name}
+            </a>
+          </li>
         ))}
       </ul>
       <form

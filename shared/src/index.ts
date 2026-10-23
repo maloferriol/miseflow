@@ -5,3 +5,7 @@ export * from "./catalog/match.ts";
 export { positionAfter } from "./mutators/position.ts";
 export * from "./catalog/load.ts";
 export * from "./catalog/units.ts";
+export * from "./recipe/quantity.ts";
+export * from "./recipe/tokens.ts";
+export * from "./recipe/snapshot.ts";
+export * from "./recipe/derive.ts";

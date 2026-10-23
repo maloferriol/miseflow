@@ -7,6 +7,7 @@ import { errorBody } from "./errors.ts";
 import { ingredientsRoute } from "./routes/ingredients.ts";
 import { menusRoute } from "./routes/menus.ts";
 import { mutateRoute } from "./routes/mutate.ts";
+import { recipesRoute } from "./routes/recipes.ts";
 import { shoppingCategoriesRoute } from "./routes/shopping-categories.ts";
 
 export type AppOptions = {
@@ -23,6 +24,7 @@ export function createApp({ auth, db, mutators = defaultMutators }: AppOptions) 
     .use("*", requireAuth(auth))
     .route("/mutate", mutateRoute(db, mutators))
     .route("/menus", menusRoute(db))
+    .route("/recipes", recipesRoute(db))
     .route("/ingredients", ingredientsRoute(db))
     .route("/shopping-categories", shoppingCategoriesRoute(db));
 

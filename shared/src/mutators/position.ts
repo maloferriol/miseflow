@@ -1,6 +1,8 @@
-// Fractional-index positions (ADR 0010), append-only for now. Keys use the same base-62 format
-// as rocicorp's `fractional-indexing` ("a0", "a1", … "az", "b00"), so a later "insert between"
-// can adopt that library without rewriting stored positions. They compare in byte order:
+import { generateKeyBetween } from "fractional-indexing";
+
+// Fractional-index positions (ADR 0010). Keys use the same base-62 format
+// as rocicorp's `fractional-indexing` ("a0", "a1", … "az", "b00"), which `positionBetween` uses
+// to insert between two keys. They compare in byte order:
 // in Postgres, order by `position collate "C"`.
 const DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -24,4 +26,10 @@ export function positionAfter(last: string | null): string {
   }
   // Every digit carried over: move to the next head letter, one digit longer.
   return String.fromCharCode(head.charCodeAt(0) + 1) + digits.join("") + "0";
+}
+
+/** A key that sorts between `before` and `after` (null: the start or the end). */
+export function positionBetween(before: string | null, after: string | null): string {
+  // Source: https://github.com/rocicorp/fractional-indexing (3.2.0), generateKeyBetween(a, b).
+  return generateKeyBetween(before, after);
 }

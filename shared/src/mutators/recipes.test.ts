@@ -1,10 +1,20 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
+import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipeRevisions, recipes } from "../schema.ts";
-import { getMutator } from "./registry.ts";
+import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
 const ownerId = crypto.randomUUID();
+
+async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
+  const mutator = getMutator(name)!;
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner });
+}
+
+async function revisionsOf(tx: Tx, recipeId: string) {
+  return tx.select().from(recipeRevisions).where(eq(recipeRevisions.recipeId, recipeId));
+}
 
 describe("createRecipe", () => {
   it("writes the Recipe at latest_revision 1 and Revision 1 with a jsonb snapshot", async () => {
@@ -27,7 +37,7 @@ describe("createRecipe", () => {
           id: revisionId,
           number: 1,
           ownerId,
-          snapshot: { name: "Velouté", servings: 4 },
+          snapshot: { name: "Velouté", servings: 4, steps: [] },
         }),
       ]);
     });
@@ -41,5 +51,48 @@ describe("createRecipe", () => {
       name: "Velouté",
     });
     expect(parsed.success).toBe(true);
+  });
+});
+
+describe("editRecipe", () => {
+  it("bumps the Revision once and appends one Revision whose snapshot is the working copy", async () => {
+    await inRollback(async (tx) => {
+      const recipeId = crypto.randomUUID();
+      await run(tx, "createRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Velouté" });
+      const revisionId = crypto.randomUUID();
+
+      await run(tx, "editRecipe", { recipeId, revisionId, name: "Velouté de champignons", servings: 6 });
+
+      const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));
+      expect(recipe).toMatchObject({ name: "Velouté de champignons", servings: "6", latestRevision: 2 });
+      const revisions = await revisionsOf(tx, recipeId);
+      expect(revisions).toHaveLength(2);
+      const revision2 = revisions.find((r) => r.number === 2)!;
+      expect(revision2.id).toBe(revisionId);
+      expect(revision2.snapshot).toEqual(await loadRecipeSnapshot(tx, ownerId, recipeId));
+      expect(revision2.snapshot).toEqual({ name: "Velouté de champignons", servings: 6, steps: [] });
+    });
+  });
+
+  it("refuses another owner's Recipe with NotFoundError, and appends no Revision", async () => {
+    await inRollback(async (tx) => {
+      const recipeId = crypto.randomUUID();
+      await run(tx, "createRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Velouté" });
+
+      await expect(
+        run(tx, "editRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Mine now" }, crypto.randomUUID()),
+      ).rejects.toThrow(NotFoundError);
+
+      expect(await revisionsOf(tx, recipeId)).toHaveLength(1);
+      const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));
+      expect(recipe).toMatchObject({ name: "Velouté", latestRevision: 1 });
+    });
+  });
+
+  it("needs a name or servings, and can clear servings", () => {
+    const args = getMutator("editRecipe")!.args;
+    const ids = { recipeId: crypto.randomUUID(), revisionId: crypto.randomUUID() };
+    expect(args.safeParse(ids).success).toBe(false);
+    expect(args.safeParse({ ...ids, servings: null }).success).toBe(true);
   });
 });

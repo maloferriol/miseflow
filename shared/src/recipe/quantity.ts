@@ -66,6 +66,17 @@ for (const spelling of ["piece", "pieces", "pc", "pcs"]) {
   UNITS.set(spelling, { unit: null, tier: "ingredient" });
 }
 
+const CANONICAL = new Map<string, QuantityTier>(
+  Object.entries(SPELLINGS).flatMap(([tier, units]) =>
+    Object.keys(units).map((unit) => [unit, tier as QuantityTier] as const),
+  ),
+);
+
+/** The tier of a canonical unit as parseQuantity gives it (null = piece); anything else is unknown. */
+export function unitTier(unit: string | null): QuantityTier {
+  return unit === null ? "ingredient" : (CANONICAL.get(unit) ?? "unknown");
+}
+
 const VULGAR: Record<string, number> = {
   "½": 1 / 2,
   "⅓": 1 / 3,

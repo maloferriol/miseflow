@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
+import { fetchAvailability, fetchMenu, fetchMenus, type Menu, minuteOfDay, mutate, timeValue } from "./api.ts";
+import { useIntent } from "./intent.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
 function menuIdFromUrl() {
@@ -100,6 +101,7 @@ function MenuView({ menuId }: { menuId: string }) {
       <a href="/">All Menus</a>
       <h2>{menu.data.name}</h2>
       <p>{menu.data.guestCount} guests</p>
+      <ServiceForm key={JSON.stringify(menu.data.service)} menuId={menuId} service={menu.data.service} />
       {menu.data.courses.map((course) => (
         <CourseView key={course.id} course={course} onChanged={onSuccess} />
       ))}
@@ -174,5 +176,59 @@ function CourseView({
         {addDish.error && <p role="alert">{addDish.error.message}</p>}
       </form>
     </article>
+  );
+}
+
+// The Menu's one Service: a date and an optional time (empty: the kitchen's default). Saving it
+// re-plans on the server; Open Plan shows the result.
+function ServiceForm({ menuId, service }: { menuId: string; service: Menu["service"] }) {
+  const queryClient = useQueryClient();
+  const intent = useIntent();
+  const availability = useQuery({ queryKey: ["availability"], queryFn: fetchAvailability });
+  const save = useMutation({
+    mutationFn: async (args: { date: string; time: number | null }) => {
+      const key = JSON.stringify([service?.id ?? null, args]);
+      if (service) await mutate(intent.id(key, "mutation"), "setServiceTime", { serviceId: service.id, ...args });
+      else await mutate(intent.id(key, "mutation"), "createService", { serviceId: intent.id(key, "service"), menuId, ...args });
+    },
+    onSuccess: async () => {
+      intent.reset();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["menu", menuId] }),
+        queryClient.invalidateQueries({ queryKey: ["plan"] }),
+      ]);
+    },
+  });
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const date = String(form.get("date") ?? "");
+    if (date) save.mutate({ date, time: minuteOfDay(form.get("time")) });
+  }
+
+  const defaultTime = availability.data ? timeValue(availability.data.defaultServiceTime) : undefined;
+  return (
+    <form onSubmit={onSubmit}>
+      <label>
+        Service date <input name="date" type="date" defaultValue={service?.date ?? ""} required />
+      </label>
+      <label>
+        Service time (optional){" "}
+        <input
+          name="time"
+          type="time"
+          step={300}
+          defaultValue={service?.time == null ? "" : timeValue(service.time)}
+          placeholder={defaultTime}
+          title={defaultTime && `Empty: the kitchen's default, ${defaultTime}`}
+        />
+      </label>
+      <button type="submit" disabled={save.isPending}>
+        {service ? "Save Service" : "Add Service"}
+      </button>
+      {service && <a href={`?${new URLSearchParams({ menu: menuId, view: "plan", service: service.id })}`}>Open Plan</a>}
+      {save.error && <p role="alert">{save.error.message}</p>}
+    </form>
   );
 }

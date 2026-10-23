@@ -2,7 +2,9 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../../test/walkthrough.ts";
-import { ensureCook, loadAvailability, readPlan } from "../plan/replan.ts";
+import { toPlanningModel } from "../plan/model.ts";
+import { ensureCook, loadAvailability, loadPlanRows, readPlan } from "../plan/replan.ts";
+import { schedule } from "../scheduler/schedule.ts";
 import { localParts } from "../plan/time.ts";
 import { availabilityOverrides, availabilityWeekly, cooks, kitchenSettings, services, taskPlacements } from "../schema.ts";
 import { ConflictError, getMutator, NotFoundError, type Tx } from "./registry.ts";
@@ -218,6 +220,106 @@ describe("re-plan writes", () => {
       expect(await writes(tx)).toBe(before + moved.length);
       const changed = [...(await versions(tx, serviceId))].filter(([step, v]) => rows.get(step) !== v).map(([step]) => step);
       expect(changed.sort()).toEqual(moved.sort());
+    });
+  });
+});
+
+// The live placements as "key@start", and what the scheduler makes of the current rows with the
+// placements from before the edit as the previous Plan: what a re-plan after the edit must store.
+async function stored(tx: Tx, serviceId: string) {
+  const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
+  return (await loadPlanRows(tx, ownerId, service!)).previous;
+}
+async function expectReplanned(tx: Tx, serviceId: string, before: Awaited<ReturnType<typeof stored>>) {
+  const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
+  const rows = await loadPlanRows(tx, ownerId, service!);
+  const { model, tasks } = toPlanningModel({ ...rows, previous: before }, timeZone);
+  const live = rows.previous.map((p) => `${p.key}@${p.start}`).sort();
+  expect(live).toEqual(schedule(model).placements.map((p) => `${p.key}@${p.start}`).sort());
+  // No placement is left for a Task that no longer exists.
+  expect(rows.previous.every((p) => tasks.has(p.key))).toBe(true);
+}
+
+const revisionId = () => crypto.randomUUID();
+const recipeEdits: [string, (w: Walkthrough) => [string, Record<string, unknown>]][] = [
+  ["addStep", (w) => ["addStep", { recipeId: w.recipes.veloute, stepId: crypto.randomUUID(), revisionId: revisionId(), body: [{ type: "text", text: "Garnish" }], lines: [] }]],
+  ["editStep", (w) => ["editStep", { stepId: w.steps.V3, revisionId: revisionId(), body: [{ type: "text", text: "Blend" }], lines: [] }]],
+  ["moveStep", (w) => ["moveStep", { stepId: w.steps.V3, revisionId: revisionId(), afterStepId: null }]],
+  ["removeStep", (w) => ["removeStep", { stepId: w.steps.V1, revisionId: revisionId() }]],
+  ["setStepTimes", (w) => ["setStepTimes", { stepId: w.steps.D3, revisionId: revisionId(), activeMinutes: 30, passiveMinutes: null }]],
+  ["setMakeAhead", (w) => ["setMakeAhead", { target: { kind: "recipe", recipeId: w.recipes.veloute }, revisionId: revisionId(), window: { beforeDays: 1, shelfLifeDays: 2 } }]],
+  ["setGroupWithPrevious", (w) => ["setGroupWithPrevious", { stepId: w.steps.D3, revisionId: revisionId(), value: true }]],
+  ["addStepDependency", (w) => ["addStepDependency", { dependencyId: crypto.randomUUID(), revisionId: revisionId(), beforeStepId: w.steps.V1, afterStepId: w.steps.V3 }]],
+  ["extractToSubRecipe", (w) => [
+    "extractToSubRecipe",
+    { recipeId: w.recipes.tarte, revisionId: revisionId(), stepIds: [w.steps.T1, w.steps.T2], subRecipeId: crypto.randomUUID(), subRecipeRevisionId: revisionId(), name: "Pastry", stepId: crypto.randomUUID(), lineId: crypto.randomUUID() },
+  ]],
+];
+
+describe("every edit that changes a Task re-plans", () => {
+  it.each(recipeEdits)("%s re-plans the Services using the Recipe", async (_, edit) => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const before = await stored(tx, serviceId);
+      const [name, args] = edit(w);
+      await run(tx, name, args);
+      await expectReplanned(tx, serviceId, before);
+    });
+  });
+
+  it("removeStepDependency re-plans the Services using the Recipe", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const [link] = await tx.execute(sql`select id from step_dependencies where before_step_id = ${w.steps.T2} and deleted_at is null`) as unknown as Row[];
+      const before = await stored(tx, serviceId);
+      await run(tx, "removeStepDependency", { dependencyId: link!.id, revisionId: revisionId() });
+      await expectReplanned(tx, serviceId, before);
+    });
+  });
+
+  it("addDish re-plans the Menu's Service", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const before = await stored(tx, serviceId);
+      const recipeId = crypto.randomUUID();
+      await run(tx, "createRecipe", { recipeId, revisionId: revisionId(), name: "Bread" });
+      await run(tx, "addStep", { recipeId, stepId: crypto.randomUUID(), revisionId: revisionId(), body: [{ type: "text", text: "Slice" }], lines: [] });
+      const [course] = await tx.execute(sql`select course_id from dishes where id = ${w.dishes.veloute}`) as unknown as Row[];
+      await run(tx, "addDish", { dishId: crypto.randomUUID(), courseId: course!.course_id, recipeId });
+      expect((await stored(tx, serviceId)).length).toBe(before.length + 1);
+      await expectReplanned(tx, serviceId, before);
+    });
+  });
+
+  it("setWeeklyAvailability re-plans every Service", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const before = await stored(tx, serviceId);
+      await run(tx, "setWeeklyAvailability", { hours: [hours(4, h(18), h(22)), hours(5, h(18), h(22)), hours(6, h(9), h(18))] });
+      await expectReplanned(tx, serviceId, before);
+    });
+  });
+
+  it("a shortened override leaves the pastry Unplaced with its reason and the rest stands", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const rows = await versions(tx, serviceId);
+      await run(tx, "setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: "2026-10-30", availability: { kind: "hours", start: h(19, 35), end: h(21) } });
+
+      const after = await versions(tx, serviceId);
+      expect(after.has(w.steps.T1)).toBe(false);
+      rows.delete(w.steps.T1);
+      expect(after).toEqual(rows);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      expect(plan.unplaced).toEqual([
+        expect.objectContaining({ kind: "NoAvailability", sentence: "No Cook has 20 free minutes between Fri 00:00 and Fri 19:50" }),
+      ]);
+      expect(plan.days.flatMap((d) => d.tasks)).toHaveLength(9);
     });
   });
 });

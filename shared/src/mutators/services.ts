@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { lockCook, replan, replanAffected } from "../plan/replan.ts";
+import { lockCook, lockServices, replan, replanAffected } from "../plan/replan.ts";
 import { toTimeColumn } from "../plan/time.ts";
 import { availabilityOverrides, availabilityWeekly, kitchenSettings, menus, services } from "../schema.ts";
 import { ConflictError, defineMutator, NotFoundError } from "./define.ts";
@@ -109,7 +109,10 @@ export const setWeeklyAvailability = defineMutator({
         message: "Each row needs its own id",
       }),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
+    // Lock order Service, then Cook (D6); every Service follows the Cook's Availability.
+    const serviceIds = await lockServices(tx, ownerId, { allServices: true });
     const cookId = await lockCook(tx, ownerId);
     await tx
       .update(availabilityWeekly)
@@ -135,6 +138,7 @@ export const setWeeklyAvailability = defineMutator({
         .returning({ id: availabilityWeekly.id });
       if (!written.length) throw new ConflictError("A row with one of these ids already exists");
     }
+    for (const id of serviceIds) await replan(tx, ctx, id);
   },
 });
 
@@ -150,7 +154,10 @@ export const setAvailabilityOverride = defineMutator({
       z.strictObject({ kind: z.literal("weekly") }),
     ]),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
+    // Lock order Service, then Cook (D6); every Service follows the Cook's Availability.
+    const serviceIds = await lockServices(tx, ownerId, { allServices: true });
     const cookId = await lockCook(tx, ownerId);
     await tx
       .update(availabilityOverrides)
@@ -164,21 +171,23 @@ export const setAvailabilityOverride = defineMutator({
         ),
       );
     const a = args.availability;
-    if (a.kind === "weekly") return;
-    const values = {
-      date: args.date,
-      startTime: a.kind === "hours" ? toTimeColumn(a.start) : null,
-      endTime: a.kind === "hours" ? toTimeColumn(a.end) : null,
-    };
-    const written = await tx
-      .insert(availabilityOverrides)
-      .values({ id: args.overrideId, ownerId, cookId, ...values })
-      .onConflictDoUpdate({
-        target: availabilityOverrides.id,
-        set: { ...values, deletedAt: null, updatedAt: sql`now()` },
-        setWhere: and(eq(availabilityOverrides.ownerId, ownerId), eq(availabilityOverrides.cookId, cookId)),
-      })
-      .returning({ id: availabilityOverrides.id });
-    if (!written.length) throw new ConflictError("A row with one of these ids already exists");
+    if (a.kind !== "weekly") {
+      const values = {
+        date: args.date,
+        startTime: a.kind === "hours" ? toTimeColumn(a.start) : null,
+        endTime: a.kind === "hours" ? toTimeColumn(a.end) : null,
+      };
+      const written = await tx
+        .insert(availabilityOverrides)
+        .values({ id: args.overrideId, ownerId, cookId, ...values })
+        .onConflictDoUpdate({
+          target: availabilityOverrides.id,
+          set: { ...values, deletedAt: null, updatedAt: sql`now()` },
+          setWhere: and(eq(availabilityOverrides.ownerId, ownerId), eq(availabilityOverrides.cookId, cookId)),
+        })
+        .returning({ id: availabilityOverrides.id });
+      if (!written.length) throw new ConflictError("A row with one of these ids already exists");
+    }
+    for (const id of serviceIds) await replan(tx, ctx, id);
   },
 });

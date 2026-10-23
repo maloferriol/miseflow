@@ -269,6 +269,14 @@ export async function servicesInScope(tx: Tx, ownerId: string, scope: ReplanScop
   return rows.map((r) => r.id);
 }
 
+/** The live Services in scope, row-locked in id order (D6), for a mutator that writes before re-planning them. */
+export async function lockServices(tx: Tx, ownerId: string, scope: ReplanScope): Promise<string[]> {
+  const ids = await servicesInScope(tx, ownerId, scope);
+  if (ids.length)
+    await tx.select({ id: services.id }).from(services).where(inArray(services.id, ids)).orderBy(asc(services.id)).for("update");
+  return ids;
+}
+
 /**
  * Re-plans every live Service in scope, past ones included (D7), each locked in id order (D6).
  * Called at the end of each mutator that changes a Task, inside its transaction.

@@ -9,6 +9,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { z } from "zod";
+import { replanAffected } from "../plan/replan.ts";
 import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
 import { stepBodySchema, type StepToken } from "../recipe/tokens.ts";
 import { ingredientLines, ingredients, stepDependencies, steps } from "../schema.ts";
@@ -93,7 +94,8 @@ export const addStep = defineMutator({
       ...content,
     })
     .refine(contentFits, contentMessage),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     await lockRecipe(tx, ownerId, args.recipeId);
     const live = await liveSteps(tx, ownerId, args.recipeId);
     const position =
@@ -109,6 +111,7 @@ export const addStep = defineMutator({
     });
     await writeLines(tx, ownerId, args.recipeId, args.stepId, args.body, args.lines);
     await appendRevision(tx, ownerId, args.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: args.recipeId });
   },
 });
 
@@ -118,7 +121,8 @@ export const editStep = defineMutator({
   args: z
     .strictObject({ stepId: z.uuid(), revisionId: z.uuid(), ...content })
     .refine(contentFits, contentMessage),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const step = await lockStep(tx, ownerId, args.stepId);
     await tx
       .update(steps)
@@ -126,6 +130,7 @@ export const editStep = defineMutator({
       .where(eq(steps.id, args.stepId));
     await writeLines(tx, ownerId, step.recipeId, args.stepId, args.body, args.lines);
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: step.recipeId });
   },
 });
 
@@ -137,7 +142,8 @@ export const moveStep = defineMutator({
     revisionId: z.uuid(),
     afterStepId: z.uuid().nullable(),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     if (args.afterStepId === args.stepId)
       throw new InvalidArgsError("A Step can't move after itself");
     const step = await lockStep(tx, ownerId, args.stepId);
@@ -160,13 +166,15 @@ export const moveStep = defineMutator({
       ...(nextAtSlot ? [nextAtSlot.id] : []),
     ]);
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: step.recipeId });
   },
 });
 
 export const removeStep = defineMutator({
   name: "removeStep",
   args: z.strictObject({ stepId: z.uuid(), revisionId: z.uuid() }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const step = await lockStep(tx, ownerId, args.stepId);
     const live = await liveSteps(tx, ownerId, step.recipeId);
     await ungroup(tx, followerOfKeyStep(live, args.stepId));
@@ -196,6 +204,7 @@ export const removeStep = defineMutator({
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: step.recipeId });
   },
 });
 

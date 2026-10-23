@@ -58,7 +58,8 @@ export const setMakeAhead = defineMutator({
     revisionId: z.uuid(),
     window: makeAheadSchema.nullable(),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const values = {
       makeAheadBeforeDays: args.window?.beforeDays ?? null,
       shelfLifeDays: args.window?.shelfLifeDays ?? null,
@@ -77,6 +78,7 @@ export const setMakeAhead = defineMutator({
         .where(eq(steps.id, args.target.stepId));
     }
     await appendRevision(tx, ownerId, recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId });
   },
 });
 
@@ -87,7 +89,8 @@ export const setGroupWithPrevious = defineMutator({
     revisionId: z.uuid(),
     value: z.boolean(),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const step = await lockStep(tx, ownerId, args.stepId);
     if (args.value) {
       const snapshot = await loadRecipeSnapshot(tx, ownerId, step.recipeId);
@@ -105,6 +108,7 @@ export const setGroupWithPrevious = defineMutator({
       .set({ groupWithPrevious: args.value, updatedAt: sql`now()` })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: step.recipeId });
   },
 });
 
@@ -117,7 +121,8 @@ export const addStepDependency = defineMutator({
     beforeStepId: z.uuid(),
     afterStepId: z.uuid(),
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     // Compared before any lock, so only the one Recipe is ever locked.
     const [before, after] = await liveSteps(tx, ownerId, args);
     if (before.recipeId !== after.recipeId)
@@ -158,13 +163,15 @@ export const addStepDependency = defineMutator({
       .returning({ id: stepDependencies.id });
     if (!written.length) throw new ConflictError("These Steps are already linked");
     await appendRevision(tx, ownerId, recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId });
   },
 });
 
 export const removeStepDependency = defineMutator({
   name: "removeStepDependency",
   args: z.strictObject({ dependencyId: z.uuid(), revisionId: z.uuid() }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const find = () =>
       tx
         .select({ recipeId: stepDependencies.recipeId })
@@ -185,6 +192,7 @@ export const removeStepDependency = defineMutator({
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
       .where(eq(stepDependencies.id, args.dependencyId));
     await appendRevision(tx, ownerId, dependency.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: dependency.recipeId });
   },
 });
 

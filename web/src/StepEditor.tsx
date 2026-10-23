@@ -4,6 +4,7 @@ import { parseQuantity } from "@miseflow/shared/src/recipe/quantity.ts";
 import {
   formatStepText,
   parseStepText,
+  refName,
   type StepTextPart,
 } from "@miseflow/shared/src/recipe/tokens.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -236,8 +237,10 @@ function StepForm({
   }
 
   function onPick(ingredient: CatalogIngredient) {
-    link(ingredient.name, ingredient.id);
-    backToText(`${ingredient.name}{}`, 1);
+    // A kitchen's own name may hold characters the shorthand can't ("Pepper (black)").
+    const wording = refName(ingredient.name) || "ingredient";
+    link(wording, ingredient.id);
+    backToText(`${wording}{}`, 1);
   }
 
   return (

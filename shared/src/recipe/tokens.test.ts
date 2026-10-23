@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatStepText, parseStepText, stepBodySchema } from "./tokens.ts";
+import { formatStepText, parseStepText, refName, stepBodySchema } from "./tokens.ts";
 
 describe("parseStepText", () => {
   it("splits text and Ingredient refs with amount and preparation", () => {
@@ -62,5 +62,22 @@ describe("stepBodySchema", () => {
     expect(stepBodySchema.safeParse([{ type: "line", lineId: "nope" }]).success).toBe(false);
     expect(stepBodySchema.safeParse([{ type: "html", html: "<b>" }]).success).toBe(false);
     expect(stepBodySchema.safeParse([{ type: "text", text: "x".repeat(2001) }]).success).toBe(false);
+  });
+});
+
+describe("refName", () => {
+  it("makes any Ingredient name safe to write as a ref, so it parses back whole", () => {
+    for (const [name, safe] of [
+      ["Pepper (black)", "Pepper black"],
+      ["{weird} @name", "weird name"],
+      ["-'nduja", "nduja"],
+      ["olive oil", "olive oil"],
+    ]) {
+      expect(refName(name!)).toBe(safe);
+      expect(parseStepText(`Add @${refName(name!)}{}`)).toEqual([
+        { type: "text", text: "Add " },
+        { type: "ref", name: safe, amount: "", preparation: null },
+      ]);
+    }
   });
 });

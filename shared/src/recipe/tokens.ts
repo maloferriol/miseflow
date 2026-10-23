@@ -34,6 +34,19 @@ export type LineText = {
 const BRACED = /^([^@{}()\n]+?)\{([^{}\n]*)\}(?:\(([^()\n]*)\))?/u;
 const SINGLE = /^[\p{L}\p{N}_-]+/u;
 
+/**
+ * An Ingredient name as a ref can carry it: `@ { } ( )` and line breaks delimit a ref, and a ref
+ * starts with a letter or digit. "Pepper (black)" → "Pepper black". The line still links to the
+ * picked Ingredient by id; this is only its wording.
+ */
+export function refName(name: string): string {
+  return name
+    .replace(/[@{}()\n\r]/g, " ")
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function parseStepText(text: string): StepTextPart[] {
   const parts: StepTextPart[] = [];
   let plain = "";

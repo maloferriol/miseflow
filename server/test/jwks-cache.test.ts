@@ -180,8 +180,13 @@ describe("JWKS cache", () => {
     server.kids = ["k1", "k2"];
     delay = true;
     now = 60_000;
-    const lookups = Promise.all([keys("k2"), keys("k2"), keys("k2")]);
+    let settled = 0;
+    const lookups = Promise.all(
+      [keys("k2"), keys("k2"), keys("k2")].map((lookup) => lookup.finally(() => (settled += 1))),
+    );
     await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(settled).toBe(0);
     release();
     const found = await lookups;
 

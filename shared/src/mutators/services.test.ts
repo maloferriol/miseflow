@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../../test/walkthrough.ts";
@@ -163,6 +163,61 @@ describe("the walkthrough Plan", () => {
       expect(d4).toMatchObject({ start: "18:40", end: "18:50", approximate: true });
       expect(plan.approximate).toBe(true);
       expect(plan.unplaced).toEqual([]);
+    });
+  });
+});
+
+// Row writes to task_placements so far in this transaction, and each live row's version.
+// Sources: https://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-STATS-VIEWS-TABLE
+// ("counts actions taken so far within the current transaction"), and
+// https://www.postgresql.org/docs/17/ddl-system-columns.html ("a row's ctid will change if it is updated").
+type Row = Record<string, unknown>;
+const writes = async (tx: Tx) =>
+  Number(
+    ((await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
+      from pg_stat_xact_user_tables where relname = 'task_placements'`)) as unknown as Row[])[0]?.n ?? 0,
+  );
+const versions = async (tx: Tx, serviceId: string) =>
+  new Map(
+    ((await tx.execute(sql`select first_step_id, ctid::text as v
+      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as unknown as Row[]).map((r) => [
+      r.first_step_id as string,
+      r.v as string,
+    ]),
+  );
+
+describe("re-plan writes", () => {
+  it("re-planning with nothing changed writes nothing", async () => {
+    await inRollback(async (tx) => {
+      const serviceId = await addService(tx, await walkthrough(tx));
+      const before = await writes(tx);
+      const rows = await versions(tx, serviceId);
+      await run(tx, "replanService", { serviceId });
+      await run(tx, "replanService", { serviceId });
+      expect(await writes(tx)).toBe(before);
+      expect(await versions(tx, serviceId)).toEqual(rows);
+    });
+  });
+
+  it("changing one Step's duration rewrites only the placements that moved", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const starts = await placements(tx, serviceId);
+      const rows = await versions(tx, serviceId);
+      const before = await writes(tx);
+
+      await run(tx, "setStepTimes", { stepId: w.steps.V1, revisionId: crypto.randomUUID(), activeMinutes: 15, passiveMinutes: null });
+
+      const after = await placements(tx, serviceId);
+      const moved = [...after].filter(([step, at]) => starts.get(step) !== at).map(([step]) => step);
+      // V1 no longer fits before D3 at 17:40, so it moves to 17:25 and pushes D2 back to 17:15.
+      expect(after.get(w.steps.V1)).toBe("Sat 17:25");
+      expect(after.get(w.steps.D2)).toBe("Sat 17:15");
+      expect(moved.sort()).toEqual([w.steps.V1, w.steps.D2].sort());
+      expect(await writes(tx)).toBe(before + moved.length);
+      const changed = [...(await versions(tx, serviceId))].filter(([step, v]) => rows.get(step) !== v).map(([step]) => step);
+      expect(changed.sort()).toEqual(moved.sort());
     });
   });
 });

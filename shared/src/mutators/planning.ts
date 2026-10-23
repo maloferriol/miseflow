@@ -5,6 +5,7 @@ import {
   makeAheadSchema,
   stepPlainText,
 } from "../recipe/planning.ts";
+import { replanAffected } from "../plan/replan.ts";
 import { loadRecipeSnapshot, type RecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipes, stepDependencies, steps } from "../schema.ts";
 import {
@@ -17,7 +18,7 @@ import {
 import { appendRevision, lockRecipe, lockStep } from "./revision.ts";
 
 // The Planning pass (spec §2): what the scheduler needs, each change one named mutation that
-// appends one Revision. #86 adds its re-plan call here.
+// appends one Revision and re-plans every Service that uses the Recipe (#86).
 
 // Whole minutes, up to a week. Null: not set; both null is "missing a duration".
 const minutes = z.int().min(0).max(10080).nullable();
@@ -30,7 +31,8 @@ export const setStepTimes = defineMutator({
     activeMinutes: minutes,
     passiveMinutes: minutes,
   }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     const step = await lockStep(tx, ownerId, args.stepId);
     await tx
       .update(steps)
@@ -41,6 +43,7 @@ export const setStepTimes = defineMutator({
       })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
+    await replanAffected(tx, ctx, { recipeId: step.recipeId });
   },
 });
 

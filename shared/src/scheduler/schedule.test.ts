@@ -767,6 +767,43 @@ describe("schedule", () => {
     ]);
   });
 
+  it("AC4: a Task that cannot fit after a pin two links back is BlockedByPin naming that pin", () => {
+    // Raw minutes. P ends 1930, A needs 50 after it, so X may not start before 1980.
+    const plan = schedule(
+      model({
+        service: { dayStart: 0, at: 2000 },
+        free: [{ start: 0, end: 2000 }],
+        tasks: [
+          dishTask("P", [step("s1", 30)]),
+          dishTask("A", [step("s1", 50)]),
+          dishTask("X", [step("s1", 60)]),
+        ],
+        links: [
+          { before: "dish:P:s1", after: "dish:A:s1" },
+          { before: "dish:A:s1", after: "dish:X:s1" },
+        ],
+        previous: [
+          { key: "dish:P:s1", start: 1900, cookId: "c1", pinned: true },
+        ],
+      }),
+    );
+
+    expect(plan.unplaced).toEqual([
+      {
+        key: "dish:X:s1",
+        reason: {
+          kind: "BlockedByPin",
+          pin: "dish:P:s1",
+          searched: { start: 1980, end: 2000 },
+        },
+      },
+    ]);
+    expect(plan.placements.map((p) => [p.key, p.start, p.end])).toEqual([
+      ["dish:A:s1", 1950, 2000],
+      ["dish:P:s1", 1900, 1930],
+    ]);
+  });
+
   it("Decision 2: a predecessor of an Unplaced Task is planned against the next placed successor", () => {
     const plan = schedule(
       model({

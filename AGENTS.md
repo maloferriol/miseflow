@@ -2,6 +2,10 @@
 
 ## Agent skills
 
+### Ticket workflow
+
+Read `docs/agents/workflow.md` before starting, resuming or briefing work on a ticket. It covers branch bases and stacking, setting up a worktree, running tests, writing Plans, and row locks.
+
 ### Issue tracker
 
 Issues are tracked in GitHub Issues via the `gh` CLI. See `docs/agents/issue-tracker.md`.

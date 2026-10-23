@@ -2,6 +2,7 @@ import { fits, normalize, subtract, type Timeline } from "./timeline.ts";
 import {
   SchedulerInputError,
   taskKey,
+  type Conflict,
   type Interval,
   type Minute,
   type Placement,
@@ -27,6 +28,9 @@ interface Prepared {
   stretches: Stretch[];
   approximate: boolean;
   lower: Minute;
+  keeps: number | null;
+  /** `dish:<id>` or `batch:<id>`. */
+  owner: string;
 }
 
 const roundUp = (minutes: number) => Math.ceil(minutes / GRID) * GRID;
@@ -56,6 +60,9 @@ function prepare(model: PlanningModel): Prepared[] {
     let approximate = false;
     const stretches: Stretch[] = [];
     for (const s of task.steps) {
+      if (task.keepsMinutes != null && !(Number.isFinite(task.keepsMinutes) && task.keepsMinutes >= 0)) {
+        throw new SchedulerInputError("InvalidDuration", `${key} keeps ${task.keepsMinutes} minutes`, [key]);
+      }
       for (const minutes of [s.activeMinutes, s.passiveMinutes]) {
         if (minutes !== null && !(Number.isFinite(minutes) && minutes >= 0)) {
           throw new SchedulerInputError("InvalidDuration", `Step ${s.stepId} of ${key} has duration ${minutes}`, [key]);
@@ -75,8 +82,20 @@ function prepare(model: PlanningModel): Prepared[] {
       stretches,
       approximate,
       lower: task.earliestStart ?? model.service.dayStart,
+      keeps: task.keepsMinutes ?? null,
+      owner: task.owner.kind === "dish" ? `dish:${task.owner.dishId}` : `batch:${task.owner.batchId}`,
     };
   });
+}
+
+/**
+ * The shelf life a Task must keep for, or null. Only an owner's finished result keeps: a Task with
+ * a successor of its own Dish or Batch (Roast the bones before Strain the stock) feeds that one.
+ */
+function keepsOf(task: Prepared, tasks: Map<TaskKey, Prepared>, successors: Map<TaskKey, TaskKey[]>): number | null {
+  if (task.keeps === null) return null;
+  const feedsOwn = (successors.get(task.key) ?? []).some((k) => tasks.get(k)?.owner === task.owner);
+  return feedsOwn ? null : task.keeps;
 }
 
 function fitsAt(free: Timeline, task: Prepared, start: Minute): boolean {
@@ -193,6 +212,7 @@ export function schedule(model: PlanningModel): Plan {
 
   const bounds = new Map<TaskKey, Bound>();
   const placements: Placement[] = [];
+  const placedStart = new Map<TaskKey, Minute>();
   const unplaced: Unplaced[] = [];
   const pins: { task: Prepared; start: Minute }[] = [];
   let free = cookFree;
@@ -205,6 +225,7 @@ export function schedule(model: PlanningModel): Plan {
     free = occupy(free, task, start);
     bounds.set(task.key, { at: start, pin: pinned ? task.key : null });
     placements.push({ key: task.key, start, end: start + task.duration, cookId: cook.id, pinned, approximate: task.approximate });
+    placedStart.set(task.key, start);
   };
   // Binding upper bound: the earliest successor bound (ties by key), else Service.
   const upperOf = (key: TaskKey): Bound => {
@@ -270,6 +291,16 @@ export function schedule(model: PlanningModel): Plan {
     return { kind: "NoAvailability", minutesNeeded: task.duration, searched: window };
   };
 
+  // The latest start a Task may have and still keep until its latest placed use (Service when
+  // nothing uses it); null when every use is Unplaced.
+  const shelfFloor = (key: TaskKey, task: Prepared, keeps: number): Minute | null => {
+    const after = successors.get(key)!;
+    const uses = after.flatMap((k) => (placedStart.has(k) ? [placedStart.get(k)!] : []));
+    if (after.length && !uses.length) return null;
+    const latestUse = uses.length ? Math.max(...uses) : model.service.at;
+    return latestUse - keeps - task.duration;
+  };
+
   while (waitingOn.size > 0) {
     // Eligible: every successor is done. Tasks with a previous start first, latest previous start
     // first; then latest upper bound; then key.
@@ -284,10 +315,12 @@ export function schedule(model: PlanningModel): Plan {
     const task = tasks.get(key)!;
     const lower = lowerOf(task);
 
-    const start =
-      previous === undefined
-        ? latestFit(free, task, lower.at, upper.at)
-        : nearestFit(free, task, lower.at, upper.at, previous);
+    const fit = (from: Minute) =>
+      previous === undefined ? latestFit(free, task, from, upper.at) : nearestFit(free, task, from, upper.at, previous);
+    // Shelf life: first try to be ready no earlier than the latest use allows, then anywhere (a conflict).
+    const keeps = keepsOf(task, tasks, successors);
+    const floor = keeps === null ? null : shelfFloor(key, task, keeps);
+    const start = (floor !== null && floor > lower.at ? fit(floor) : null) ?? fit(lower.at);
     if (start !== null) {
       place(task, start, false);
     } else {
@@ -297,5 +330,48 @@ export function schedule(model: PlanningModel): Plan {
     }
     done(key);
   }
-  return { placements: placements.sort(byKey), unplaced: unplaced.sort(byKey) };
+  placements.sort(byKey);
+  return { placements, unplaced: unplaced.sort(byKey), conflicts: conflictsAmong(model, tasks, successors, placements) };
+}
+
+/**
+ * The rules placed Tasks break, pinned or forced (spec §5 rule 4, CONTEXT Pin), derived from the
+ * model and the placements only, so a read can derive them over the stored Plan (ADR 0010).
+ * Unplaced Tasks are ignored. Throws `SchedulerInputError` for input `schedule` would refuse.
+ */
+export function conflictsOf(model: PlanningModel, placements: { key: TaskKey; start: Minute }[]): Conflict[] {
+  const tasks = new Map(prepare(model).map((t) => [t.key, t]));
+  const successors = new Map<TaskKey, TaskKey[]>([...tasks.keys()].map((k) => [k, []]));
+  for (const link of model.links) successors.get(link.before)?.push(link.after);
+  return conflictsAmong(model, tasks, successors, placements);
+}
+
+function conflictsAmong(
+  model: PlanningModel,
+  tasks: Map<TaskKey, Prepared>,
+  successors: Map<TaskKey, TaskKey[]>,
+  placements: { key: TaskKey; start: Minute }[],
+): Conflict[] {
+  const startOf = new Map(placements.map((p) => [p.key, p.start]));
+  const out: Conflict[] = [];
+  for (const { key, start } of placements) {
+    const task = tasks.get(key);
+    if (!task) continue;
+    const readyAt = start + task.duration;
+    const uses = (successors.get(key) ?? [])
+      .filter((k) => startOf.has(k))
+      .map((k) => ({ key: k, at: startOf.get(k)! }))
+      .sort((a, b) => a.at - b.at || (a.key < b.key ? -1 : 1));
+    const early = uses.find((u) => u.at < readyAt);
+    if (early) out.push({ key, kind: "EarliestUseTooLate", readyAt, use: early.key, useAt: early.at });
+    const keeps = keepsOf(task, tasks, successors);
+    if (keeps === null) continue;
+    // The latest use, ties to the lower key; Service when nothing uses it.
+    const latest = uses.length ? uses.filter((u) => u.at === uses.at(-1)!.at)[0]! : null;
+    if (!latest && (successors.get(key) ?? []).length) continue;
+    const useAt = latest ? latest.at : model.service.at;
+    const keepsUntil = readyAt + keeps;
+    if (keepsUntil < useAt) out.push({ key, kind: "ShelfLifeExceeded", readyAt, keepsUntil, use: latest?.key ?? null, useAt });
+  }
+  return out.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
 }

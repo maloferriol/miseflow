@@ -1,3 +1,4 @@
+import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, minuteOfDay, mutate, timeValue } from "./api.ts";
@@ -105,6 +106,16 @@ function MenuView({ menuId }: { menuId: string }) {
       {menu.data.courses.map((course) => (
         <CourseView key={course.id} course={course} onChanged={onSuccess} />
       ))}
+      <h3>Batches</h3>
+      {menu.data.batches.length ? (
+        <ul aria-label="Batches">
+          {menu.data.batches.map((batch) => (
+            <li key={batch.subRecipe.id}>{batch.label}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No Batches</p>
+      )}
       <form
         onSubmit={(event) => {
           const name = formText(event, "name");
@@ -157,7 +168,21 @@ function CourseView({
             {/* A full load: App reads the view from the URL. ?menu= stays for the way back. */}
             <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: dish.recipe.id })}`}>
               {dish.recipe.name}
-            </a>
+            </a>{" "}
+            {formatFactor(dish.scale.factor)}
+            {/* Paragraphs, not a list, so each Dish stays one list item. */}
+            {dish.fixes.map((fix) => (
+              <p key={`${fix.subRecipe?.id ?? ""}:${fix.text}`}>
+                {fix.subRecipe ? (
+                  <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: fix.subRecipe.id })}`}>
+                    {fix.subRecipe.name}: {fix.text}
+                  </a>
+                ) : (
+                  `${dish.recipe.name}: ${fix.text}`
+                )}
+              </p>
+            ))}
+            <DishScale dish={dish} onChanged={onChanged} />
           </li>
         ))}
       </ul>
@@ -176,6 +201,57 @@ function CourseView({
         {addDish.error && <p role="alert">{addDish.error.message}</p>}
       </form>
     </article>
+  );
+}
+
+type ScaleKind = "guests" | "portions" | "factor";
+
+// A Dish's Scale factor: the guest count over servings, a portion count, or a factor (units spec §5).
+function DishScale({ dish, onChanged }: { dish: Menu["courses"][number]["dishes"][number]; onChanged: () => Promise<void> }) {
+  const queryClient = useQueryClient();
+  const intent = useIntent();
+  const [kind, setKind] = useState<ScaleKind>(dish.scale.source === "set" ? "factor" : "guests");
+  const save = useMutation({
+    mutationFn: async (scale: { kind: "guests" } | { kind: "portions"; portions: number } | { kind: "factor"; factor: number }) =>
+      mutate(intent.id(JSON.stringify([dish.id, scale]), "mutation"), "setDishScale", { dishId: dish.id, scale }),
+    onSuccess: async () => {
+      intent.reset();
+      await Promise.all([onChanged(), queryClient.invalidateQueries({ queryKey: ["plan"] })]);
+    },
+  });
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = Number(new FormData(event.currentTarget).get("value"));
+    if (kind === "guests") save.mutate({ kind });
+    else if (kind === "portions") save.mutate({ kind, portions: value });
+    else save.mutate({ kind, factor: value });
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <select aria-label={`Scale for ${dish.recipe.name}`} value={kind} onChange={(e) => setKind(e.target.value as ScaleKind)}>
+        <option value="guests">Guests</option>
+        <option value="portions">Portions</option>
+        <option value="factor">Factor</option>
+      </select>
+      {kind !== "guests" && (
+        <input
+          name="value"
+          type="number"
+          aria-label={kind === "portions" ? `Portions of ${dish.recipe.name}` : `Factor for ${dish.recipe.name}`}
+          min={kind === "portions" ? 1 : 0.01}
+          max={kind === "portions" ? 10_000 : 1000}
+          step={kind === "portions" ? 1 : "any"}
+          defaultValue={kind === "factor" ? dish.scale.factor : undefined}
+          required
+        />
+      )}
+      <button type="submit" disabled={save.isPending}>
+        Save scale
+      </button>
+      {save.error && <p role="alert">{save.error.message}</p>}
+    </form>
   );
 }
 

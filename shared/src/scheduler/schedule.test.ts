@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { SchedulerInputError, schedule, taskKey } from "./index.ts";
+import { conflictsOf, SchedulerInputError, schedule, taskKey } from "./index.ts";
 import { at, batchTask, dishTask, model, step } from "./fixtures.ts";
-import type { Plan, PlanningModel } from "./index.ts";
+import type { Plan, PlanningModel, TaskSpec } from "./index.ts";
 
 function keysOnce(plan: Plan): string[] {
   return [
@@ -1026,6 +1026,111 @@ describe("schedule", () => {
           links: [{ before: "dish:a:s1", after: "dish:nope:s1" }],
         }),
       ).toBe("UnknownLinkTask");
+    });
+  });
+
+  describe("AC5: shelf life and earliest use are conflicts; the Task stays placed", () => {
+    const keeps = (task: TaskSpec, keepsMinutes: number): TaskSpec => ({ ...task, keepsMinutes });
+    const link = { before: "batch:stock:s1", after: "dish:d1:s1" };
+
+    it("a pinned Batch that won't keep until its latest use is ShelfLifeExceeded naming that use", () => {
+      const plan = schedule(
+        model({
+          service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
+          free: [{ start: at(0, 18, 0), end: at(0, 22, 0) }, { start: at(2, 9, 0), end: at(2, 19, 30) }],
+          tasks: [keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440), dishTask("d1", [step("s1", 30)])],
+          links: [link],
+          previous: [{ key: "batch:stock:s1", start: at(0, 18, 0), cookId: "c1", pinned: true }],
+        }),
+      );
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.placements.map((p) => p.key)).toEqual(["batch:stock:s1", "dish:d1:s1"]);
+      expect(plan.conflicts).toEqual([
+        { key: "batch:stock:s1", kind: "ShelfLifeExceeded", readyAt: at(0, 18, 30), keepsUntil: at(1, 18, 30), use: "dish:d1:s1", useAt: at(2, 19, 0) },
+      ]);
+    });
+
+    // The sauce (d2) can only fit on day 0, which forces the stock early; the soup (d1) uses it on day 2.
+    const forced = () =>
+      model({
+        service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
+        free: [{ start: at(0, 18, 0), end: at(0, 22, 0) }, { start: at(2, 18, 30), end: at(2, 19, 30) }],
+        tasks: [
+          keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440),
+          dishTask("d1", [step("s1", 60)]),
+          dishTask("d2", [step("s1", 30)], at(0, 0, 0)),
+        ],
+        links: [link, { before: "batch:stock:s1", after: "dish:d2:s1" }],
+      });
+
+    it("a Batch forced earlier than its shelf life allows is placed at its latest fit, with the conflict", () => {
+      const plan = schedule(forced());
+      expect(plan.unplaced).toEqual([]);
+      expect(new Map(plan.placements.map((p) => [p.key, p.start]))).toEqual(
+        new Map([
+          ["batch:stock:s1", at(0, 21, 0)],
+          ["dish:d1:s1", at(2, 18, 30)],
+          ["dish:d2:s1", at(0, 21, 30)],
+        ]),
+      );
+      expect(plan.conflicts).toEqual([
+        { key: "batch:stock:s1", kind: "ShelfLifeExceeded", readyAt: at(0, 21, 30), keepsUntil: at(1, 21, 30), use: "dish:d1:s1", useAt: at(2, 18, 30) },
+      ]);
+    });
+
+    it("conflictsOf over schedule()'s own placements gives plan.conflicts", () => {
+      const input = forced();
+      const plan = schedule(input);
+      expect(conflictsOf(input, plan.placements)).toEqual(plan.conflicts);
+    });
+
+    it("a Task with no successor must keep until Service", () => {
+      const plan = schedule(
+        model({
+          service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
+          free: [{ start: at(0, 18, 0), end: at(0, 22, 0) }],
+          tasks: [keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440)],
+          previous: [{ key: "batch:stock:s1", start: at(0, 18, 0), cookId: "c1", pinned: true }],
+        }),
+      );
+      expect(plan.conflicts).toEqual([
+        { key: "batch:stock:s1", kind: "ShelfLifeExceeded", readyAt: at(0, 18, 30), keepsUntil: at(1, 18, 30), use: null, useAt: at(2, 19, 30) },
+      ]);
+    });
+
+    it("a Batch pinned after its first use is EarliestUseTooLate naming the earliest use", () => {
+      const pin = (key: string, start: number) => ({ key, start, cookId: "c1", pinned: true });
+      const plan = schedule(
+        model({
+          service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
+          free: [{ start: at(2, 9, 0), end: at(2, 19, 30) }],
+          tasks: [batchTask("stock", [step("s1", 30)], at(0, 0, 0)), dishTask("d1", [step("s1", 30)]), dishTask("d2", [step("s1", 30)])],
+          links: [link, { before: "batch:stock:s1", after: "dish:d2:s1" }],
+          previous: [pin("batch:stock:s1", at(2, 19, 0)), pin("dish:d1:s1", at(2, 18, 30)), pin("dish:d2:s1", at(2, 18, 0))],
+        }),
+      );
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.conflicts).toEqual([
+        { key: "batch:stock:s1", kind: "EarliestUseTooLate", readyAt: at(2, 19, 30), use: "dish:d2:s1", useAt: at(2, 18, 0) },
+      ]);
+    });
+
+    it("a previous start below the shelf floor moves up into it when that fits", () => {
+      const plan = schedule(
+        model({
+          service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
+          free: [
+            { start: at(0, 18, 0), end: at(0, 22, 0) },
+            { start: at(1, 18, 0), end: at(1, 22, 0) },
+            { start: at(2, 9, 0), end: at(2, 19, 30) },
+          ],
+          tasks: [keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440), dishTask("d1", [step("s1", 30)])],
+          links: [link],
+          previous: [{ key: "batch:stock:s1", start: at(0, 18, 0), cookId: "c1", pinned: false }],
+        }),
+      );
+      expect(plan.placements.find((p) => p.key === "batch:stock:s1")!.start).toBe(at(1, 18, 30));
+      expect(plan.conflicts).toEqual([]);
     });
   });
 });

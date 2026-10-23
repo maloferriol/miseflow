@@ -17,11 +17,14 @@ function passive(minutes: number) {
   return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
 }
 
+// A Dish's name, or a Batch's label ("Chicken stock ×1.5 · for: Velouté, Beurre blanc").
+const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) => task.batch?.label ?? task.dish?.name;
+
 function TaskLine({ task, date }: { task: PlanTask; date: string }) {
   const end = task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`;
   return (
     <li>
-      {task.start}–{end} · {task.dish.name} · {task.steps.map((s) => s.text).join(", ")}
+      {task.start}–{end} · {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}
       {task.approximate && (
         <>
           {" "}
@@ -39,7 +42,7 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
 
   if (plan.isPending) return <p>Loading…</p>;
   if (plan.isError) return <p role="alert">{plan.error.message}</p>;
-  const { service, days, unplaced, approximate } = plan.data;
+  const { service, days, unplaced, approximate, batches, conflicts } = plan.data;
 
   return (
     <>
@@ -69,12 +72,32 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
         <ul aria-label="Unplaced Tasks">
           {unplaced.map((task) => (
             <li key={task.key}>
-              {task.dish.name} · {task.steps.map((s) => s.text).join(", ")}: {task.sentence}
+              {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}: {task.sentence}
             </li>
           ))}
         </ul>
       ) : (
         <p>Every Task is planned</p>
+      )}
+      <h3>Conflicts</h3>
+      {conflicts.length ? (
+        <ul aria-label="Conflicts">
+          {conflicts.map((c) => (
+            <li key={`${c.key}:${c.kind}`}>{c.sentence}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No conflicts</p>
+      )}
+      <h3>Batches</h3>
+      {batches.length ? (
+        <ul aria-label="Batches">
+          {batches.map((b) => (
+            <li key={b.subRecipe.id}>{b.label}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No Batches</p>
       )}
     </>
   );

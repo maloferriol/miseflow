@@ -1,4 +1,4 @@
-import type { Interval, Minute, TaskKey, UnplacedReason } from "../scheduler/types.ts";
+import type { Conflict, Interval, Minute, TaskKey, UnplacedReason } from "../scheduler/types.ts";
 import type { TaskInfo } from "./model.ts";
 
 // Pure: an Unplaced Task's reason as a sentence, times in the kitchen's zone ("Fri 19:50").
@@ -42,4 +42,14 @@ export function describeUnplaced(
     case "BlockedByPin":
       return `The pinned Task ${labelOf(reason.pin)} leaves no room ${between(reason.searched, timeZone)}`;
   }
+}
+
+/** A conflict as a sentence; `labelOf` names a Task ("Blend and season (Velouté)"). */
+export function describeConflict(conflict: Conflict, labelOf: (key: TaskKey) => string, timeZone: string): string {
+  const what = labelOf(conflict.key);
+  const when = (minute: Minute) => clock(minute, timeZone, false);
+  if (conflict.kind === "EarliestUseTooLate")
+    return `${what} is ready at ${when(conflict.readyAt)}, but ${labelOf(conflict.use)} starts at ${when(conflict.useAt)}`;
+  const use = conflict.use === null ? `Service is at ${when(conflict.useAt)}` : `${labelOf(conflict.use)} uses it at ${when(conflict.useAt)}`;
+  return `${what} keeps until ${when(conflict.keepsUntil)}, but ${use}`;
 }

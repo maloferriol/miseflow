@@ -1,4 +1,4 @@
-import { courses, dishes, fromTimeColumn, menus, recipes, services } from "@miseflow/shared";
+import { courses, dishes, fromTimeColumn, menus, readMenuScale, recipes, services } from "@miseflow/shared";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -10,7 +10,8 @@ const menuIdParam = z.uuid();
 
 // GET /menus: the caller's live Menus, most recently changed first.
 // GET /menus/:menuId: one Menu with its Courses and Dishes, only the caller's live rows, and its
-// Service (time as a minute of day, null for the kitchen's default) or null.
+// Service (time as a minute of day, null for the kitchen's default) or null, each Dish's Scale
+// factor and fixes, and the Batches the Menu needs (#87), derived on read.
 // Chained, so the web app's hc<AppType> client gets the response type (Hono RPC).
 // Source: https://hono.dev/docs/guides/rpc
 export function menusRoute(db: Db) {
@@ -70,16 +71,26 @@ export function menusRoute(db: Db) {
         .from(services)
         .where(and(eq(services.menuId, menu.id), eq(services.ownerId, ownerId), isNull(services.deletedAt)));
 
+      const scale = await readMenuScale(db, ownerId, menu.id);
+      const scaleOf = new Map(scale.dishes.map((d) => [d.dishId, d]));
+
       return c.json(
         {
           menu: {
             ...menu,
+            batches: scale.batches,
             service: service ? { ...service, time: service.time === null ? null : fromTimeColumn(service.time) } : null,
             courses: courseRows.map((course) => ({
               ...course,
               dishes: dishRows
                 .filter((dish) => dish.courseId === course.id)
-                .map(({ id, position, recipe }) => ({ id, position, recipe })),
+                .map(({ id, position, recipe }) => ({
+                  id,
+                  position,
+                  recipe,
+                  scale: scaleOf.get(id)?.scale ?? { factor: 1, source: "assumed" as const },
+                  fixes: scaleOf.get(id)?.fixes ?? [],
+                })),
             })),
           },
         },

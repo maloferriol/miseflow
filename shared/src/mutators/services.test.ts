@@ -1,9 +1,11 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
-import { ensureCook, loadAvailability } from "../plan/replan.ts";
-import { availabilityOverrides, availabilityWeekly, cooks, kitchenSettings } from "../schema.ts";
-import { getMutator, type Tx } from "./registry.ts";
+import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../../test/walkthrough.ts";
+import { ensureCook, loadAvailability, readPlan } from "../plan/replan.ts";
+import { localParts } from "../plan/time.ts";
+import { availabilityOverrides, availabilityWeekly, cooks, kitchenSettings, services, taskPlacements } from "../schema.ts";
+import { ConflictError, getMutator, NotFoundError, type Tx } from "./registry.ts";
 
 const ownerId = crypto.randomUUID();
 const timeZone = "Europe/Paris";
@@ -74,6 +76,93 @@ describe("Availability and kitchen settings", () => {
       await run(tx, "setKitchenSettings", { defaultServiceTime: h(18) });
       const rows = await tx.select().from(kitchenSettings).where(eq(kitchenSettings.ownerId, ownerId));
       expect(rows).toMatchObject([{ id: ownerId, defaultServiceTime: "18:00:00" }]);
+    });
+  });
+});
+
+// The walkthrough Menu with its Availability, for one owner, inside the test's transaction.
+async function walkthrough(tx: Tx, owner = ownerId) {
+  const w = await buildWalkthrough((name, args) => run(tx, name, args, owner), crypto.randomUUID().slice(0, 8));
+  await setWalkthroughAvailability((name, args) => run(tx, name, args, owner));
+  return w;
+}
+
+async function addService(tx: Tx, w: Walkthrough, time: number | null = SERVICE_TIME, owner = ownerId) {
+  const serviceId = crypto.randomUUID();
+  await run(tx, "createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time }, owner);
+  return serviceId;
+}
+
+// Each live placement as "Sat 18:50", by the Step that keys its Task.
+async function placements(tx: Tx, serviceId: string) {
+  const rows = await tx
+    .select({ stepId: taskPlacements.firstStepId, start: taskPlacements.startMinute })
+    .from(taskPlacements)
+    .where(and(eq(taskPlacements.serviceId, serviceId), isNull(taskPlacements.deletedAt)));
+  const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return new Map(
+    rows.map((r) => {
+      const p = localParts(r.start, timeZone);
+      const hhmm = `${String(Math.floor(p.minuteOfDay / 60)).padStart(2, "0")}:${String(p.minuteOfDay % 60).padStart(2, "0")}`;
+      return [r.stepId, `${day[p.weekday]} ${hhmm}`];
+    }),
+  );
+}
+
+describe("createService", () => {
+  it("refuses a second Service for the same Menu", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      await addService(tx, w);
+      await expect(addService(tx, w)).rejects.toThrow(ConflictError);
+      expect(await tx.select().from(services).where(eq(services.menuId, w.menuId))).toHaveLength(1);
+    });
+  });
+
+  it("plans a Service with no time to the kitchen's default, 19:00 until one is set", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w, null);
+      expect((await placements(tx, serviceId)).get(w.steps.V3)).toBe("Sat 18:50");
+      await run(tx, "setKitchenSettings", { defaultServiceTime: h(18) });
+      expect((await placements(tx, serviceId)).get(w.steps.V3)).toBe("Sat 17:50");
+      // A later Service time moves nothing that still fits: re-plan keeps previous starts.
+      await run(tx, "setServiceTime", { serviceId, date: SERVICE_DATE, time: h(19, 30) });
+      expect((await placements(tx, serviceId)).get(w.steps.V3)).toBe("Sat 17:50");
+    });
+  });
+
+  it("refuses another owner's Menu as missing", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx, crypto.randomUUID());
+      await expect(addService(tx, w)).rejects.toThrow(NotFoundError);
+    });
+  });
+});
+
+describe("the walkthrough Plan", () => {
+  it("places the walkthrough Saturday 19:30 as late as possible, the beurre blanc ≈ for 10 minutes", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const s = w.steps;
+      expect(Object.fromEntries(await placements(tx, serviceId))).toEqual({
+        [s.V1]: "Sat 17:30",
+        [s.V2]: "Sat 17:55",
+        [s.V3]: "Sat 18:50",
+        [s.D1]: "Thu 21:50",
+        [s.D2]: "Sat 17:20",
+        [s.D3]: "Sat 17:40",
+        [s.D4]: "Sat 18:40",
+        [s.T1]: "Fri 19:30",
+        [s.T2]: "Fri 19:50",
+        [s.T3]: "Sat 18:00",
+      });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const d4 = plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0]!.id === s.D4)!;
+      expect(d4).toMatchObject({ start: "18:40", end: "18:50", approximate: true });
+      expect(plan.approximate).toBe(true);
+      expect(plan.unplaced).toEqual([]);
     });
   });
 });

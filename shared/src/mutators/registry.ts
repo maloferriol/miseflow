@@ -14,8 +14,11 @@ import {
 } from "./planning.ts";
 import { createRecipe, editRecipe } from "./recipes.ts";
 import {
+  createService,
+  replanService,
   setAvailabilityOverride,
   setKitchenSettings,
+  setServiceTime,
   setWeeklyAvailability,
 } from "./services.ts";
 import { addStep, editStep, moveStep, removeStep } from "./steps.ts";
@@ -55,6 +58,9 @@ export const mutators: Record<string, Mutator<any>> = {
   createIngredient,
   addAlias,
   overrideIngredient,
+  createService,
+  setServiceTime,
+  replanService,
   setKitchenSettings,
   setWeeklyAvailability,
   setAvailabilityOverride,

@@ -30,3 +30,22 @@ export function diffPlacements(stored: StoredPlacement[], next: Placement[]): Pl
   for (const row of byKey.values()) if (row.live && !placed.has(row.key)) diff.remove.push(row.id);
   return diff;
 }
+
+// Placement ids are a UUID v5 of the Service and the Task key (owner decision 3), so the browser's
+// optimistic re-plan (ADR 0010) makes the same ids. Flagged against ADR 0004 ("Ids are UUIDs
+// created in the browser"); a revived row keeps its old id. RFC 9562 §5.5:
+// https://www.rfc-editor.org/rfc/rfc9562#section-5.5
+const PLACEMENT_NAMESPACE = "6d1f3a52-0c9e-4b8a-9f4e-2b7d5c8e1a90";
+
+export async function placementId(serviceId: string, key: TaskKey): Promise<string> {
+  const ns = PLACEMENT_NAMESPACE.replace(/-/g, "");
+  const name = new TextEncoder().encode(`${serviceId}:${key}`);
+  const data = new Uint8Array(16 + name.length);
+  for (let i = 0; i < 16; i++) data[i] = parseInt(ns.slice(i * 2, i * 2 + 2), 16);
+  data.set(name, 16);
+  const bytes = new Uint8Array(await crypto.subtle.digest("SHA-1", data)).slice(0, 16);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}

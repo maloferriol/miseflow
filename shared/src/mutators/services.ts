@@ -1,9 +1,9 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { lockCook } from "../plan/replan.ts";
+import { lockCook, replan, replanAffected } from "../plan/replan.ts";
 import { toTimeColumn } from "../plan/time.ts";
-import { availabilityOverrides, availabilityWeekly, kitchenSettings } from "../schema.ts";
-import { ConflictError, defineMutator } from "./define.ts";
+import { availabilityOverrides, availabilityWeekly, kitchenSettings, menus, services } from "../schema.ts";
+import { ConflictError, defineMutator, NotFoundError } from "./define.ts";
 
 // Services, the kitchen's default Service time and the implicit Cook's Availability (#86).
 // A time of day is a minute of day on the 5-minute grid; an end may be 1440 (midnight).
@@ -12,10 +12,65 @@ const minuteOfDay = z.int().min(0).max(1435).multipleOf(5);
 const endOfDay = z.int().min(5).max(1440).multipleOf(5);
 const endAfterStart = { message: "Hours must end after they start" };
 
+/** The one Service of a Menu (ADR 0010), at a date and an optional time (null: the kitchen's default). */
+export const createService = defineMutator({
+  name: "createService",
+  args: z.strictObject({ serviceId: z.uuid(), menuId: z.uuid(), date: z.iso.date(), time: minuteOfDay.nullable() }),
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
+    // The Menu's lock, so two concurrent createService calls check for a Service one after another.
+    const [menu] = await tx
+      .select({ id: menus.id })
+      .from(menus)
+      .where(and(eq(menus.id, args.menuId), eq(menus.ownerId, ownerId), isNull(menus.deletedAt)))
+      .for("update");
+    if (!menu) throw new NotFoundError("Menu");
+    const [existing] = await tx
+      .select({ id: services.id })
+      .from(services)
+      .where(and(eq(services.menuId, args.menuId), isNull(services.deletedAt)));
+    if (existing) throw new ConflictError("This Menu already has a Service");
+    // `services.menu_id` is unique, so a soft-deleted Service still holds the Menu: 23505 → 409.
+    await tx.insert(services).values({
+      id: args.serviceId,
+      ownerId,
+      menuId: args.menuId,
+      date: args.date,
+      time: args.time === null ? null : toTimeColumn(args.time),
+    });
+    await replan(tx, ctx, args.serviceId);
+  },
+});
+
+/** The Service's "when": its date and its time (null: the kitchen's default). */
+export const setServiceTime = defineMutator({
+  name: "setServiceTime",
+  args: z.strictObject({ serviceId: z.uuid(), date: z.iso.date(), time: minuteOfDay.nullable() }),
+  async run(tx, args, ctx) {
+    const updated = await tx
+      .update(services)
+      .set({ date: args.date, time: args.time === null ? null : toTimeColumn(args.time), updatedAt: sql`now()` })
+      .where(and(eq(services.id, args.serviceId), eq(services.ownerId, ctx.ownerId), isNull(services.deletedAt)))
+      .returning({ id: services.id });
+    if (!updated.length) throw new NotFoundError("Service");
+    await replan(tx, ctx, args.serviceId);
+  },
+});
+
+/** Fits the Service's Plan again on request; writes only what moved. */
+export const replanService = defineMutator({
+  name: "replanService",
+  args: z.strictObject({ serviceId: z.uuid() }),
+  async run(tx, args, ctx) {
+    await replan(tx, ctx, args.serviceId);
+  },
+});
+
 export const setKitchenSettings = defineMutator({
   name: "setKitchenSettings",
   args: z.strictObject({ defaultServiceTime: minuteOfDay }),
-  async run(tx, args, { ownerId }) {
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
     // One row per owner, its id the owner's (D1), so the save is one atomic upsert.
     // Source: https://orm.drizzle.team/docs/insert#on-conflict-do-update (setWhere)
     const time = toTimeColumn(args.defaultServiceTime);
@@ -29,6 +84,8 @@ export const setKitchenSettings = defineMutator({
       })
       .returning({ id: kitchenSettings.id });
     if (!written.length) throw new ConflictError("A row with one of these ids already exists");
+    // Only Services without their own time follow the default.
+    await replanAffected(tx, ctx, { allServices: true, onlyDefaultTime: true });
   },
 });
 

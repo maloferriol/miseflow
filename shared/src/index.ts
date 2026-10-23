@@ -15,3 +15,4 @@ export * from "./plan/time.ts";
 export * from "./plan/model.ts";
 export * from "./plan/diff.ts";
 export * from "./plan/reasons.ts";
+export * from "./plan/replan.ts";

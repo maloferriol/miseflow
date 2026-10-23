@@ -222,4 +222,30 @@ describe("JWKS cache", () => {
     expect(found.map((key) => key.kid)).toEqual(["k2"]);
     expect(server.fetches).toBe(3);
   });
+
+  it("answers a known kid from the cache while a refetch for an unknown kid is pending", async () => {
+    const { server, fetch: serve } = fakeJwks(["k1"]);
+    let release: () => void = () => {};
+    let delay = false;
+    // While `delay` is set, answers only once `release` is called.
+    const fetch = async (): Promise<Response> => {
+      if (delay) await new Promise<void>((resolve) => (release = resolve));
+      return serve();
+    };
+    let now = 0;
+    const keys = createJwksCache(url, { fetch, now: () => now });
+    await keys("k1");
+
+    server.kids = ["k1", "k2"];
+    delay = true;
+    now = 60_000;
+    const pending = keys("k2");
+    let known: (string | undefined)[] | undefined;
+    void keys("k1").then((found) => (known = found.map((key) => key.kid)));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(known).toEqual(["k1"]);
+    release();
+    expect((await pending).map((key) => key.kid)).toContain("k2");
+  });
 });

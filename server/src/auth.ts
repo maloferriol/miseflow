@@ -60,8 +60,9 @@ function tokenKid(c: Context): string | undefined {
 }
 
 const TTL_MS = 10 * 60_000;
-// Fetches are at least this far apart once keys are cached, counted from the last attempt,
-// failed or not: forged kids and a down endpoint can't make every request fetch the JWKS.
+// The minimum gap between fetches, counted from the last attempt, failed or not, so forged kids
+// and a down endpoint can't make every request fetch the JWKS. It applies only once keys are
+// cached: an empty cache fetches on every lookup that isn't already waiting on a fetch.
 const REFETCH_COOLDOWN_MS = 30_000;
 
 // Caches a JWKS for TTL_MS, refetches early for an unknown kid (key rotation), and shares one

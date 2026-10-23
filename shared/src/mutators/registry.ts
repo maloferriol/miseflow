@@ -2,6 +2,7 @@ import type { Mutator } from "./define.ts";
 import { addAlias, createIngredient, overrideIngredient } from "./ingredients.ts";
 import { addCourse, addDish, createMenu } from "./menus.ts";
 import { createRecipe, editRecipe } from "./recipes.ts";
+import { addStep, editStep, moveStep, removeStep } from "./steps.ts";
 
 export type { Mutator, MutatorContext, Tx } from "./define.ts";
 export { ConflictError, defineMutator, InvalidArgsError, NotFoundError } from "./define.ts";
@@ -12,6 +13,10 @@ export const mutators: Record<string, Mutator<any>> = {
   addCourse,
   createRecipe,
   editRecipe,
+  addStep,
+  editStep,
+  moveStep,
+  removeStep,
   addDish,
   createIngredient,
   addAlias,

@@ -119,7 +119,7 @@ export function createJwksCache(
   };
 
   return async (kid) => {
-    if (!keys) return refresh();
+    if (!keys || inFlight) return refresh();
     if (now() - attemptedAt < REFETCH_COOLDOWN_MS) return keys;
     const expired = now() - fetchedAt >= TTL_MS;
     const unknownKid =

@@ -1,7 +1,9 @@
 import {
   deriveIngredientList,
+  effectiveMakeAhead,
   loadCatalog,
   loadRecipeSnapshot,
+  readyToPlan,
   recipes,
 } from "@miseflow/shared";
 import { and, asc, eq, isNull } from "drizzle-orm";
@@ -15,7 +17,8 @@ const recipeIdParam = z.uuid();
 
 // GET /recipes: the caller's live Recipes, by name (#83 Decision 8).
 // GET /recipes/:recipeId: one Recipe's working copy, read like a Revision snapshot, with each
-// line's Ingredient name and the derived ingredient list (Decision 9).
+// line's Ingredient name and the derived ingredient list (Decision 9), plus the Planning pass
+// fields: each Step's effective make-ahead window, the dependencies and ready to plan (#85 Q10).
 // Chained, so the web app's hc<AppType> client gets the response types (Hono RPC).
 // Source: https://hono.dev/docs/guides/rpc
 export function recipesRoute(db: Db) {
@@ -72,6 +75,7 @@ export function recipesRoute(db: Db) {
             id: recipe.id,
             name: snapshot.name,
             servings: snapshot.servings,
+            makeAhead: snapshot.makeAhead,
             latestRevision: recipe.latestRevision,
             steps: snapshot.steps.map((step) => ({
               id: step.id,
@@ -89,8 +93,15 @@ export function recipesRoute(db: Db) {
                         },
                 }),
               ),
+              activeMinutes: step.activeMinutes,
+              passiveMinutes: step.passiveMinutes,
+              makeAhead: step.makeAhead,
+              effectiveMakeAhead: effectiveMakeAhead(step, snapshot),
+              groupWithPrevious: step.groupWithPrevious,
             })),
             ingredients: deriveIngredientList(snapshot),
+            dependencies: snapshot.dependencies,
+            readyToPlan: readyToPlan(snapshot, names),
           },
         },
         200,

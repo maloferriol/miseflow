@@ -4,7 +4,10 @@ import { recipeRevisions, recipes, steps } from "../schema.ts";
 import { NotFoundError, type Tx } from "./define.ts";
 
 // Every Recipe edit locks the Recipe first, so concurrent edits of one Recipe run one after
-// another and each gets the next Revision number.
+// another and each gets the next Revision number. FOR NO KEY UPDATE still serialises the edits but
+// doesn't block the FOR KEY SHARE a foreign key check takes (a Batch row or a line referencing
+// this Recipe), so a re-plan holding a Service can't deadlock against it (#87).
+// Source: https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-ROWS
 export async function lockRecipe(tx: Tx, ownerId: string, recipeId: string) {
   const [row] = await tx
     .select({ id: recipes.id })
@@ -16,7 +19,7 @@ export async function lockRecipe(tx: Tx, ownerId: string, recipeId: string) {
         isNull(recipes.deletedAt),
       ),
     )
-    .for("update");
+    .for("no key update");
   if (!row) throw new NotFoundError("Recipe");
 }
 

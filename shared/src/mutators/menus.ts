@@ -123,6 +123,7 @@ async function requireOwned(
     .select({ id: table.id })
     .from(table)
     .where(and(eq(table.id, id), eq(table.ownerId, ownerId), isNull(table.deletedAt)));
-  const [row] = lock ? await query.for("update") : await query;
+  // FOR NO KEY UPDATE, as lockRecipe: appends still serialise, and FK checks (FOR KEY SHARE) don't wait.
+  const [row] = lock ? await query.for("no key update") : await query;
   if (!row) throw new NotFoundError(what);
 }

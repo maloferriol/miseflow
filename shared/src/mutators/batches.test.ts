@@ -1,6 +1,8 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { inRollback } from "../../test/db.ts";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { db, inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../../test/walkthrough.ts";
 import { batchId, readMenuScale } from "../plan/batch-rows.ts";
 import { toPlanningModel } from "../plan/model.ts";
@@ -9,6 +11,7 @@ import { localParts, zonedMinute } from "../plan/time.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { batches, dishes, services, taskPlacements } from "../schema.ts";
 import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
+import { lockRecipe } from "./revision.ts";
 
 const ownerId = crypto.randomUUID();
 const timeZone = "Europe/Paris";
@@ -301,5 +304,83 @@ describe("Batch conflicts and fixes", () => {
       expect(menu.dishes.find((d) => d.dishId === w.dishes.duck)!.fixes).toEqual([fix]);
       expect(menu.batches[0]).toMatchObject({ id: await batchId(serviceId, w.recipes.stock!), scalable: false });
     });
+  });
+});
+
+// Two transactions on two connections, ordered with awaits. The rows are committed, so they're
+// soft-deleted afterwards. Sources: https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-ROWS
+// (FOR KEY SHARE conflicts with FOR UPDATE only), and
+// https://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW (wait_event_type "Lock").
+describe("Batch rows and Recipe locks", () => {
+  it("adding a Dish whose Recipe uses the stock, while a stock Step's times are saved, doesn't deadlock", async () => {
+    const owner = crypto.randomUUID();
+    const clients = [0, 1].map(() => postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} }));
+    const [a, b] = clients.map((client) => drizzle({ client }));
+    const as = (tx: Tx) => (name: string, args: Record<string, unknown>) => run(tx, name, args, owner);
+    const stockId = crypto.randomUUID();
+    const stockStep = crypto.randomUUID();
+    const soupId = crypto.randomUUID();
+    const serviceId = crypto.randomUUID();
+    let w: Walkthrough | undefined;
+    try {
+      // The stock is a Dish of the Menu, so its edits re-plan the Service; the Soup uses it but isn't on the Menu yet.
+      await db.transaction(async (tx) => {
+        const r = as(tx);
+        w = await buildWalkthrough(r, owner.slice(0, 8));
+        await setWalkthroughAvailability(r);
+        await r("createSubRecipe", { recipeId: stockId, revisionId: revisionId(), name: "Chicken stock", yield: "2 L" });
+        await r("addStep", { recipeId: stockId, stepId: stockStep, revisionId: revisionId(), body: [{ type: "text", text: "Simmer" }], lines: [] });
+        await r("setStepTimes", { stepId: stockStep, revisionId: revisionId(), activeMinutes: 10, passiveMinutes: null });
+        const side = crypto.randomUUID();
+        await r("addCourse", { courseId: side, menuId: w.menuId, name: "Side" });
+        await r("addDish", { dishId: crypto.randomUUID(), courseId: side, recipeId: stockId });
+        await r("createRecipe", { recipeId: soupId, revisionId: revisionId(), name: "Soup", servings: 6 });
+        const lineId = crypto.randomUUID();
+        await r("addStep", {
+          recipeId: soupId,
+          stepId: crypto.randomUUID(),
+          revisionId: revisionId(),
+          body: [{ type: "text", text: "Add the " }, { type: "line", lineId }],
+          lines: [{ lineId, subRecipeId: stockId, amount: "1%L", wording: "stock" }],
+        });
+        await r("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+      });
+      const [starter] = (await db.execute(sql`select course_id from dishes where id = ${w!.dishes.veloute}`)) as unknown as Row[];
+      const [{ pid: pidOfA }] = (await clients[0]!`select pg_backend_pid() as pid`) as unknown as { pid: number }[];
+
+      let lockedStock!: () => void;
+      const stockLocked = new Promise<void>((resolve) => (lockedStock = resolve));
+      let goOn!: () => void;
+      const aWaitsOrIsDone = new Promise<void>((resolve) => (goOn = resolve));
+      // B: setStepTimes on the stock, paused right after it locks the stock Recipe.
+      const txB = b.transaction(async (tx) => {
+        await lockRecipe(tx, owner, stockId);
+        lockedStock();
+        await aWaitsOrIsDone;
+        await run(tx, "setStepTimes", { stepId: stockStep, revisionId: revisionId(), activeMinutes: 15, passiveMinutes: null }, owner);
+      });
+      await stockLocked;
+      // A: addDish locks the Service in its re-plan, then inserts the stock's Batch row.
+      let settled = false;
+      const txA = a
+        .transaction(async (tx) => run(tx, "addDish", { dishId: crypto.randomUUID(), courseId: starter!.course_id, recipeId: soupId }, owner))
+        .finally(() => (settled = true));
+      while (!settled) {
+        const [row] = (await db.execute(sql`select wait_event_type from pg_stat_activity where pid = ${pidOfA}`)) as unknown as Row[];
+        if (row?.wait_event_type === "Lock") break;
+      }
+      goOn();
+
+      const results = await Promise.allSettled([txA, txB]);
+      expect(results.map((r) => (r.status === "rejected" ? String((r.reason as Error).cause ?? r.reason) : "ok"))).toEqual(["ok", "ok"]);
+      const [batch] = (await db.execute(sql`select deleted_at from batches where service_id = ${serviceId} and sub_recipe_id = ${stockId}`)) as unknown as Row[];
+      expect(batch).toEqual({ deleted_at: null });
+    } finally {
+      await db.execute(sql`update batches set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await db.execute(sql`update services set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await db.execute(sql`update menus set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await db.execute(sql`update recipes set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await Promise.all(clients.map((c) => c.end()));
+    }
   });
 });

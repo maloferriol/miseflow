@@ -417,6 +417,79 @@ describe("editStep", () => {
       ).rejects.toThrow(ConflictError);
     });
   });
+
+  it("refuses another owner's lineId with ConflictError, leaves their line alone and appends nothing", async () => {
+    await inRollback(async (tx) => {
+      const f = await fixture(tx);
+      const otherOwner = crypto.randomUUID();
+      const theirRecipe = crypto.randomUUID();
+      await run(
+        tx,
+        "createRecipe",
+        {
+          recipeId: theirRecipe,
+          revisionId: crypto.randomUUID(),
+          name: "Theirs",
+        },
+        otherOwner,
+      );
+      const theirs = sweat(f);
+      await run(
+        tx,
+        "addStep",
+        {
+          recipeId: theirRecipe,
+          stepId: crypto.randomUUID(),
+          revisionId: crypto.randomUUID(),
+          body: theirs.body,
+          lines: theirs.lines,
+        },
+        otherOwner,
+      );
+      const stepId = crypto.randomUUID();
+      await run(tx, "addStep", {
+        recipeId: f.recipeId,
+        stepId,
+        revisionId: crypto.randomUUID(),
+        body: [{ type: "text", text: "Rest" }],
+        lines: [],
+      });
+
+      // A savepoint, so the failed mutation rolls back alone and the checks below can still run.
+      await expect(
+        tx.transaction(async (sp) =>
+          run(sp, "editStep", {
+            stepId,
+            revisionId: crypto.randomUUID(),
+            body: [{ type: "line", lineId: theirs.butterLine }],
+            lines: [
+              {
+                lineId: theirs.butterLine,
+                ingredientId: f.butter,
+                amount: "1 kg",
+                wording: "butter",
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow(ConflictError);
+
+      const [line] = await tx
+        .select()
+        .from(ingredientLines)
+        .where(eq(ingredientLines.id, theirs.butterLine));
+      expect(line).toMatchObject({
+        ownerId: otherOwner,
+        quantity: "30",
+        unit: "g",
+      });
+      expect(line!.stepId).not.toBe(stepId);
+      expect(await latestRevision(tx, f.recipeId)).toMatchObject({
+        latest: 2,
+        count: 2,
+      });
+    });
+  });
 });
 
 describe("moveStep", () => {

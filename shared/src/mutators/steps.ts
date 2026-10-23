@@ -4,7 +4,6 @@ import {
   eq,
   inArray,
   isNull,
-  ne,
   notInArray,
   or,
   sql,
@@ -214,24 +213,6 @@ async function writeLines(
     lines.map((l) => l.ingredientId),
   );
   const lineIds = lines.map((l) => l.lineId);
-  if (lineIds.length) {
-    const taken = await tx
-      .select({ id: ingredientLines.id })
-      .from(ingredientLines)
-      .where(
-        and(
-          inArray(ingredientLines.id, lineIds),
-          or(
-            ne(ingredientLines.stepId, stepId),
-            ne(ingredientLines.ownerId, ownerId),
-          ),
-        ),
-      );
-    if (taken.length)
-      throw new ConflictError(
-        "An Ingredient line already belongs to another Step",
-      );
-  }
 
   await tx
     .update(ingredientLines)
@@ -262,13 +243,19 @@ async function writeLines(
       fixedQuantity: q.fixed,
       position,
     };
-    await tx
+    // A lineId may only ever be this Step's own line. The guard sits on the upsert itself, so a
+    // concurrent insert of the same id by another Step or owner can't be overwritten.
+    // Source: https://orm.drizzle.team/docs/insert#on-conflict-do-update (setWhere)
+    const written = await tx
       .insert(ingredientLines)
       .values({ id: line.lineId, ownerId, stepId, ...values })
       .onConflictDoUpdate({
         target: ingredientLines.id,
         set: { ...values, updatedAt: sql`now()`, deletedAt: null },
-      });
+        setWhere: and(eq(ingredientLines.stepId, stepId), eq(ingredientLines.ownerId, ownerId)),
+      })
+      .returning({ id: ingredientLines.id });
+    if (!written.length) throw new ConflictError("An Ingredient line already belongs to another Step");
   }
 }
 

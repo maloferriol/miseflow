@@ -10,6 +10,12 @@ async function authHeaders(): Promise<Record<string, string>> {
 // Typed reads through Hono RPC. Source: https://hono.dev/docs/guides/rpc
 export const api = hc<AppType>("/api", { headers: authHeaders });
 
+export async function fetchMenus() {
+  const res = await api.menus.$get();
+  if (!res.ok) throw new Error(`Could not load the Menus (${res.status})`);
+  return (await res.json()).menus;
+}
+
 export async function fetchMenu(menuId: string) {
   const res = await api.menus[":menuId"].$get({ param: { menuId } });
   if (!res.ok) throw new Error(`Could not load the Menu (${res.status})`);

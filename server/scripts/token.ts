@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set. Copy .env.example to .env first.`);
+  if (!value) throw new Error(`${name} is not set. Run npm run setup:local to write a local .env.`);
   return value;
 }
 

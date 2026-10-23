@@ -4,7 +4,7 @@ import type { AuthConfig } from "./auth.ts";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set. Copy .env.example to .env first.`);
+  if (!value) throw new Error(`${name} is not set. Set it in .env (npm run setup:local writes a local one; README: Cloud setup).`);
   return value;
 }
 

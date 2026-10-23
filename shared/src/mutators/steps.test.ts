@@ -507,3 +507,114 @@ describe("removeStep", () => {
     });
   });
 });
+
+describe("Step mutations and their Revision", () => {
+  async function newestRevision(tx: Tx, recipeId: string) {
+    const { latest, count, revisions } = await latestRevision(tx, recipeId);
+    const newest = revisions.find((r) => r.number === latest)!;
+    return { latest, count, newest };
+  }
+
+  it("editStep, moveStep and removeStep each append one Revision whose snapshot is the working copy", async () => {
+    await inRollback(async (tx) => {
+      const f = await fixture(tx);
+      const stepId = crypto.randomUUID();
+      const other = crypto.randomUUID();
+      const s = sweat(f);
+      await run(tx, "addStep", {
+        recipeId: f.recipeId,
+        stepId,
+        revisionId: crypto.randomUUID(),
+        body: s.body,
+        lines: s.lines,
+      });
+      await run(tx, "addStep", {
+        recipeId: f.recipeId,
+        stepId: other,
+        revisionId: crypto.randomUUID(),
+        body: [{ type: "text", text: "Rest" }],
+        lines: [],
+      });
+      let expected = 3;
+
+      const edits: [string, Record<string, unknown>][] = [
+        [
+          "editStep",
+          {
+            stepId,
+            body: [{ type: "line", lineId: s.shallotLine }],
+            lines: [s.lines[0]],
+          },
+        ],
+        ["moveStep", { stepId: other, afterStepId: null }],
+        ["removeStep", { stepId }],
+      ];
+      for (const [name, args] of edits) {
+        const revisionId = crypto.randomUUID();
+        await run(tx, name, { ...args, revisionId });
+        expected += 1;
+        const { latest, count, newest } = await newestRevision(tx, f.recipeId);
+        expect({ name, latest, count }).toEqual({
+          name,
+          latest: expected,
+          count: expected,
+        });
+        expect(newest.id).toBe(revisionId);
+        expect(newest.snapshot).toEqual(
+          await loadRecipeSnapshot(tx, ownerId, f.recipeId),
+        );
+      }
+    });
+  });
+
+  it("a refused editStep or moveStep appends nothing and leaves the working copy as it was", async () => {
+    await inRollback(async (tx) => {
+      const f = await fixture(tx);
+      const s = sweat(f);
+      const stepOne = crypto.randomUUID();
+      const stepTwo = crypto.randomUUID();
+      await run(tx, "addStep", {
+        recipeId: f.recipeId,
+        stepId: stepOne,
+        revisionId: crypto.randomUUID(),
+        body: s.body,
+        lines: s.lines,
+      });
+      await run(tx, "addStep", {
+        recipeId: f.recipeId,
+        stepId: stepTwo,
+        revisionId: crypto.randomUUID(),
+        body: [{ type: "text", text: "Rest" }],
+        lines: [],
+      });
+      const before = await loadRecipeSnapshot(tx, ownerId, f.recipeId);
+
+      // Savepoints, so each failed mutation rolls back alone and the checks below can run.
+      await expect(
+        tx.transaction(async (sp) =>
+          run(sp, "editStep", {
+            stepId: stepTwo,
+            revisionId: crypto.randomUUID(),
+            body: [{ type: "line", lineId: s.butterLine }],
+            lines: [s.lines[1]],
+          }),
+        ),
+      ).rejects.toThrow(ConflictError);
+      await expect(
+        tx.transaction(async (sp) =>
+          run(sp, "moveStep", {
+            stepId: stepTwo,
+            revisionId: crypto.randomUUID(),
+            afterStepId: crypto.randomUUID(),
+          }),
+        ),
+      ).rejects.toThrow(NotFoundError);
+
+      expect(await latestRevision(tx, f.recipeId)).toMatchObject({
+        latest: 3,
+        count: 3,
+      });
+      expect(await loadRecipeSnapshot(tx, ownerId, f.recipeId)).toEqual(before);
+    });
+  });
+});

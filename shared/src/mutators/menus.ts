@@ -2,7 +2,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { replanAffected } from "../plan/replan.ts";
 import { courses, dishes, menus, recipes } from "../schema.ts";
-import { defineMutator, NotFoundError, type Tx } from "./define.ts";
+import { defineMutator, InvalidArgsError, NotFoundError, type Tx } from "./define.ts";
 import { positionAfter } from "./position.ts";
 
 const name = z.string().trim().min(1).max(200);
@@ -68,6 +68,43 @@ export const addDish = defineMutator({
     });
     const [course] = await tx.select({ menuId: courses.menuId }).from(courses).where(eq(courses.id, args.courseId));
     await replanAffected(tx, ctx, { menuId: course!.menuId });
+  },
+});
+
+/**
+ * A Dish's Scale factor (units spec §5): back to the guest count, a factor, or a portion count,
+ * stored as portions over the Recipe's servings (D5). No re-plan: durations don't scale (spec §4)
+ * and every Batch size is derived on read (D6).
+ */
+export const setDishScale = defineMutator({
+  name: "setDishScale",
+  args: z.strictObject({
+    dishId: z.uuid(),
+    scale: z.discriminatedUnion("kind", [
+      z.strictObject({ kind: z.literal("guests") }),
+      z.strictObject({ kind: z.literal("factor"), factor: z.number().positive().max(1000) }),
+      z.strictObject({ kind: z.literal("portions"), portions: z.int().min(1).max(10_000) }),
+    ]),
+  }),
+  async run(tx, args, { ownerId }) {
+    const [dish] = await tx
+      .select({ id: dishes.id, servings: recipes.servings })
+      .from(dishes)
+      .innerJoin(recipes, eq(recipes.id, dishes.recipeId))
+      .where(and(eq(dishes.id, args.dishId), eq(dishes.ownerId, ownerId), isNull(dishes.deletedAt)))
+      .for("update", { of: dishes });
+    if (!dish) throw new NotFoundError("Dish");
+    let factor: number | null = null;
+    if (args.scale.kind === "factor") factor = args.scale.factor;
+    if (args.scale.kind === "portions") {
+      const servings = dish.servings === null ? 0 : Number(dish.servings);
+      if (!(servings > 0)) throw new InvalidArgsError("This Recipe has no servings; set a factor instead");
+      factor = args.scale.portions / servings;
+    }
+    await tx
+      .update(dishes)
+      .set({ scaleFactor: factor === null ? null : String(factor), updatedAt: sql`now()` })
+      .where(eq(dishes.id, args.dishId));
   },
 });
 

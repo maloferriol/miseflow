@@ -162,3 +162,19 @@ export function formatFactor(factor: number): string {
 export function batchLabel(b: BatchSize): string {
   return `${b.name} ${formatFactor(b.factor)} · for: ${b.parents.map((p) => p.name).join(", ")}`;
 }
+
+/** A Batch as every read shows it (spec §3): "Chicken stock ×1.5 · for: Velouté, Beurre blanc". */
+export type BatchRead = {
+  /** The Service's live Batch row, or null when there is none yet (D8). */
+  id: string | null;
+  subRecipe: { id: string; name: string };
+  factor: number;
+  scalable: boolean;
+  for: BatchParent[];
+  label: string;
+  fix: string | null;
+};
+
+export function toBatchRead(b: BatchSize, id: string | null): BatchRead {
+  return { id, subRecipe: { id: b.subRecipeId, name: b.name }, factor: b.factor, scalable: b.scalable, for: b.parents, label: batchLabel(b), fix: b.fix };
+}

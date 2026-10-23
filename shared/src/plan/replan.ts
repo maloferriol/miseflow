@@ -1,8 +1,8 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { NotFoundError, type MutatorContext, type Tx } from "../mutators/define.ts";
 import { stepPlainText } from "../recipe/planning.ts";
-import { schedule } from "../scheduler/schedule.ts";
-import { taskKey, type TaskKey, type UnplacedReason } from "../scheduler/types.ts";
+import { conflictsOf, schedule } from "../scheduler/schedule.ts";
+import { taskKey, type Conflict, type TaskKey, type UnplacedReason } from "../scheduler/types.ts";
 import {
   availabilityOverrides,
   availabilityWeekly,
@@ -14,11 +14,11 @@ import {
   services,
   taskPlacements,
 } from "../schema.ts";
-import { batchLabel, type BatchSize } from "./batches.ts";
+import { formatFactor, toBatchRead, type BatchRead } from "./batches.ts";
 import { loadBatchRows, loadScaleRows, recipeAndAncestors, reconcileBatches } from "./batch-rows.ts";
 import { diffPlacements, placementId, type StoredPlacement } from "./diff.ts";
 import { deriveScale, type Hours, type PlanRows, type TaskInfo, toPlanningModel } from "./model.ts";
-import { describeUnplaced } from "./reasons.ts";
+import { describeConflict, describeUnplaced } from "./reasons.ts";
 import { formatMinuteOfDay, fromTimeColumn, type LocalDate, localParts } from "./time.ts";
 
 // Re-plan against the database: read a Service's rows, run the pure scheduler, write the diff.
@@ -277,30 +277,6 @@ export async function replanAffected(tx: Tx, ctx: MutatorContext, scope: ReplanS
   for (const id of await servicesInScope(tx, ctx.ownerId, scope)) await replan(tx, ctx, id);
 }
 
-/** A Batch as every read shows it (spec §3): "Chicken stock ×1.5 · for: Velouté, Beurre blanc". */
-export type BatchRead = {
-  /** The Service's live Batch row, or null when there is none yet (D8). */
-  id: string | null;
-  subRecipe: { id: string; name: string };
-  factor: number;
-  scalable: boolean;
-  for: BatchSize["parents"];
-  label: string;
-  fix: string | null;
-};
-
-export function toBatchRead(b: BatchSize, id: string | null): BatchRead {
-  return {
-    id,
-    subRecipe: { id: b.subRecipeId, name: b.name },
-    factor: b.factor,
-    scalable: b.scalable,
-    for: b.parents,
-    label: batchLabel(b),
-    fix: b.fix,
-  };
-}
-
 export type PlanTask = {
   key: TaskKey;
   /** null on a Batch's Task. */
@@ -332,12 +308,24 @@ export type PlanRead = {
     kind: UnplacedReason["kind"];
     sentence: string;
   }[];
+  /** Placed Tasks that break a rule, derived on read over the stored Plan (ADR 0010). */
+  conflicts: {
+    key: TaskKey;
+    kind: Conflict["kind"];
+    dish: { id: string; name: string } | null;
+    batch: { id: string; label: string } | null;
+    steps: { id: string; text: string }[];
+    /** null: Service itself. */
+    use: { key: TaskKey | null; label: string };
+    sentence: string;
+  }[];
 };
 
 /**
  * The Plan as stored (ADR 0010, D9): placed Tasks from `task_placements`, ends and ≈ from the
  * Steps, and Unplaced Tasks derived on read by one scheduler run over the same rows.
  */
+
 export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZone: string): Promise<PlanRead> {
   const service = await findService(tx, ownerId, serviceId);
   const rows = await loadPlanRows(tx, ownerId, service);
@@ -389,6 +377,21 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
     const task = tasks.get(key);
     return task ? (stepText.get(task.stepIds[0]!) ?? key) : key;
   };
+  // "Strain the stock (Chicken stock ×1.5)", "Blend and season (Velouté)".
+  const batchNames = new Map(batches.map((b) => [b.id!, `${b.subRecipe.name} ${formatFactor(b.factor)}`]));
+  const taskLabel = (key: TaskKey) => {
+    const task = tasks.get(key);
+    if (!task) return key;
+    const owner = task.batchId !== null ? batchNames.get(task.batchId) : names.get(task.dishId!);
+    return `${labelOf(key)} (${owner})`;
+  };
+  const conflicts = conflictsOf(model, rows.previous.filter((p) => tasks.has(p.key))).map((c) => ({
+    key: c.key,
+    kind: c.kind,
+    ...describe(tasks.get(c.key)!),
+    use: { key: c.use, label: c.use === null ? "Service" : taskLabel(c.use) },
+    sentence: describeConflict(c, taskLabel, timeZone),
+  }));
   const storedKeys = new Set(rows.previous.map((p) => p.key));
   const unplaced = schedule(model)
     .unplaced.filter((u) => !storedKeys.has(u.key))
@@ -409,5 +412,6 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
     days,
     batches,
     unplaced,
+    conflicts,
   };
 }

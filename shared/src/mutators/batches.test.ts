@@ -2,13 +2,13 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../../test/walkthrough.ts";
-import { batchId } from "../plan/batch-rows.ts";
+import { batchId, readMenuScale } from "../plan/batch-rows.ts";
 import { toPlanningModel } from "../plan/model.ts";
 import { loadPlanRows, readPlan } from "../plan/replan.ts";
 import { localParts, zonedMinute } from "../plan/time.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { batches, dishes, services, taskPlacements } from "../schema.ts";
-import { getMutator, type Tx } from "./registry.ts";
+import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 
 const ownerId = crypto.randomUUID();
 const timeZone = "Europe/Paris";
@@ -183,6 +183,116 @@ describe("Batches in the re-plan", () => {
       expect(moved.sort()).toEqual([w.steps.S1!, w.steps.S2!].sort());
       const changed = [...(await versions(tx, serviceId))].filter(([step, v]) => rows.get(step) !== v).map(([step]) => step);
       expect(changed.sort()).toEqual(moved);
+    });
+  });
+});
+
+// Runs a mutation that should be refused in a savepoint, so the checks after it can still run.
+async function refused(tx: Tx, name: string, args: unknown, error: new (...a: any[]) => Error, owner = ownerId) {
+  let thrown: unknown;
+  await tx.transaction(async (sp) => run(sp, name, args, owner)).catch((e) => (thrown = e));
+  expect(thrown).toBeInstanceOf(error);
+}
+
+const scaleOf = async (tx: Tx, dishId: string) =>
+  (await tx.select({ scaleFactor: dishes.scaleFactor }).from(dishes).where(eq(dishes.id, dishId)))[0]!.scaleFactor;
+
+describe("setDishScale", () => {
+  it("stores a factor, portions over the Recipe's servings, and clears back to the guest count", async () => {
+    await inRollback(async (tx) => {
+      const { w } = await stockWalkthrough(tx);
+      await run(tx, "setDishScale", { dishId: w.dishes.duck, scale: { kind: "factor", factor: 2 } });
+      expect(await scaleOf(tx, w.dishes.duck)).toBe("2");
+      await run(tx, "setDishScale", { dishId: w.dishes.duck, scale: { kind: "portions", portions: 9 } });
+      expect(await scaleOf(tx, w.dishes.duck)).toBe("1.5");
+      await run(tx, "setDishScale", { dishId: w.dishes.duck, scale: { kind: "guests" } });
+      expect(await scaleOf(tx, w.dishes.duck)).toBeNull();
+    });
+  });
+
+  it("refuses portions on a Recipe with no servings, and another owner's Dish as missing", async () => {
+    await inRollback(async (tx) => {
+      const { w } = await stockWalkthrough(tx);
+      await refused(tx, "setDishScale", { dishId: w.dishes.tarte, scale: { kind: "portions", portions: 8 } }, InvalidArgsError);
+      await refused(tx, "setDishScale", { dishId: w.dishes.duck, scale: { kind: "factor", factor: 2 } }, NotFoundError, crypto.randomUUID());
+      expect(await scaleOf(tx, w.dishes.duck)).toBeNull();
+    });
+  });
+
+  it("refuses a factor that isn't positive or is over 1000", () => {
+    const args = getMutator("setDishScale")!.args;
+    const dishId = crypto.randomUUID();
+    expect(args.safeParse({ dishId, scale: { kind: "factor", factor: 0 } }).success).toBe(false);
+    expect(args.safeParse({ dishId, scale: { kind: "factor", factor: 1001 } }).success).toBe(false);
+    expect(args.safeParse({ dishId, scale: { kind: "portions", portions: 1.5 } }).success).toBe(false);
+  });
+
+  it("a Velouté ×3 makes a bigger stock, and no placement moves", async () => {
+    await inRollback(async (tx) => {
+      const { w, s, serviceId } = await stockWalkthrough(tx);
+      const rows = await versions(tx, serviceId);
+      await run(tx, "setDishScale", { dishId: w.dishes.veloute, scale: { kind: "factor", factor: 3 } });
+      expect((await readPlan(tx, ownerId, serviceId, timeZone)).batches[0]!.label).toBe(
+        `Chicken stock ${s} ×2.63 · for: Velouté ${s}, Beurre blanc ${s}`,
+      );
+      expect(await versions(tx, serviceId)).toEqual(rows);
+    });
+  });
+});
+
+describe("Batch conflicts and fixes", () => {
+  it("AC5: a stock kept 1 day is still placed on Thursday and shows ShelfLifeExceeded naming its latest use; the Plan stands", async () => {
+    await inRollback(async (tx) => {
+      const { w, s, serviceId } = await stockWalkthrough(tx);
+      const before = await placements(tx, serviceId);
+      await run(tx, "setMakeAhead", { target: { kind: "recipe", recipeId: w.recipes.stock! }, revisionId: revisionId(), window: { beforeDays: 3, shelfLifeDays: 1 } });
+      const after = await placements(tx, serviceId);
+      expect(after).toEqual(before);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      expect(plan.unplaced).toEqual([]);
+      const v3 = `dish:${w.dishes.veloute}:${w.steps.V3}`;
+      expect(plan.conflicts.map((c) => [c.steps[0]!.id, c.kind, c.use.key])).toEqual([
+        [w.steps.S1, "ShelfLifeExceeded", v3],
+        [w.steps.S2, "ShelfLifeExceeded", v3],
+        [w.steps.S3, "ShelfLifeExceeded", v3],
+      ]);
+      expect(plan.conflicts.find((c) => c.steps[0]!.id === w.steps.S3)!.sentence).toBe(
+        `Strain the stock (Chicken stock ${s} ×1.5) keeps until Fri 21:30, but Blend and season (Velouté ${s}) uses it at Sat 18:50`,
+      );
+    });
+  });
+
+  it("AC5: stock Tasks pinned three days earlier stay put and show ShelfLifeExceeded; every other Task keeps its start", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await stockWalkthrough(tx);
+      const stockId = await batchId(serviceId, w.recipes.stock!);
+      const before = await placements(tx, serviceId);
+      // #89 adds pinTask; until then a pin is set in SQL.
+      await tx.execute(sql`update task_placements set pinned = true, start_minute = start_minute - ${3 * 1440}
+        where batch_id = ${stockId} and deleted_at is null`);
+      await run(tx, "replanService", { serviceId });
+      const after = await placements(tx, serviceId);
+      for (const [stepId, p] of before) {
+        const moved = p.batchId === stockId ? p.start - 3 * 1440 : p.start;
+        expect(after.get(stepId)!.start).toBe(moved);
+      }
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.conflicts.filter((c) => c.kind === "ShelfLifeExceeded" && c.batch?.id === stockId)).toHaveLength(3);
+    });
+  });
+
+  it("AC6: a stock with no yield is planned as 1 batch and both Dishes show add a yield", async () => {
+    await inRollback(async (tx) => {
+      const { w, s, serviceId } = await stockWalkthrough(tx);
+      await run(tx, "setYield", { recipeId: w.recipes.stock!, revisionId: revisionId(), yield: null });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      expect(plan.batches[0]).toMatchObject({ factor: 1, scalable: false, fix: "add a yield", label: `Chicken stock ${s} ×1 · for: Velouté ${s}, Beurre blanc ${s}` });
+      const menu = await readMenuScale(tx, ownerId, w.menuId);
+      const fix = { subRecipe: { id: w.recipes.stock, name: `Chicken stock ${s}` }, text: "add a yield" };
+      expect(menu.dishes.find((d) => d.dishId === w.dishes.veloute)!.fixes).toEqual([fix]);
+      expect(menu.dishes.find((d) => d.dishId === w.dishes.duck)!.fixes).toEqual([fix]);
+      expect(menu.batches[0]).toMatchObject({ id: await batchId(serviceId, w.recipes.stock!), scalable: false });
     });
   });
 });

@@ -3,8 +3,10 @@ import type { Tx } from "../mutators/define.ts";
 import { loadSubRecipeGraph } from "../mutators/subrecipes.ts";
 import type { Region } from "../recipe/convert.ts";
 import { loadRecipeSnapshot, type RecipeSnapshot } from "../recipe/snapshot.ts";
-import { batches, courses, dishes, kitchenSettings, menus, recipes } from "../schema.ts";
+import { batches, courses, dishes, kitchenSettings, menus, recipes, services } from "../schema.ts";
+import { type BatchRead, type DishScale, toBatchRead } from "./batches.ts";
 import { uuidV5 } from "./diff.ts";
+import { deriveScale } from "./model.ts";
 
 // Batch rows against the database: what a Menu's scaling reads, and the reconcile step re-plan runs.
 
@@ -143,4 +145,28 @@ export async function recipeAndAncestors(tx: Tx, ownerId: string, recipeId: stri
   for (let id = queue.shift(); id !== undefined; id = queue.shift())
     for (const parent of parentsOf.get(id) ?? []) if (!seen.has(parent)) (seen.add(parent), queue.push(parent));
   return [...seen];
+}
+
+export type MenuScale = {
+  dishes: { dishId: string; scale: { factor: number; source: DishScale["source"] }; fixes: { subRecipe: { id: string; name: string } | null; text: string }[] }[];
+  /** `id`: the Service's live Batch row, or null with no Service or no row yet (D8). */
+  batches: BatchRead[];
+};
+
+/** Each Dish's Scale factor and fixes, and the Batches the Menu needs. Reads only (D8). */
+export async function readMenuScale(tx: Tx, ownerId: string, menuId: string): Promise<MenuScale> {
+  const scale = deriveScale(await loadScaleRows(tx, ownerId, menuId));
+  const [service] = await tx
+    .select({ id: services.id })
+    .from(services)
+    .where(and(eq(services.menuId, menuId), eq(services.ownerId, ownerId), isNull(services.deletedAt)));
+  const stored = new Map(service ? (await loadBatchRows(tx, service.id)).map((b) => [b.subRecipeId, b.batchId]) : []);
+  return {
+    dishes: scale.dishes.map((d) => ({
+      dishId: d.dishId,
+      scale: { factor: d.factor, source: d.source },
+      fixes: d.fixes.map((f) => ({ subRecipe: f.subRecipeId === null ? null : { id: f.subRecipeId, name: f.subRecipeName! }, text: f.text })),
+    })),
+    batches: scale.batches.map((b) => toBatchRead(b, stored.get(b.subRecipeId) ?? null)),
+  };
 }

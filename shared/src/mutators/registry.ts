@@ -4,7 +4,7 @@ import {
   createIngredient,
   overrideIngredient,
 } from "./ingredients.ts";
-import { addCourse, addDish, createMenu } from "./menus.ts";
+import { addCourse, addDish, createMenu, setDishScale } from "./menus.ts";
 import {
   addStepDependency,
   removeStepDependency,
@@ -55,6 +55,7 @@ export const mutators: Record<string, Mutator<any>> = {
   setYield,
   extractToSubRecipe,
   addDish,
+  setDishScale,
   createIngredient,
   addAlias,
   overrideIngredient,

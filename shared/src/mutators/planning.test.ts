@@ -317,3 +317,54 @@ describe("removeStepDependency", () => {
     });
   });
 });
+
+describe("planning changes and their Revision", () => {
+  it("each planning change appends one Revision whose snapshot is the working copy", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await chickenStock(tx);
+      const [one, two, three] = stepIds;
+      const dependencyId = crypto.randomUUID();
+      const changes: [string, Record<string, unknown>, (s: Awaited<ReturnType<typeof loadRecipeSnapshot>>) => unknown][] = [
+        ["setStepTimes", { stepId: one, activeMinutes: 20, passiveMinutes: 40 }, (s) => s.steps[0]!.passiveMinutes === 40],
+        [
+          "setMakeAhead",
+          { target: { kind: "recipe", recipeId }, window: { beforeDays: 3, shelfLifeDays: 4 } },
+          (s) => s.makeAhead?.beforeDays === 3,
+        ],
+        [
+          "setMakeAhead",
+          { target: { kind: "step", stepId: two }, window: { beforeDays: 1, shelfLifeDays: 2 } },
+          (s) => s.steps[1]!.makeAhead?.beforeDays === 1,
+        ],
+        ["setGroupWithPrevious", { stepId: three, value: true }, (s) => s.steps[2]!.groupWithPrevious],
+        ["addStepDependency", { dependencyId, beforeStepId: one, afterStepId: two }, (s) => s.dependencies.length === 1],
+        ["removeStepDependency", { dependencyId }, (s) => s.dependencies.length === 0],
+      ];
+      let expected = 4;
+      for (const [name, args, holds] of changes) {
+        const revisionId = crypto.randomUUID();
+        await run(tx, name, { ...args, revisionId });
+        expected += 1;
+        const { latest, count, rows } = await revisions(tx, recipeId);
+        expect({ name, latest, count }).toEqual({ name, latest: expected, count: expected });
+        const newest = rows.find((r) => r.number === latest)!;
+        expect(newest.id).toBe(revisionId);
+        const working = await loadRecipeSnapshot(tx, ownerId, recipeId);
+        expect(newest.snapshot).toEqual(working);
+        expect({ name, holds: holds(working) }).toEqual({ name, holds: true });
+      }
+    });
+  });
+
+  it("a refused planning change appends nothing and leaves the working copy as it was", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, stepIds } = await chickenStock(tx);
+      const before = await loadRecipeSnapshot(tx, ownerId, recipeId);
+      await refused(tx, "setGroupWithPrevious", { stepId: stepIds[0], revisionId: crypto.randomUUID(), value: true }, InvalidArgsError);
+      await refused(tx, "addStepDependency", link(stepIds[1], stepIds[1]), InvalidArgsError);
+      await refused(tx, "setStepTimes", { stepId: crypto.randomUUID(), revisionId: crypto.randomUUID(), activeMinutes: 1, passiveMinutes: null }, NotFoundError);
+      expect(await revisions(tx, recipeId)).toMatchObject({ latest: 4, count: 4 });
+      expect(await loadRecipeSnapshot(tx, ownerId, recipeId)).toEqual(before);
+    });
+  });
+});

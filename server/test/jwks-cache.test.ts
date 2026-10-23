@@ -180,4 +180,36 @@ describe("JWKS cache", () => {
     for (const result of found) expect(result.map((key) => key.kid)).toContain("k2");
     expect(server.fetches).toBe(2);
   });
+
+  it("restarts the TTL after a successful refetch", async () => {
+    const { server, fetch } = fakeJwks(["k1"]);
+    let now = 0;
+    const keys = createJwksCache(url, { fetch, now: () => now });
+    await keys("k1");
+    now = 11 * 60_000;
+    await keys("k1");
+
+    now += 31_000;
+    await keys("k1");
+
+    expect(server.fetches).toBe(2);
+  });
+
+  it("recovers fresh keys once the endpoint is back after an outage", async () => {
+    const { server, fetch } = fakeJwks(["k1"]);
+    let now = 0;
+    const keys = createJwksCache(url, { fetch, now: () => now });
+    await keys("k1");
+    server.down = true;
+    now = 11 * 60_000;
+    await keys("k1");
+
+    server.down = false;
+    server.kids = ["k2"];
+    now += 31_000;
+    const found = await keys("k2");
+
+    expect(found.map((key) => key.kid)).toEqual(["k2"]);
+    expect(server.fetches).toBe(3);
+  });
 });

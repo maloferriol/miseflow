@@ -47,3 +47,19 @@ export async function fetchShoppingCategories() {
   if (!res.ok) throw new Error(`Could not load the Shopping categories (${res.status})`);
   return (await res.json()).shoppingCategories;
 }
+
+export async function fetchRecipes() {
+  const res = await api.recipes.$get();
+  if (!res.ok) throw new Error(`Could not load the Recipes (${res.status})`);
+  return (await res.json()).recipes;
+}
+
+export async function fetchRecipe(recipeId: string) {
+  const res = await api.recipes[":recipeId"].$get({ param: { recipeId } });
+  if (!res.ok) throw new Error(`Could not load the Recipe (${res.status})`);
+  return (await res.json()).recipe;
+}
+
+export type Recipe = Awaited<ReturnType<typeof fetchRecipe>>;
+export type RecipeStep = Recipe["steps"][number];
+export type RecipeLine = RecipeStep["lines"][number];

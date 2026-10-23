@@ -11,7 +11,7 @@ import {
 import { z } from "zod";
 import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
 import { stepBodySchema, type StepToken } from "../recipe/tokens.ts";
-import { ingredientLines, ingredients, steps } from "../schema.ts";
+import { ingredientLines, ingredients, stepDependencies, steps } from "../schema.ts";
 import {
   ConflictError,
   defineMutator,
@@ -134,16 +134,24 @@ export const moveStep = defineMutator({
     if (args.afterStepId === args.stepId)
       throw new InvalidArgsError("A Step can't move after itself");
     const step = await lockStep(tx, ownerId, args.stepId);
-    const others = (await liveSteps(tx, ownerId, step.recipeId)).filter(
-      (s) => s.id !== args.stepId,
-    );
+    const live = await liveSteps(tx, ownerId, step.recipeId);
+    const others = live.filter((s) => s.id !== args.stepId);
+    const position = slotAfter(others, args.afterStepId);
     await tx
       .update(steps)
-      .set({
-        position: slotAfter(others, args.afterStepId),
-        updatedAt: sql`now()`,
-      })
+      .set({ position, updatedAt: sql`now()` })
       .where(eq(steps.id, args.stepId));
+    // No Step silently joins a different Task: the moved Step leaves its group, its follower
+    // leaves too if the moved Step was the key Step, and the Step after the new slot doesn't join it.
+    const nextAtSlot =
+      args.afterStepId === null
+        ? others[0]
+        : others[others.findIndex((s) => s.id === args.afterStepId) + 1];
+    await ungroup(tx, [
+      args.stepId,
+      ...followerOfKeyStep(live, args.stepId),
+      ...(nextAtSlot ? [nextAtSlot.id] : []),
+    ]);
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
   },
 });
@@ -153,6 +161,20 @@ export const removeStep = defineMutator({
   args: z.strictObject({ stepId: z.uuid(), revisionId: z.uuid() }),
   async run(tx, args, { ownerId }) {
     const step = await lockStep(tx, ownerId, args.stepId);
+    const live = await liveSteps(tx, ownerId, step.recipeId);
+    await ungroup(tx, followerOfKeyStep(live, args.stepId));
+    await tx
+      .update(stepDependencies)
+      .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(
+        and(
+          or(
+            eq(stepDependencies.beforeStepId, args.stepId),
+            eq(stepDependencies.afterStepId, args.stepId),
+          ),
+          isNull(stepDependencies.deletedAt),
+        ),
+      );
     await tx
       .update(ingredientLines)
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
@@ -172,7 +194,11 @@ export const removeStep = defineMutator({
 
 async function liveSteps(tx: Tx, ownerId: string, recipeId: string) {
   return tx
-    .select({ id: steps.id, position: steps.position })
+    .select({
+      id: steps.id,
+      position: steps.position,
+      groupWithPrevious: steps.groupWithPrevious,
+    })
     .from(steps)
     .where(
       and(
@@ -182,6 +208,26 @@ async function liveSteps(tx: Tx, ownerId: string, recipeId: string) {
       ),
     )
     .orderBy(asc(sql`${steps.position} collate "C"`), asc(steps.id));
+}
+
+// The Step after `stepId`, if `stepId` is a group's key Step: without it, that Step would join the
+// previous group.
+function followerOfKeyStep(
+  ordered: { id: string; groupWithPrevious: boolean }[],
+  stepId: string,
+) {
+  const index = ordered.findIndex((s) => s.id === stepId);
+  const isKey = index === 0 || !ordered[index]!.groupWithPrevious;
+  const follower = ordered[index + 1];
+  return isKey && follower ? [follower.id] : [];
+}
+
+async function ungroup(tx: Tx, stepIds: string[]) {
+  if (!stepIds.length) return;
+  await tx
+    .update(steps)
+    .set({ groupWithPrevious: false, updatedAt: sql`now()` })
+    .where(and(inArray(steps.id, stepIds), eq(steps.groupWithPrevious, true)));
 }
 
 // The position right after `afterStepId` (null: before the first), among `ordered` live Steps.

@@ -1,0 +1,1088 @@
+{
+  "licence": {
+    "notice": "This Ingredient seed (the shopping categories, Ingredients, aliases and reference Conversions in this file) is made available under the Open Database License (ODbL) v1.0. Any rights in individual contents of the database are licensed under the Database Contents License (DbCL) v1.0. Contains data from Open Food Facts (https://world.openfoodfacts.org), whose ingredients taxonomy is available under the ODbL. Reference Conversions and FDC ids are from USDA FoodData Central (SR Legacy), public domain (CC0 1.0). This licence covers this file only, not MiseFlow's code.",
+    "odbl": "https://opendatacommons.org/licenses/odbl/1-0/",
+    "dbcl": "https://opendatacommons.org/licenses/dbcl/1-0/"
+  },
+  "shoppingCategories": [
+    {
+      "id": "34a4306e-d660-4d23-9f46-ee58f4840411",
+      "name": "Produce"
+    },
+    {
+      "id": "0092548e-7955-4fc8-a145-7fea78d82c69",
+      "name": "Meat & fish"
+    },
+    {
+      "id": "d8325358-fead-42e3-a7e8-f3fe0abc01ce",
+      "name": "Dairy & eggs"
+    },
+    {
+      "id": "bef7096d-c7fd-407c-9c41-37cd618d4392",
+      "name": "Bakery"
+    },
+    {
+      "id": "bb0899e2-beec-4b50-aa8a-686f1e287a7c",
+      "name": "Dry goods"
+    },
+    {
+      "id": "71bd8736-a96f-4059-a6aa-c4e41abc7f5d",
+      "name": "Spices"
+    },
+    {
+      "id": "933d6adf-a8ad-450d-83a3-bd642d95875a",
+      "name": "Frozen"
+    },
+    {
+      "id": "de0475e4-3c08-417a-b354-ca04e485919e",
+      "name": "Drinks"
+    },
+    {
+      "id": "1c98019e-0293-44c0-b3fb-3767f5a29ce7",
+      "name": "Other"
+    }
+  ],
+  "ingredients": [
+    {
+      "id": "929e97bb-5945-43ec-92fb-a6ebe862d4a7",
+      "name": "chicken carcass",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Meat & fish",
+      "aliases": [
+        {
+          "id": "aca4e844-209a-4323-b766-ff8e5a6d9571",
+          "name": "chicken frame"
+        },
+        {
+          "id": "2506b391-60de-4cac-86bc-c244f9c3fb25",
+          "name": "chicken bones"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "5b231b3b-c310-4224-94a9-2fedac22df33",
+      "name": "onion",
+      "fdcId": "170000",
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "9721f60b-313e-4f15-88b1-b899a51204b3",
+          "name": "yellow onion"
+        },
+        {
+          "id": "6729e980-d6f6-4026-9231-7489aa6c7485",
+          "name": "brown onion"
+        }
+      ],
+      "conversions": [
+        {
+          "id": "e5750cab-c10a-4cd6-8564-e812921c3ffe",
+          "fromUnit": "each",
+          "toUnit": "g",
+          "factor": 110,
+          "fdcId": "170000"
+        }
+      ]
+    },
+    {
+      "id": "355342c6-2f79-487f-9955-36d361603ea8",
+      "name": "carrot",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "aa679fb2-9c00-449e-9649-ca6f3c059451",
+      "name": "leek",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "9a34e907-4f60-40bf-8e21-761b592d0131",
+      "name": "celery",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "98a4f792-11be-4d44-86e3-75ca32d3025d",
+          "name": "celery stalk"
+        },
+        {
+          "id": "85e6a770-0f39-4147-822f-fccc2d844b77",
+          "name": "celery stick"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "b4f3b304-269b-423c-b9de-e6d1ffa849ad",
+      "name": "garlic",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "fc6937d4-072d-4616-9815-d2f67ca7b95d",
+          "name": "garlic clove"
+        }
+      ],
+      "conversions": [
+        {
+          "id": "3ae46510-0176-474a-bcd4-403f03e8ac4b",
+          "fromUnit": "clove",
+          "toUnit": "g",
+          "factor": 3,
+          "fdcId": null
+        }
+      ]
+    },
+    {
+      "id": "66381cdd-eb71-469b-b320-9df6c4a181ea",
+      "name": "bay leaf",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "2c4c8063-bd6d-462e-900e-06252485274a",
+          "name": "bay leaves"
+        },
+        {
+          "id": "9862fbf5-5acb-46f3-a161-1db7763b06f7",
+          "name": "laurel leaf"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "539d46e5-636e-46e4-88f3-8c0ff7bf493e",
+      "name": "thyme",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "7c44fefa-5eab-4f15-a6c6-199028752689",
+          "name": "fresh thyme"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "5da594fc-c422-4b4c-9cfc-28c844335163",
+      "name": "parsley",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "df5f6f79-f816-48d4-8e17-db3875fa8ab0",
+          "name": "flat-leaf parsley"
+        },
+        {
+          "id": "b41726ea-60f2-46d8-9799-e5ea0c7f1f23",
+          "name": "italian parsley"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "d03397a2-5101-4f10-8131-3386139274fc",
+      "name": "black peppercorns",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "c4f01bc1-0df3-4eb5-9ebf-5eed2b354c9c",
+          "name": "whole black pepper"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "4ad68452-f65c-4cad-9e77-6b242d90e62e",
+      "name": "white pepper",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "9fd988d1-8144-4a13-bd53-856f480879b1",
+          "name": "ground white pepper"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "2c6f88ba-d92e-4d3e-98f9-6e1497c2810b",
+      "name": "butter",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [
+        {
+          "id": "7cb9562e-0365-450c-83c8-ad4b89fb03d1",
+          "name": "unsalted butter"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "b4c7d751-bbb3-46c0-a39d-cb7b54e6d31b",
+      "name": "all-purpose flour",
+      "fdcId": "168894",
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "95a842d4-b81a-40ea-af6c-b9b51b70fb64",
+          "name": "flour"
+        },
+        {
+          "id": "8576b76a-3860-4e94-8541-61851cf19626",
+          "name": "AP flour"
+        },
+        {
+          "id": "67b3a333-ba1c-4dbe-8697-1fbced2c42d3",
+          "name": "plain flour"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "0d011981-ba08-4659-aea4-f6089e0dc634",
+      "name": "heavy cream",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [
+        {
+          "id": "e153182f-786b-4c32-a5aa-7ea70ff83d4a",
+          "name": "cream"
+        },
+        {
+          "id": "e1b9e1cd-eb31-441e-892b-759394599c59",
+          "name": "heavy whipping cream"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "b76b1d11-67b2-4d4c-b997-988f97f91df6",
+      "name": "milk",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [
+        {
+          "id": "48e27fe2-fc74-4ae4-b8b2-e475da3a06ae",
+          "name": "whole milk"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "e9e23e01-b9bf-4c62-ad1f-be8f9a69ed7f",
+      "name": "egg",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [
+        {
+          "id": "e70bcd1b-0aaa-4afc-8e96-687e294b9fdb",
+          "name": "large egg"
+        },
+        {
+          "id": "d84a7eec-d1f0-422c-b521-2496e8108357",
+          "name": "whole egg"
+        },
+        {
+          "id": "03403174-a298-4d58-b930-200edd58b5e6",
+          "name": "hen's egg"
+        }
+      ],
+      "conversions": [
+        {
+          "id": "2d984def-290f-4bd0-88ef-ffc0f417980c",
+          "fromUnit": "each",
+          "toUnit": "g",
+          "factor": 50,
+          "fdcId": null
+        }
+      ]
+    },
+    {
+      "id": "2e2802d7-10c5-4e16-a09d-b8cf49ed9828",
+      "name": "salt",
+      "fdcId": "173468",
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "b6f9ce99-afaa-4866-8a47-f606e712f9f8",
+          "name": "table salt"
+        },
+        {
+          "id": "02f70cbc-00ba-4cf1-8e89-8ade6f15b242",
+          "name": "fine salt"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "e687f066-25e6-43ac-9dbc-ffd5c734d7bb",
+      "name": "sugar",
+      "fdcId": "169655",
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "693c8cd1-ef2f-4d4a-93e2-62b59db51bcf",
+          "name": "granulated sugar"
+        },
+        {
+          "id": "cbb825b3-04f0-4d70-a8e2-1b7e1fb6b683",
+          "name": "white sugar"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "fe76b305-052a-4092-9fed-561151c0fa95",
+      "name": "white wine",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Drinks",
+      "aliases": [
+        {
+          "id": "5f2cb7a4-1f2f-49ff-b8d7-01e4ad5b6f0c",
+          "name": "dry white wine"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "d912af93-dce8-4fb1-a289-e73e399f51bd",
+      "name": "white wine vinegar",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dry goods",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "7c3cb9ae-eefc-4355-9969-af484dad4478",
+      "name": "shallot",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "684e7268-0cd4-42ab-9557-87f6df0a87d3",
+          "name": "échalote"
+        },
+        {
+          "id": "c6e66d45-f818-4e41-af72-60a114d2c44a",
+          "name": "eschalot"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "15eef6b2-d747-40df-b05f-3815ba1ced60",
+      "name": "duck breast",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Meat & fish",
+      "aliases": [
+        {
+          "id": "3db2bd25-47aa-4ffd-a3cc-f66be1d51417",
+          "name": "magret"
+        },
+        {
+          "id": "9e621dc3-8046-4a16-867a-90199452f24d",
+          "name": "duck magret"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "ce346a18-9476-4363-9574-a800c3842954",
+      "name": "apple",
+      "fdcId": "168204",
+      "preferredKind": "count",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "cf186b06-77d0-43a7-b886-5875231523f2",
+      "name": "water",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Other",
+      "aliases": [
+        {
+          "id": "dc77b2a0-1b8b-4c2f-ab1a-94c3c13198ce",
+          "name": "cold water"
+        },
+        {
+          "id": "02bb7fb2-1973-4b5e-b170-fbd4e89c3326",
+          "name": "tap water"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "56e1cc10-8707-4c75-a61f-b09b07a43f1e",
+      "name": "olive oil",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dry goods",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "e54233b2-d73f-49b4-94b6-981e606366af",
+      "name": "vegetable oil",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "5ed64a52-e97d-4c68-863b-90999d919b36",
+          "name": "neutral oil"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "4e956b14-c40e-4709-aeb0-99053c75bccf",
+      "name": "canola oil",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "80553722-e2b5-49b3-9b31-f69f191d3bb3",
+          "name": "rapeseed oil"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "ea4c0c9d-507e-4821-bb8f-c6c81c77a2fc",
+      "name": "lemon",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "ccae79db-2f0a-4346-883d-24739550fc44",
+      "name": "lime",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "110633de-df2b-48bf-8479-d21fde7d527b",
+      "name": "potato",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "58bbb754-228e-4c26-aec5-ae7c7a754f4c",
+      "name": "tomato",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "980a6fa4-a76e-473c-8927-13959354690c",
+      "name": "red onion",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "a4ff105c-7c2e-4df1-aed2-b3d60b8f1f7d",
+      "name": "spring onion",
+      "fdcId": "170005",
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "b3bab568-31ff-4efd-9df4-0c6abd6dbaad",
+          "name": "green onion"
+        },
+        {
+          "id": "f3eb6c96-3ab1-4690-8bd8-c84c82a860bc",
+          "name": "scallion"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "bf55bbf2-8e5b-4c40-be99-4fe24ae80608",
+      "name": "ginger",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "8dd86c4a-9c5d-452f-b52e-de18116beb74",
+          "name": "fresh ginger"
+        },
+        {
+          "id": "10ab355d-7ed9-4f27-9a1e-a222ddd43135",
+          "name": "ginger root"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "8414ed64-6a97-43dc-a1fc-97811bd57515",
+      "name": "bell pepper",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "1617b5d8-1e27-437e-9c69-ee8021e206f8",
+          "name": "sweet pepper"
+        },
+        {
+          "id": "1dc646e2-6c9c-4d32-b75d-474611511b7d",
+          "name": "capsicum"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "8ca0ebd2-c20e-42a5-8e28-915ed8e04688",
+      "name": "cucumber",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "139b2733-2577-4bbf-aed0-83ea21039996",
+      "name": "zucchini",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "596dc77e-f144-42f4-b74e-554d8820b110",
+          "name": "courgette"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "f053c743-0934-4c96-8bd9-bb29c01ba047",
+      "name": "eggplant",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "122ce4f5-a112-4239-a104-08bfa4f655bb",
+          "name": "aubergine"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "30708cf5-a894-461f-981a-e1f807249666",
+      "name": "mushroom",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "4b01b250-03bf-42a9-a449-dbfaf894e98f",
+          "name": "button mushroom"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "e83dd59c-c386-4bd7-8771-6609a55830f6",
+      "name": "spinach",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "20208d81-9807-4feb-86b8-47ff7c8ae040",
+          "name": "baby spinach"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "ced812a5-8da6-4476-b58f-c74368e80e60",
+      "name": "basil",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "ab110d01-1521-4aee-8f6e-73fef8c001de",
+          "name": "fresh basil"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "06f2376a-6a23-40bd-bdcd-b5841a541052",
+      "name": "chives",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "7f78b3f0-ede6-49f1-8854-c42bf3d89eb4",
+      "name": "rosemary",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Produce",
+      "aliases": [
+        {
+          "id": "3bd2d23f-a2dc-41ef-8c18-162e752f43c2",
+          "name": "fresh rosemary"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "faf4a762-c58a-4f32-ba3d-c19b5f9057fe",
+      "name": "long-grain white rice",
+      "fdcId": "168877",
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "5408668b-41f5-48f9-add5-947ef31f813f",
+          "name": "rice"
+        },
+        {
+          "id": "9159bfd3-d1ed-48c5-98f5-716b3da28523",
+          "name": "white rice"
+        },
+        {
+          "id": "4383ecc7-54ba-4fdb-b4ff-a5c22b4a3476",
+          "name": "long-grain rice"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "6c958c13-371a-4b60-8166-6f4f3310bba9",
+      "name": "pasta",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "1731b4d0-bda1-4360-bdc9-bd6b4adee601",
+          "name": "dried pasta"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "0f4e2e33-b34c-416b-89a3-f5c715ef566a",
+      "name": "brown sugar",
+      "fdcId": "168833",
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "5cd9acc7-89ea-4fd5-946b-9593ababdfa6",
+          "name": "soft brown sugar"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "9ced25a7-a484-401b-b9f2-444d58b4ff2e",
+      "name": "powdered sugar",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "fd955c7f-5c0b-4eb7-9bf8-19519ebdda72",
+          "name": "icing sugar"
+        },
+        {
+          "id": "e439554e-0f28-40bf-abc6-9c1989f77d5c",
+          "name": "confectioners' sugar"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "d5243186-c232-4e9b-b083-e6c102c28bd1",
+      "name": "honey",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "4e26fc93-5baf-4059-8b7a-60af64b5d5c8",
+      "name": "cornstarch",
+      "fdcId": "169698",
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "46c13e2f-4139-471b-bd58-5e91637e5a77",
+          "name": "corn starch"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "ac073343-727d-47d2-aeab-40e7752b4f57",
+      "name": "baking powder",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "9dd7e0eb-fa4c-48f2-8354-d5f9b5abc54b",
+      "name": "baking soda",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "37ba1d14-9ecd-4822-a8b4-9b679b0f5681",
+          "name": "bicarbonate of soda"
+        },
+        {
+          "id": "9a484864-6098-4967-970c-e149b9be97f1",
+          "name": "bicarb"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "d95016d7-e285-4393-985b-1953fb48b321",
+      "name": "cocoa powder",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "32cfa379-ff6b-49f9-9099-24e5aef1d9c9",
+          "name": "cocoa"
+        },
+        {
+          "id": "c9d7df01-fbd8-404f-96a1-548001ce9b0d",
+          "name": "unsweetened cocoa"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "6567ad51-538c-453c-a0da-33e204abfd8c",
+      "name": "rolled oats",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "a31838c3-ed83-4881-8d48-3fed3856d8b1",
+          "name": "oats"
+        },
+        {
+          "id": "53465e7e-8191-4a55-b4b2-8025af058a17",
+          "name": "porridge oats"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "5b6eab46-55a6-4d6c-81ca-9130f586af0c",
+      "name": "chickpeas",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "81f8bf5b-5bba-4215-b07b-2271b5f6cfa6",
+          "name": "garbanzo beans"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "c42e1fb1-8b3f-43e6-ba8d-5450913dd2cf",
+      "name": "lentils",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "d79fffb2-c1f0-44d6-9ce7-0e0a27a4d9e0",
+      "name": "soy sauce",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "6fcee83a-0904-4871-99cb-6af237bae555",
+          "name": "soya sauce"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "239ef7de-bd24-44dd-9c48-faf8cf6915f0",
+      "name": "dijon mustard",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dry goods",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "6a973138-4969-49fd-a72d-55dd671b4cda",
+      "name": "vanilla extract",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dry goods",
+      "aliases": [
+        {
+          "id": "99196ce9-085d-42a2-a444-a8b2b98fbacd",
+          "name": "vanilla"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "011c7666-e3a0-4dcd-bdcb-dca3dcc9989f",
+      "name": "ground cinnamon",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "5d6bd804-1561-40fb-acf2-e2b4ec533ef1",
+          "name": "cinnamon"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "d9c07fad-c6e8-472b-b0da-29871838ea02",
+      "name": "ground cumin",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "020b9fae-f1fa-43e5-9525-82f34924e022",
+          "name": "cumin"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "8b14ac93-3725-45b1-847c-23e2b81fc04f",
+      "name": "paprika",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "8dfe5c09-cc2b-4424-b115-6b1c02f859a2",
+      "name": "nutmeg",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "d5d23c5e-132f-4614-bc8c-155d887adbb5",
+          "name": "ground nutmeg"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "cd5c90a0-d96b-4a84-a67f-3277fc540ff1",
+      "name": "ground black pepper",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Spices",
+      "aliases": [
+        {
+          "id": "11b682b3-d813-4d7e-b084-28ac44748b34",
+          "name": "black pepper"
+        },
+        {
+          "id": "8eea88b3-1e6a-4b74-a476-5473b54360e3",
+          "name": "pepper"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "24273e2a-10a5-48c6-baaf-5827e62ffe79",
+      "name": "double cream",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "9655149d-3a9d-4a7c-b573-0f42558bde9a",
+      "name": "crème fraîche",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [],
+      "conversions": []
+    },
+    {
+      "id": "dc1eeff3-08d7-4322-9ee3-df7c3640b834",
+      "name": "plain yogurt",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [
+        {
+          "id": "f068baab-fd36-43dc-af8c-454c47451804",
+          "name": "yogurt"
+        },
+        {
+          "id": "abe2fc06-7476-40c3-ae9a-cd3c67c68884",
+          "name": "natural yogurt"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "70770181-3a88-4269-923e-073b66494341",
+      "name": "parmesan",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Dairy & eggs",
+      "aliases": [
+        {
+          "id": "cee769a4-66bd-4883-b64a-7fb789ab15d4",
+          "name": "parmigiano reggiano"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "11dbb3f9-6731-4980-b243-ab331e461f4c",
+      "name": "bread",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Bakery",
+      "aliases": [
+        {
+          "id": "c8272868-c2b5-4e18-a2c1-f1bc7f1875b0",
+          "name": "loaf"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "94b99817-baa2-436f-beaf-00442ebc48e3",
+      "name": "baguette",
+      "fdcId": null,
+      "preferredKind": "count",
+      "shoppingCategory": "Bakery",
+      "aliases": [
+        {
+          "id": "1daa9c23-99c7-4c41-addc-2cd34ae8d856",
+          "name": "french stick"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "60e48fab-5d38-4369-993a-deb1f4101b99",
+      "name": "puff pastry",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Frozen",
+      "aliases": [
+        {
+          "id": "29138961-f5f3-4917-bf58-ae01371f58a7",
+          "name": "ready-made puff pastry"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "b404cc7d-2ffc-4c61-a4f7-c24ff1b848ba",
+      "name": "frozen peas",
+      "fdcId": null,
+      "preferredKind": "mass",
+      "shoppingCategory": "Frozen",
+      "aliases": [
+        {
+          "id": "42219cee-e3c9-4f38-adfe-8af65a4d7446",
+          "name": "petits pois"
+        }
+      ],
+      "conversions": []
+    },
+    {
+      "id": "2e0f6b54-7ac7-4857-a091-23460dedb285",
+      "name": "red wine",
+      "fdcId": null,
+      "preferredKind": "volume",
+      "shoppingCategory": "Drinks",
+      "aliases": [
+        {
+          "id": "f628d988-b2f2-4774-a308-6bbf2fabd0e0",
+          "name": "dry red wine"
+        }
+      ],
+      "conversions": []
+    }
+  ]
+}

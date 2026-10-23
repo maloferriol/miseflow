@@ -4,7 +4,14 @@
 
 ## Picking a subagent's model
 
-Every Agent call sets `model`: `"haiku"` or `"sonnet"`. A subagent with no `model` inherits the orchestrator's, which is the most expensive one. The orchestrator itself keeps synthesis and owner decisions.
+Every Agent call sets `model`: `"opus"`, `"sonnet"` or `"haiku"`. A subagent with no `model` inherits the orchestrator's, which may not fit its task. The orchestrator itself keeps synthesis and owner decisions.
+
+### Opus: planning and review
+
+Run these on Opus (`model: "opus"`). A defect missed here costs every later stage:
+
+* Planning a ticket (the Plan agent)
+* Reviewing a PR or a diff for defects, including each fix round's review
 
 ### Haiku: narrow tasks
 
@@ -25,9 +32,7 @@ Tell the subagent exactly what to run or change and what a passing result looks 
 
 Run these on Sonnet (`model: "sonnet"`). They need judgement, or the spec has gaps the agent must fill:
 
-* Planning a ticket (the Plan agent)
 * Implementing a ticket, and its fix rounds
-* Reviewing a PR or a diff for defects
 * Diagnosing a failure whose cause is unknown
 * Reviewing one transcript in a retrospective
 * Writing or rewording docs and agent instructions

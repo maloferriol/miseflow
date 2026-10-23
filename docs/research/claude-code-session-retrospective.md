@@ -208,7 +208,7 @@ Where each finding is addressed (`workflow.md` section in brackets):
 | G8 unverified success | Done for tests [Tests]. Not generalised |
 | G9 follow-ups | Done [Code and review: Unfixed findings become issues] |
 
-Subagent models are now set in `CLAUDE.md`: Haiku for narrow tasks, Sonnet for judgement.
+Subagent models are now set in `CLAUDE.md`: Opus for planning and review, Sonnet for other judgement work, Haiku for narrow tasks.
 
 ## Appendix: why the corpus was cheap to review
 

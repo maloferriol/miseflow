@@ -3,7 +3,7 @@ import {
   ingredientOverrides,
   ingredients,
 } from "@miseflow/shared";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadSeed, readSeed } from "../src/seed.ts";
 import { db, getToken, testApp } from "./helpers.ts";
@@ -186,6 +186,11 @@ describe("overrideIngredient", () => {
     ).toEqual([before]);
     const [first] = await search("milk");
     expect(first).toMatchObject({ id: milk, mainUnit: "L", overridden: true });
+    const [override] = await db
+      .select({ id: ingredientOverrides.id })
+      .from(ingredientOverrides)
+      .where(and(eq(ingredientOverrides.ingredientId, milk), isNull(ingredientOverrides.deletedAt)));
+    expect(first?.overrideId).toBe(override?.id);
   });
 
   it("answers 400 for a Main unit of another kind of measure", async () => {

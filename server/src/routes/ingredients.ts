@@ -49,6 +49,7 @@ export function ingredientsRoute(db: Db) {
             matchedBy,
             exact,
             overridden: entry.overridden,
+            overrideId: entry.overrideId,
           })),
         },
         200,

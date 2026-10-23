@@ -14,6 +14,8 @@ export type VisibleIngredient = CatalogEntry & {
   mainUnit: string | null;
   shoppingCategory: { id: string; name: string } | null;
   overridden: boolean;
+  /** The id of the caller's override row for this Ingredient, if one exists. */
+  overrideId: string | null;
 };
 
 // Seed rows have no owner; everything else must be the caller's. Soft-deleted rows never show.
@@ -85,6 +87,7 @@ export async function loadCatalog(
       overridden:
         !!override &&
         (override.mainUnit !== null || override.shoppingCategoryId !== null),
+      overrideId: override?.id ?? null,
     };
   });
 }

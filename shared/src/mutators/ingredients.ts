@@ -157,6 +157,8 @@ export const overrideIngredient = defineMutator({
       return;
     }
     // A seed row is never written: the change goes in the caller's one override row.
+    // `overrideId` is used only by the first insert. Later overrides of the same Ingredient
+    // update that existing row and keep its id, which GET /ingredients returns as `overrideId`.
     await tx
       .insert(ingredientOverrides)
       .values({

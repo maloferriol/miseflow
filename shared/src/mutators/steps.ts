@@ -21,12 +21,16 @@ import {
 } from "./define.ts";
 import { positionAfter, positionBetween } from "./position.ts";
 import { appendRevision, lockRecipe, lockStep } from "./revision.ts";
+import { requireSubRecipeLinks } from "./subrecipes.ts";
 
-// One Ingredient line as the editor sends it. `ingredientId` is required: a line is saved only
-// once it links to an Ingredient (ADR 0002). `amount` is the shorthand parseQuantity reads.
-const lineInput = z.strictObject({
+// One Ingredient line as the editor sends it. A line is saved only once it links to exactly one
+// Ingredient (ADR 0002) or one Recipe used as a sub-recipe (#84). `amount` is the shorthand
+// parseQuantity reads.
+const lineInput = z
+  .strictObject({
   lineId: z.uuid(),
-  ingredientId: z.uuid(),
+  ingredientId: z.uuid().optional(),
+  subRecipeId: z.uuid().optional(),
   amount: z
     .string()
     .max(100)
@@ -47,7 +51,10 @@ const lineInput = z.strictObject({
     .regex(/^[^()\n]*$/, "A preparation can't contain ( ) or a line break")
     .nullable()
     .optional(),
-});
+  })
+  .refine((line) => (line.ingredientId === undefined) !== (line.subRecipeId === undefined), {
+    message: "A line links to exactly one Ingredient or sub-recipe",
+  });
 type LineInput = z.infer<typeof lineInput>;
 
 // Every line token has its line, every line has one token, and the Step isn't blank.
@@ -100,7 +107,7 @@ export const addStep = defineMutator({
       position,
       body: args.body,
     });
-    await writeLines(tx, ownerId, args.stepId, args.body, args.lines);
+    await writeLines(tx, ownerId, args.recipeId, args.stepId, args.body, args.lines);
     await appendRevision(tx, ownerId, args.recipeId, args.revisionId);
   },
 });
@@ -117,7 +124,7 @@ export const editStep = defineMutator({
       .update(steps)
       .set({ body: args.body, updatedAt: sql`now()` })
       .where(eq(steps.id, args.stepId));
-    await writeLines(tx, ownerId, args.stepId, args.body, args.lines);
+    await writeLines(tx, ownerId, step.recipeId, args.stepId, args.body, args.lines);
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
   },
 });
@@ -249,6 +256,7 @@ function slotAfter(
 async function writeLines(
   tx: Tx,
   ownerId: string,
+  recipeId: string,
   stepId: string,
   body: StepToken[],
   lines: LineInput[],
@@ -256,7 +264,13 @@ async function writeLines(
   await requireVisibleIngredients(
     tx,
     ownerId,
-    lines.map((l) => l.ingredientId),
+    lines.flatMap((l) => (l.ingredientId ? [l.ingredientId] : [])),
+  );
+  await requireSubRecipeLinks(
+    tx,
+    ownerId,
+    recipeId,
+    lines.flatMap((l) => (l.subRecipeId ? [l.subRecipeId] : [])),
   );
   const lineIds = lines.map((l) => l.lineId);
 
@@ -280,7 +294,8 @@ async function writeLines(
     position = positionAfter(position);
     const q = parseQuantity(line.amount);
     const values = {
-      ingredientId: line.ingredientId,
+      ingredientId: line.ingredientId ?? null,
+      subRecipeId: line.subRecipeId ?? null,
       quantity: q.value === null ? null : String(q.value),
       quantityMax: q.max === null ? null : String(q.max),
       unit: q.unit,

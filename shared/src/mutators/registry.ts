@@ -14,6 +14,11 @@ import {
 } from "./planning.ts";
 import { createRecipe, editRecipe } from "./recipes.ts";
 import { addStep, editStep, moveStep, removeStep } from "./steps.ts";
+import {
+  createSubRecipe,
+  extractToSubRecipe,
+  setYield,
+} from "./subrecipes.ts";
 
 export type { Mutator, MutatorContext, Tx } from "./define.ts";
 export {
@@ -38,6 +43,9 @@ export const mutators: Record<string, Mutator<any>> = {
   setGroupWithPrevious,
   addStepDependency,
   removeStepDependency,
+  createSubRecipe,
+  setYield,
+  extractToSubRecipe,
   addDish,
   createIngredient,
   addAlias,

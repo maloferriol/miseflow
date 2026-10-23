@@ -4,6 +4,7 @@ export type DerivedIngredient = {
   lineId: string;
   stepId: string;
   ingredientId: string | null;
+  subRecipeId: string | null;
   wording: string | null;
   quantity: number | null;
   quantityMax: number | null;
@@ -19,6 +20,7 @@ export function deriveIngredientList(snapshot: RecipeSnapshot): DerivedIngredien
       lineId: line.id,
       stepId: step.id,
       ingredientId: line.ingredientId,
+      subRecipeId: line.subRecipeId,
       wording: line.wording,
       quantity: line.quantity,
       quantityMax: line.quantityMax,

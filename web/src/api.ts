@@ -60,6 +60,8 @@ export async function fetchRecipes() {
   return (await res.json()).recipes;
 }
 
+export type RecipeListItem = Awaited<ReturnType<typeof fetchRecipes>>[number];
+
 export async function fetchRecipe(recipeId: string) {
   const res = await api.recipes[":recipeId"].$get({ param: { recipeId } });
   if (!res.ok) throw new Error(`Could not load the Recipe (${res.status})`);

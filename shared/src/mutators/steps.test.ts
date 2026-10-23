@@ -1,12 +1,14 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
+import { findPlanningCycle, stepGroups } from "../recipe/planning.ts";
 import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
 import {
   ingredientLines,
   ingredients,
   recipeRevisions,
   recipes,
+  stepDependencies,
   steps,
 } from "../schema.ts";
 import { ConflictError } from "./define.ts";
@@ -711,6 +713,96 @@ describe("Step mutations and their Revision", () => {
         count: 3,
       });
       expect(await loadRecipeSnapshot(tx, ownerId, f.recipeId)).toEqual(before);
+    });
+  });
+});
+
+describe("Step moves, removals, groups and dependencies", () => {
+  // Steps a, b, c, d with b grouped with a and d with c; links a → b and a → c.
+  async function planned(tx: Tx) {
+    const { recipeId } = await fixture(tx);
+    const [a, b, c, d] = [0, 1, 2, 3].map(() => crypto.randomUUID()) as [string, string, string, string];
+    for (const [stepId, text] of [[a, "a"], [b, "b"], [c, "c"], [d, "d"]] as const)
+      await run(tx, "addStep", {
+        recipeId,
+        stepId,
+        revisionId: crypto.randomUUID(),
+        body: [{ type: "text", text }],
+        lines: [],
+      });
+    for (const stepId of [b, d])
+      await run(tx, "setGroupWithPrevious", { stepId, revisionId: crypto.randomUUID(), value: true });
+    for (const [beforeStepId, afterStepId] of [[a, b], [a, c]])
+      await run(tx, "addStepDependency", {
+        dependencyId: crypto.randomUUID(),
+        revisionId: crypto.randomUUID(),
+        beforeStepId,
+        afterStepId,
+      });
+    return { recipeId, a, b, c, d };
+  }
+  const groupsOf = async (tx: Tx, recipeId: string) =>
+    stepGroups((await loadRecipeSnapshot(tx, ownerId, recipeId)).steps).map((g) => g.stepIds);
+
+  it("removeStep soft-deletes its dependencies, both directions", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, a, b, c } = await planned(tx);
+      await run(tx, "removeStep", { stepId: a, revisionId: crypto.randomUUID() });
+      const live = await tx
+        .select()
+        .from(stepDependencies)
+        .where(and(eq(stepDependencies.recipeId, recipeId), isNull(stepDependencies.deletedAt)));
+      expect(live).toEqual([]);
+      const all = await tx.select().from(stepDependencies).where(eq(stepDependencies.recipeId, recipeId));
+      expect(all.map((d) => [d.beforeStepId, d.afterStepId]).sort()).toEqual([[a, b], [a, c]].sort());
+    });
+  });
+
+  it("removing a group's key Step clears its follower's flag", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, b, c, d } = await planned(tx);
+      await run(tx, "removeStep", { stepId: c, revisionId: crypto.randomUUID() });
+      // d would otherwise join a and b's group.
+      expect((await groupsOf(tx, recipeId)).slice(-1)).toEqual([[d]]);
+      await run(tx, "removeStep", { stepId: b, revisionId: crypto.randomUUID() });
+      expect((await groupsOf(tx, recipeId)).length).toBe(2);
+    });
+  });
+
+  it("moving a grouped Step out of its group clears its flag and the Step's after its new slot", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, a, b, c, d } = await planned(tx);
+      // b lands between c and d: b leaves a's group, and d doesn't join b.
+      await run(tx, "moveStep", { stepId: b, revisionId: crypto.randomUUID(), afterStepId: c });
+      expect(await groupsOf(tx, recipeId)).toEqual([[a], [c], [b], [d]]);
+    });
+  });
+
+  it("after any move, no Step joins a different group and no cycle appears", async () => {
+    await inRollback(async (tx) => {
+      const { recipeId, a, b, c, d } = await planned(tx);
+      const before = await groupsOf(tx, recipeId);
+      const groupOf = new Map(before.flatMap((g, i) => g.map((id) => [id, i])));
+      const rollback = new Error("rollback");
+      for (const stepId of [a, b, c, d])
+        for (const afterStepId of [null, a, b, c, d].filter((id) => id !== stepId)) {
+          await tx
+            .transaction(async (sp) => {
+              await run(sp, "moveStep", { stepId, revisionId: crypto.randomUUID(), afterStepId });
+              const snapshot = await loadRecipeSnapshot(sp, ownerId, recipeId);
+              for (const group of stepGroups(snapshot.steps))
+                expect({ stepId, afterStepId, groups: new Set(group.stepIds.map((id) => groupOf.get(id))).size }).toEqual({
+                  stepId,
+                  afterStepId,
+                  groups: 1,
+                });
+              expect(findPlanningCycle(snapshot.steps, snapshot.dependencies)).toBeNull();
+              throw rollback;
+            })
+            .catch((e) => {
+              if (e !== rollback) throw e;
+            });
+        }
     });
   });
 });

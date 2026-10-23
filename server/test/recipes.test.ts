@@ -249,3 +249,120 @@ describe("Ingredient line links (Revision)", () => {
     });
   });
 });
+
+describe("Planning pass (read and /mutate)", () => {
+  // "Chicken stock <tag>": Dice the shallots / Sweat @shallots{2}(diced) / Strain.
+  async function chickenStock() {
+    const recipeId = await newRecipe(`Chicken stock ${crypto.randomUUID().slice(0, 8)}`);
+    const [dice, sweat, strain, line] = Array.from({ length: 4 }, () => crypto.randomUUID());
+    const add = (stepId: string, body: unknown[], lines: unknown[] = []) =>
+      ok("addStep", { recipeId, stepId, revisionId: crypto.randomUUID(), body, lines });
+    await add(dice!, [{ type: "text", text: "Dice the shallots" }]);
+    await add(
+      sweat!,
+      [{ type: "text", text: "Sweat " }, { type: "line", lineId: line }],
+      [{ lineId: line, ingredientId: seedId("shallot"), amount: "2", wording: "shallots", preparation: "diced" }],
+    );
+    await add(strain!, [{ type: "text", text: "Strain" }]);
+    return { recipeId, dice: dice!, sweat: sweat!, strain: strain!, line: line! };
+  }
+
+  it("the read includes planning fields, the effective window, dependencies and ready to plan", async () => {
+    const r = await chickenStock();
+    await ok("setMakeAhead", {
+      target: { kind: "recipe", recipeId: r.recipeId },
+      revisionId: crypto.randomUUID(),
+      window: { beforeDays: 3, shelfLifeDays: 4 },
+    });
+    await ok("setMakeAhead", {
+      target: { kind: "step", stepId: r.sweat },
+      revisionId: crypto.randomUUID(),
+      window: { beforeDays: 1, shelfLifeDays: 2 },
+    });
+    await ok("setStepTimes", { stepId: r.dice, revisionId: crypto.randomUUID(), activeMinutes: 10, passiveMinutes: null });
+    await ok("setStepTimes", { stepId: r.strain, revisionId: crypto.randomUUID(), activeMinutes: 0, passiveMinutes: 30 });
+    await ok("setGroupWithPrevious", { stepId: r.strain, revisionId: crypto.randomUUID(), value: true });
+    const dependencyId = crypto.randomUUID();
+    await ok("addStepDependency", {
+      dependencyId,
+      revisionId: crypto.randomUUID(),
+      beforeStepId: r.dice,
+      afterStepId: r.sweat,
+    });
+
+    const { recipe } = await (await send("GET", `/recipes/${r.recipeId}`)).json();
+
+    expect(recipe.makeAhead).toEqual({ beforeDays: 3, shelfLifeDays: 4 });
+    expect(recipe.steps).toEqual([
+      expect.objectContaining({
+        id: r.dice,
+        activeMinutes: 10,
+        passiveMinutes: null,
+        makeAhead: null,
+        effectiveMakeAhead: { beforeDays: 3, shelfLifeDays: 4, from: "recipe" },
+        groupWithPrevious: false,
+      }),
+      expect.objectContaining({
+        id: r.sweat,
+        activeMinutes: null,
+        passiveMinutes: null,
+        makeAhead: { beforeDays: 1, shelfLifeDays: 2 },
+        effectiveMakeAhead: { beforeDays: 1, shelfLifeDays: 2, from: "step" },
+      }),
+      expect.objectContaining({ id: r.strain, activeMinutes: 0, passiveMinutes: 30, groupWithPrevious: true }),
+    ]);
+    expect(recipe.dependencies).toEqual([{ id: dependencyId, beforeStepId: r.dice, afterStepId: r.sweat }]);
+    expect(recipe.readyToPlan).toEqual({
+      missingDuration: [r.sweat],
+      duplicates: [{ stepId: r.dice, lineId: r.line }],
+    });
+    expect(recipe.latestRevision).toBe(10);
+  });
+
+  it("/mutate refuses a dependency across Recipes with 400 INVALID_ARGS and appends nothing", async () => {
+    const a = await chickenStock();
+    const b = await chickenStock();
+    const before = await revisionState(a.recipeId);
+    const beforeB = await revisionState(b.recipeId);
+
+    const res = await mutate("addStepDependency", {
+      dependencyId: crypto.randomUUID(),
+      revisionId: crypto.randomUUID(),
+      beforeStepId: b.dice,
+      afterStepId: a.sweat,
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual({
+      code: "INVALID_ARGS",
+      message: "A dependency links Steps of one Recipe",
+    });
+    expect(await revisionState(a.recipeId)).toEqual(before);
+    expect(await revisionState(b.recipeId)).toEqual(beforeB);
+  });
+
+  it("/mutate refuses a dependency making a cycle with 400, the cycle in the message", async () => {
+    const r = await chickenStock();
+    await ok("addStepDependency", {
+      dependencyId: crypto.randomUUID(),
+      revisionId: crypto.randomUUID(),
+      beforeStepId: r.dice,
+      afterStepId: r.strain,
+    });
+    const before = await revisionState(r.recipeId);
+
+    const res = await mutate("addStepDependency", {
+      dependencyId: crypto.randomUUID(),
+      revisionId: crypto.randomUUID(),
+      beforeStepId: r.strain,
+      afterStepId: r.dice,
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual({
+      code: "INVALID_ARGS",
+      message: "This would make a cycle: Dice the shallots → Strain → Dice the shallots",
+    });
+    expect(await revisionState(r.recipeId)).toEqual(before);
+  });
+});

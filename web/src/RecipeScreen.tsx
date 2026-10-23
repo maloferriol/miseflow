@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchRecipe, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
+import { PlanningPass } from "./PlanningPass.tsx";
 import { amountText, StepEditor } from "./StepEditor.tsx";
+
+type Mode = "write" | "plan";
+
+// Write or Plan, kept in the URL (&mode=plan) so a reload stays in it.
+function modeFromUrl(): Mode {
+  return new URLSearchParams(window.location.search).get("mode") === "plan" ? "plan" : "write";
+}
 
 // One Recipe: its name and servings, its Steps, and the ingredient list derived from them.
 export function RecipeScreen({ recipeId }: { recipeId: string }) {
@@ -12,6 +20,14 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
     queryFn: () => fetchRecipe(recipeId),
   });
   const [adding, setAdding] = useState(false);
+  const [mode, setMode] = useState(modeFromUrl);
+  const switchMode = (next: Mode) => {
+    const params = new URLSearchParams(window.location.search);
+    if (next === "plan") params.set("mode", "plan");
+    else params.delete("mode");
+    window.history.replaceState(null, "", `?${params}`);
+    setMode(next);
+  };
   // One set of ids per intended edit, so a retry after a lost response replays it (useIntent).
   const intent = useIntent();
   const ids = (name: string, args: object) => {
@@ -90,54 +106,69 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
         {editRecipe.error && <p role="alert">{editRecipe.error.message}</p>}
       </form>
 
-      <h3>Steps</h3>
-      <ol aria-label="Steps">
-        {steps.map((step, index) => (
-          <li key={step.id}>
-            <StepEditor recipeId={recipeId} step={step} />
-            <button
-              type="button"
-              disabled={index === 0 || moveStep.isPending}
-              onClick={() =>
-                moveStep.mutate({
-                  stepId: step.id,
-                  afterStepId: steps[index - 2]?.id ?? null,
-                })
-              }
-            >
-              Move up
-            </button>
-            <button
-              type="button"
-              disabled={index === steps.length - 1 || moveStep.isPending}
-              onClick={() =>
-                moveStep.mutate({
-                  stepId: step.id,
-                  afterStepId: steps[index + 1]!.id,
-                })
-              }
-            >
-              Move down
-            </button>
-            <button
-              type="button"
-              disabled={removeStep.isPending}
-              onClick={() => removeStep.mutate(step.id)}
-            >
-              Remove
-            </button>
-          </li>
-        ))}
-      </ol>
-      {adding ? (
-        <StepEditor recipeId={recipeId} onClose={() => setAdding(false)} />
-      ) : (
-        <button type="button" onClick={() => setAdding(true)}>
-          Add Step
+      <div role="group" aria-label="Mode">
+        <button type="button" aria-pressed={mode === "write"} onClick={() => switchMode("write")}>
+          Write
         </button>
-      )}
-      {(moveStep.error ?? removeStep.error) && (
-        <p role="alert">{(moveStep.error ?? removeStep.error)!.message}</p>
+        <button type="button" aria-pressed={mode === "plan"} onClick={() => switchMode("plan")}>
+          Plan
+        </button>
+      </div>
+
+      {mode === "plan" ? (
+        <PlanningPass recipe={recipe.data} />
+      ) : (
+        <>
+          <h3>Steps</h3>
+          <ol aria-label="Steps">
+            {steps.map((step, index) => (
+              <li key={step.id}>
+                <StepEditor recipeId={recipeId} step={step} />
+                <button
+                  type="button"
+                  disabled={index === 0 || moveStep.isPending}
+                  onClick={() =>
+                    moveStep.mutate({
+                      stepId: step.id,
+                      afterStepId: steps[index - 2]?.id ?? null,
+                    })
+                  }
+                >
+                  Move up
+                </button>
+                <button
+                  type="button"
+                  disabled={index === steps.length - 1 || moveStep.isPending}
+                  onClick={() =>
+                    moveStep.mutate({
+                      stepId: step.id,
+                      afterStepId: steps[index + 1]!.id,
+                    })
+                  }
+                >
+                  Move down
+                </button>
+                <button
+                  type="button"
+                  disabled={removeStep.isPending}
+                  onClick={() => removeStep.mutate(step.id)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ol>
+          {adding ? (
+            <StepEditor recipeId={recipeId} onClose={() => setAdding(false)} />
+          ) : (
+            <button type="button" onClick={() => setAdding(true)}>
+              Add Step
+            </button>
+          )}
+          {(moveStep.error ?? removeStep.error) && (
+            <p role="alert">{(moveStep.error ?? removeStep.error)!.message}</p>
+          )}
+        </>
       )}
 
       <h3>Ingredients</h3>

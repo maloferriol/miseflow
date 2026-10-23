@@ -18,6 +18,7 @@ import {
   type RecipeStep,
 } from "./api.ts";
 import { IngredientPicker } from "./IngredientPicker.tsx";
+import { useIntent } from "./intent.ts";
 
 type Ref = Extract<StepTextPart, { type: "ref" }>;
 
@@ -132,23 +133,26 @@ function StepForm({
   const link = (name: string, ingredientId: string) =>
     setLinks((prev) => new Map(prev).set(normaliseName(name), ingredientId));
 
+  // One set of ids per intended save of this text, so a retry replays it (see useIntent).
+  const intent = useIntent();
   const save = useMutation({
     mutationFn: async () => {
       const parts = parseStepText(text);
+      const id = (name: string) => intent.id(text, name);
       // (1) A ref keeps an earlier line with the same wording, in order: its id and its link.
       const unused = [...(step?.lines ?? [])];
       const resolved = new Map<
         Ref,
         { lineId: string; ingredientId?: string }
       >();
-      for (const part of parts) {
+      for (const [ordinal, part] of parts.entries()) {
         if (part.type !== "ref") continue;
         const index = unused.findIndex(
           (l) => normaliseName(l.wording ?? "") === normaliseName(part.name),
         );
         const kept = index >= 0 ? unused.splice(index, 1)[0] : undefined;
         resolved.set(part, {
-          lineId: kept?.id ?? crypto.randomUUID(),
+          lineId: kept?.id ?? id(`line ${ordinal}`),
           ingredientId:
             kept?.ingredient?.id ?? links.get(normaliseName(part.name)),
         });
@@ -190,13 +194,14 @@ function StepForm({
         wording: ref.name,
         preparation: ref.preparation,
       }));
-      const ids = { stepId, revisionId: crypto.randomUUID(), body, lines };
-      if (step) await mutate(crypto.randomUUID(), "editStep", ids);
-      else await mutate(crypto.randomUUID(), "addStep", { recipeId, ...ids });
+      const ids = { stepId, revisionId: id("revision"), body, lines };
+      if (step) await mutate(id("mutation"), "editStep", ids);
+      else await mutate(id("mutation"), "addStep", { recipeId, ...ids });
       return true;
     },
     onSuccess: async (saved) => {
       if (!saved) return;
+      intent.reset();
       await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
       await queryClient.invalidateQueries({ queryKey: ["recipes"] });
       onDone();

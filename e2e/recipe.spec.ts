@@ -144,3 +144,61 @@ test("won't save an unmatched name until it is linked: a near match adds an alia
     await sql.end();
   }
 });
+
+test("a Save retried after a lost response replays the same mutation: no 409, one Revision per save", async ({
+  page,
+}) => {
+  const name = `E2E retry ${Date.now()}`;
+  await page.goto("/");
+  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
+  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Recipes" }).click();
+  await page.getByLabel("Recipe name").fill(name);
+  await page.getByRole("button", { name: "Create Recipe" }).click();
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+
+  // The server applies the first addStep and editStep, but the browser never sees the answer.
+  const dropped = new Set<string>();
+  await page.route("**/api/mutate", async (route) => {
+    const mutation = route.request().postDataJSON() as { name: string };
+    if (["addStep", "editStep"].includes(mutation.name) && !dropped.has(mutation.name)) {
+      dropped.add(mutation.name);
+      await route.fetch();
+      await route.abort("failed");
+    } else {
+      await route.continue();
+    }
+  });
+  const save = page.getByRole("button", { name: "Save", exact: true });
+
+  await page.getByRole("button", { name: "Add Step" }).click();
+  await page.getByLabel("Step text").fill("Melt @butter{30%g}");
+  await save.click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await save.click();
+  await expect(page.getByRole("button", { name: "butter 30 g" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Step text").fill("Melt @butter{40%g}");
+  await save.click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await save.click();
+  await expect(page.getByRole("button", { name: "butter 40 g" })).toBeVisible();
+  expect([...dropped]).toEqual(["addStep", "editStep"]);
+
+  const recipeId = new URL(page.url()).searchParams.get("recipe")!;
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
+  try {
+    const [row] = await sql`
+      select r.latest_revision, count(v.*)::int as count
+      from recipes r join recipe_revisions v on v.recipe_id = r.id
+      where r.id = ${recipeId} group by r.id`;
+    // createRecipe, addStep, editStep: three Revisions, not five.
+    expect(row).toMatchObject({ latest_revision: 3, count: 3 });
+    const steps = await sql`select id from steps where recipe_id = ${recipeId} and deleted_at is null`;
+    expect(steps).toHaveLength(1);
+  } finally {
+    await sql.end();
+  }
+});

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchRecipe, mutate } from "./api.ts";
+import { useIntent } from "./intent.ts";
 import { amountText, StepEditor } from "./StepEditor.tsx";
 
 // One Recipe: its name and servings, its Steps, and the ingredient list derived from them.
@@ -11,34 +12,37 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
     queryFn: () => fetchRecipe(recipeId),
   });
   const [adding, setAdding] = useState(false);
+  // One set of ids per intended edit, so a retry after a lost response replays it (useIntent).
+  const intent = useIntent();
+  const ids = (name: string, args: object) => {
+    const key = JSON.stringify([name, args]);
+    return { mutationId: intent.id(key, "mutation"), revisionId: intent.id(key, "revision") };
+  };
   const changed = async () => {
+    intent.reset();
     await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
     await queryClient.invalidateQueries({ queryKey: ["recipes"] });
   };
 
   const editRecipe = useMutation({
-    mutationFn: async (args: { name: string; servings: number | null }) =>
-      mutate(crypto.randomUUID(), "editRecipe", {
-        recipeId,
-        revisionId: crypto.randomUUID(),
-        ...args,
-      }),
+    mutationFn: async (args: { name: string; servings: number | null }) => {
+      const { mutationId, revisionId } = ids("editRecipe", args);
+      await mutate(mutationId, "editRecipe", { recipeId, revisionId, ...args });
+    },
     onSuccess: changed,
   });
   const moveStep = useMutation({
-    mutationFn: async (args: { stepId: string; afterStepId: string | null }) =>
-      mutate(crypto.randomUUID(), "moveStep", {
-        revisionId: crypto.randomUUID(),
-        ...args,
-      }),
+    mutationFn: async (args: { stepId: string; afterStepId: string | null }) => {
+      const { mutationId, revisionId } = ids("moveStep", args);
+      await mutate(mutationId, "moveStep", { revisionId, ...args });
+    },
     onSuccess: changed,
   });
   const removeStep = useMutation({
-    mutationFn: async (stepId: string) =>
-      mutate(crypto.randomUUID(), "removeStep", {
-        stepId,
-        revisionId: crypto.randomUUID(),
-      }),
+    mutationFn: async (stepId: string) => {
+      const { mutationId, revisionId } = ids("removeStep", { stepId });
+      await mutate(mutationId, "removeStep", { stepId, revisionId });
+    },
     onSuccess: changed,
   });
 

@@ -10,3 +10,4 @@ export * from "./recipe/tokens.ts";
 export * from "./recipe/snapshot.ts";
 export * from "./recipe/derive.ts";
 export * from "./recipe/planning.ts";
+export * from "./recipe/subrecipes.ts";

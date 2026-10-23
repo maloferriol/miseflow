@@ -19,9 +19,11 @@ describe("deriveIngredientList", () => {
     const snapshot: RecipeSnapshot = {
       name: "Sauce",
       servings: null,
+      makeAhead: null,
+      dependencies: [],
       steps: [
-        { id: "s1", position: "a0", body: [], lines: [line("l1", "shallots", 2, null), line("l2", "butter", 30, "g")] },
-        { id: "s2", position: "a1", body: [], lines: [line("l3", "butter", 10, "g")] },
+        { id: "s1", position: "a0", body: [], lines: [line("l1", "shallots", 2, null), line("l2", "butter", 30, "g")], activeMinutes: null, passiveMinutes: null, makeAhead: null, groupWithPrevious: false },
+        { id: "s2", position: "a1", body: [], lines: [line("l3", "butter", 10, "g")], activeMinutes: null, passiveMinutes: null, makeAhead: null, groupWithPrevious: false },
       ],
     };
     expect(deriveIngredientList(snapshot).map((i) => [i.stepId, i.lineId, i.wording, i.quantity])).toEqual([

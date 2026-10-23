@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Tx } from "../mutators/define.ts";
-import { ingredientLines, recipes, steps } from "../schema.ts";
+import { ingredientLines, recipes, stepDependencies, steps } from "../schema.ts";
+import type { MakeAhead } from "./planning.ts";
 import type { StepToken } from "./tokens.ts";
 
 export type SnapshotLine = {
@@ -20,17 +21,40 @@ export type SnapshotStep = {
   position: string;
   body: StepToken[];
   lines: SnapshotLine[];
+  activeMinutes: number | null;
+  passiveMinutes: number | null;
+  /** The Step's own window; null inherits the Recipe's. */
+  makeAhead: MakeAhead | null;
+  groupWithPrevious: boolean;
+};
+
+/** A manual finish-to-start link: `beforeStepId` finishes before `afterStepId` starts. */
+export type SnapshotDependency = {
+  id: string;
+  beforeStepId: string;
+  afterStepId: string;
 };
 
 /** The whole working copy of a Recipe, as each Revision stores it (Decision 4). */
 export type RecipeSnapshot = {
   name: string;
   servings: number | null;
+  makeAhead: MakeAhead | null;
   steps: SnapshotStep[];
+  dependencies: SnapshotDependency[];
 };
 
 const toNumber = (value: string | null) =>
   value === null ? null : Number(value);
+
+// A window is both columns set; anything else reads as no window.
+const toMakeAhead = (row: {
+  makeAheadBeforeDays: number | null;
+  shelfLifeDays: number | null;
+}): MakeAhead | null =>
+  row.makeAheadBeforeDays === null || row.shelfLifeDays === null
+    ? null
+    : { beforeDays: row.makeAheadBeforeDays, shelfLifeDays: row.shelfLifeDays };
 
 /** The caller's live Recipe with its live Steps and lines, in position order. */
 export async function loadRecipeSnapshot(
@@ -39,7 +63,12 @@ export async function loadRecipeSnapshot(
   recipeId: string,
 ): Promise<RecipeSnapshot> {
   const [recipe] = await tx
-    .select({ name: recipes.name, servings: recipes.servings })
+    .select({
+      name: recipes.name,
+      servings: recipes.servings,
+      makeAheadBeforeDays: recipes.makeAheadBeforeDays,
+      shelfLifeDays: recipes.shelfLifeDays,
+    })
     .from(recipes)
     .where(
       and(
@@ -51,7 +80,16 @@ export async function loadRecipeSnapshot(
   if (!recipe) throw new Error(`Recipe ${recipeId} not found`);
 
   const stepRows = await tx
-    .select({ id: steps.id, position: steps.position, body: steps.body })
+    .select({
+      id: steps.id,
+      position: steps.position,
+      body: steps.body,
+      activeMinutes: steps.activeMinutes,
+      passiveMinutes: steps.passiveMinutes,
+      makeAheadBeforeDays: steps.makeAheadBeforeDays,
+      shelfLifeDays: steps.shelfLifeDays,
+      groupWithPrevious: steps.groupWithPrevious,
+    })
     .from(steps)
     .where(
       and(
@@ -80,10 +118,28 @@ export async function loadRecipeSnapshot(
           asc(ingredientLines.id),
         )
     : [];
+  // Live links between live Steps only, so a link to a removed Step never shows.
+  const stepIds = new Set(stepRows.map((s) => s.id));
+  const dependencyRows = await tx
+    .select({
+      id: stepDependencies.id,
+      beforeStepId: stepDependencies.beforeStepId,
+      afterStepId: stepDependencies.afterStepId,
+    })
+    .from(stepDependencies)
+    .where(
+      and(
+        eq(stepDependencies.recipeId, recipeId),
+        eq(stepDependencies.ownerId, ownerId),
+        isNull(stepDependencies.deletedAt),
+      ),
+    )
+    .orderBy(asc(stepDependencies.id));
 
   return {
     name: recipe.name,
     servings: toNumber(recipe.servings),
+    makeAhead: toMakeAhead(recipe),
     steps: stepRows.map((step) => ({
       id: step.id,
       position: step.position,
@@ -101,6 +157,13 @@ export async function loadRecipeSnapshot(
           fixedQuantity: line.fixedQuantity,
           position: line.position,
         })),
+      activeMinutes: step.activeMinutes,
+      passiveMinutes: step.passiveMinutes,
+      makeAhead: toMakeAhead(step),
+      groupWithPrevious: step.groupWithPrevious,
     })),
+    dependencies: dependencyRows.filter(
+      (d) => stepIds.has(d.beforeStepId) && stepIds.has(d.afterStepId),
+    ),
   };
 }

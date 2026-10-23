@@ -37,7 +37,7 @@ describe("createRecipe", () => {
           id: revisionId,
           number: 1,
           ownerId,
-          snapshot: { name: "Velouté", servings: 4, steps: [] },
+          snapshot: { name: "Velouté", servings: 4, makeAhead: null, steps: [], dependencies: [] },
         }),
       ]);
     });
@@ -70,7 +70,7 @@ describe("editRecipe", () => {
       const revision2 = revisions.find((r) => r.number === 2)!;
       expect(revision2.id).toBe(revisionId);
       expect(revision2.snapshot).toEqual(await loadRecipeSnapshot(tx, ownerId, recipeId));
-      expect(revision2.snapshot).toEqual({ name: "Velouté de champignons", servings: 6, steps: [] });
+      expect(revision2.snapshot).toEqual({ name: "Velouté de champignons", servings: 6, makeAhead: null, steps: [], dependencies: [] });
     });
   });
 

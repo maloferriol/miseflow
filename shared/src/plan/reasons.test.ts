@@ -9,6 +9,7 @@ const task = (activeMinutes: number, passiveMinutes = 0): TaskInfo => ({
   key: "dish:d:s",
   owner: { kind: "dish", dishId: "d" },
   dishId: "d",
+  batchId: null,
   stepIds: ["s"],
   activeMinutes,
   passiveMinutes,

@@ -137,7 +137,7 @@ export async function loadPlanRows(tx: Tx, ownerId: string, service: ServiceRow)
   const defaultTime = await loadDefaultServiceTime(tx, ownerId);
   const availability = await loadAvailability(tx, ownerId);
   const dishRows = await tx
-    .select({ dishId: dishes.id, recipeId: dishes.recipeId })
+    .select({ dishId: dishes.id, recipeId: dishes.recipeId, scaleFactor: dishes.scaleFactor })
     .from(dishes)
     .innerJoin(courses, eq(courses.id, dishes.courseId))
     .innerJoin(recipes, eq(recipes.id, dishes.recipeId))
@@ -168,7 +168,16 @@ export async function loadPlanRows(tx: Tx, ownerId: string, service: ServiceRow)
     cookId,
     weekly: availability.weekly,
     overrides: availability.overrides,
-    dishes: dishRows.map((d) => ({ dishId: d.dishId, recipe: snapshots.get(d.recipeId)! })),
+    guestCount: null,
+    region: "metric",
+    dishes: dishRows.map((d) => ({
+      dishId: d.dishId,
+      recipeId: d.recipeId,
+      scaleFactor: d.scaleFactor === null ? null : Number(d.scaleFactor),
+      recipe: snapshots.get(d.recipeId)!,
+    })),
+    subRecipes: new Map(),
+    batches: [],
     previous: stored.filter((p) => p.live).map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned })),
     snapshots,
   };
@@ -326,7 +335,7 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
   const names = new Map(rows.dishes.map((d) => [d.dishId, d.recipe.name]));
   const stepText = new Map(rows.dishes.flatMap((d) => d.recipe.steps.map((s) => [s.id, stepPlainText(s)] as const)));
   const describe = (task: TaskInfo) => ({
-    dish: { id: task.dishId, name: names.get(task.dishId)! },
+    dish: { id: task.dishId!, name: names.get(task.dishId!)! },
     steps: task.stepIds.map((id) => ({ id, text: stepText.get(id) ?? "" })),
   });
   const clock = (minute: number) => {

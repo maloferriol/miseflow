@@ -63,14 +63,22 @@ function recipe(
   };
 }
 
-function rows(dishes: { dishId: string; recipe: RecipeSnapshot }[], service: Partial<PlanRows["service"]> = {}): PlanRows {
+function rows(
+  dishes: { dishId: string; recipe: RecipeSnapshot; recipeId?: string }[],
+  service: Partial<PlanRows["service"]> = {},
+  scale: { subRecipes?: [string, RecipeSnapshot][]; batches?: { batchId: string; subRecipeId: string }[] } = {},
+): PlanRows {
   return {
     service: { id: "svc", date: "2026-10-31", time: h(19, 30), ...service },
     defaultServiceTime: h(19),
     cookId: "cook",
     weekly: [],
     overrides: [],
-    dishes,
+    guestCount: 6,
+    region: "metric",
+    dishes: dishes.map((d) => ({ dishId: d.dishId, recipeId: d.recipeId ?? `r-${d.dishId}`, scaleFactor: null, recipe: d.recipe })),
+    subRecipes: new Map(scale.subRecipes ?? []),
+    batches: scale.batches ?? [],
     previous: [],
   };
 }
@@ -125,5 +133,128 @@ describe("toPlanningModel", () => {
   it("adds no Task for a sub-recipe line", () => {
     const { model } = toPlanningModel(rows([{ dishId: "d", recipe: recipe([{ id: "s1", subRecipeId: "stock" }]) }]), paris);
     expect(model.tasks).toHaveLength(1);
+  });
+});
+
+describe("toPlanningModel with Batches", () => {
+  const stock = (steps: Parameters<typeof recipe>[0], options: Parameters<typeof recipe>[1] = {}) => ({
+    ...recipe(steps, options),
+    name: "Chicken stock",
+    yield: { quantity: 2, unit: "L" },
+  });
+
+  it("makes each of a stored Batch's Step groups a batch Task, linked before every Task of its parent", () => {
+    const { model, tasks } = toPlanningModel(
+      rows(
+        [{ dishId: "d", recipe: recipe([{ id: "v1" }, { id: "v2", subRecipeId: "stock" }]) }],
+        {},
+        { subRecipes: [["stock", stock([{ id: "k1" }, { id: "k2", group: true }, { id: "k3" }], { links: [["k1", "k3"]] })]], batches: [{ batchId: "b", subRecipeId: "stock" }] },
+      ),
+      paris,
+    );
+    expect(model.tasks.map((t) => t.owner)).toEqual([
+      { kind: "dish", dishId: "d" },
+      { kind: "dish", dishId: "d" },
+      { kind: "batch", batchId: "b" },
+      { kind: "batch", batchId: "b" },
+    ]);
+    expect(tasks.get("batch:b:k1")).toMatchObject({ dishId: null, batchId: "b", stepIds: ["k1", "k2"] });
+    expect(model.links).toEqual([
+      { before: "batch:b:k1", after: "batch:b:k3" },
+      { before: "batch:b:k1", after: "dish:d:v1" },
+      { before: "batch:b:k1", after: "dish:d:v2" },
+      { before: "batch:b:k3", after: "dish:d:v1" },
+      { before: "batch:b:k3", after: "dish:d:v2" },
+    ]);
+  });
+
+  it("links a Batch used twice by one parent to each parent Task once", () => {
+    const { model } = toPlanningModel(
+      rows(
+        [{ dishId: "d", recipe: recipe([{ id: "v1", subRecipeId: "stock" }, { id: "v2", subRecipeId: "stock" }]) }],
+        {},
+        { subRecipes: [["stock", stock([{ id: "k1" }])]], batches: [{ batchId: "b", subRecipeId: "stock" }] },
+      ),
+      paris,
+    );
+    expect(model.links).toEqual([
+      { before: "batch:b:k1", after: "dish:d:v1" },
+      { before: "batch:b:k1", after: "dish:d:v2" },
+    ]);
+  });
+
+  it("links a nested Batch before its parent Batch's Tasks", () => {
+    const { model } = toPlanningModel(
+      rows(
+        [{ dishId: "d", recipe: recipe([{ id: "d1", subRecipeId: "beurre" }]) }],
+        {},
+        {
+          subRecipes: [
+            ["beurre", { ...recipe([{ id: "bb1", subRecipeId: "stock" }]), name: "Beurre blanc", yield: { quantity: 300, unit: null } }],
+            ["stock", stock([{ id: "k1" }])],
+          ],
+          batches: [
+            { batchId: "bb", subRecipeId: "beurre" },
+            { batchId: "b", subRecipeId: "stock" },
+          ],
+        },
+      ),
+      paris,
+    );
+    expect(model.links).toEqual([
+      { before: "batch:bb:bb1", after: "dish:d:d1" },
+      { before: "batch:b:k1", after: "batch:bb:bb1" },
+    ]);
+  });
+
+  it("keeps a prep-ahead Task for its shortest shelf life, and a last-minute Task for ever", () => {
+    const { model } = toPlanningModel(
+      rows(
+        [{ dishId: "d", recipe: recipe([{ id: "v1", subRecipeId: "stock" }]) }],
+        {},
+        {
+          subRecipes: [
+            [
+              "stock",
+              stock(
+                [{ id: "k1" }, { id: "k2", group: true, makeAhead: { beforeDays: 3, shelfLifeDays: 2 } }, { id: "k3" }, { id: "k4", makeAhead: { beforeDays: 0, shelfLifeDays: 0 } }],
+                { makeAhead: { beforeDays: 3, shelfLifeDays: 4 } },
+              ),
+            ],
+          ],
+          batches: [{ batchId: "b", subRecipeId: "stock" }],
+        },
+      ),
+      paris,
+    );
+    const keeps = new Map(model.tasks.map((t) => [t.steps[0]!.stepId, t.keepsMinutes]));
+    expect(keeps.get("k1")).toBe(2 * 1440);
+    expect(keeps.get("k3")).toBe(4 * 1440);
+    expect(keeps.get("k4")).toBeNull();
+    expect(keeps.get("v1")).toBeNull();
+  });
+
+  it("adds no Task for a derived Batch with no stored row", () => {
+    const { model, scale } = toPlanningModel(
+      rows([{ dishId: "d", recipe: recipe([{ id: "v1", subRecipeId: "stock" }]) }], {}, { subRecipes: [["stock", stock([{ id: "k1" }])]] }),
+      paris,
+    );
+    expect(model.tasks).toHaveLength(1);
+    expect(scale.batches.map((b) => b.subRecipeId)).toEqual(["stock"]);
+  });
+
+  it("opens the Cook's free time as far back as a Batch's window", () => {
+    const { model } = toPlanningModel(
+      {
+        ...rows(
+          [{ dishId: "d", recipe: recipe([{ id: "v1", subRecipeId: "stock" }]) }],
+          {},
+          { subRecipes: [["stock", stock([{ id: "k1" }], { makeAhead: { beforeDays: 3, shelfLifeDays: 4 } })]], batches: [{ batchId: "b", subRecipeId: "stock" }] },
+        ),
+        weekly: [{ weekday: 3, start: h(18), end: h(22) }],
+      },
+      paris,
+    );
+    expect(model.cooks[0]!.free).toEqual([{ start: utc("2026-10-28T17:00Z"), end: utc("2026-10-28T21:00Z") }]);
   });
 });

@@ -21,7 +21,7 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
 }
 
 // Runs a mutation that should be refused in a savepoint, so the checks after it can still run.

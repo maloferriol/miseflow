@@ -86,3 +86,20 @@ export function localParts(minute: Minute, timeZone: string): { date: LocalDate;
   const date = fromDayNumber(day);
   return { date, minuteOfDay: wall - day * DAY, weekday: weekdayOf(date) };
 }
+
+/** A minute of day (0–1440) as a Postgres `time`; 1440 is "24:00:00", which `time` accepts. */
+export function toTimeColumn(minuteOfDay: number): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(minuteOfDay / 60))}:${pad(minuteOfDay % 60)}:00`;
+}
+
+/** A Postgres `time` ("HH:MM[:SS]") as a minute of day; seconds are dropped. */
+export function fromTimeColumn(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours! * 60 + minutes!;
+}
+
+/** "19:30". */
+export function formatMinuteOfDay(minuteOfDay: number): string {
+  return toTimeColumn(minuteOfDay).slice(0, 5);
+}

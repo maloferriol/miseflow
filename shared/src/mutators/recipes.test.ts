@@ -9,7 +9,7 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
 }
 
 async function revisionsOf(tx: Tx, recipeId: string) {
@@ -24,6 +24,7 @@ describe("createRecipe", () => {
       const mutator = getMutator("createRecipe")!;
       await mutator.run(tx, mutator.args.parse({ recipeId, revisionId, name: "Velouté", servings: 4 }), {
         ownerId,
+        timeZone: "Europe/Paris",
       });
 
       const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));

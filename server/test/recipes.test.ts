@@ -41,7 +41,7 @@ async function theirRecipe() {
     createRecipe.run(
       tx,
       createRecipe.args.parse({ recipeId, revisionId: crypto.randomUUID(), name: "Not yours" }),
-      { ownerId: crypto.randomUUID() },
+      { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris" },
     ),
   );
   othersRecipes.push(recipeId);

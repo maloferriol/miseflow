@@ -10,7 +10,7 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
 }
 
 // "Chicken stock <tag>" at Revision 4: three plain-text Steps.

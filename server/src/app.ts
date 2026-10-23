@@ -15,14 +15,16 @@ export type AppOptions = {
   db: Db;
   /** Defaults to every mutator in `shared`. Tests inject extra ones. */
   mutators?: Record<string, Mutator<any>>;
+  /** The kitchen's IANA time zone (D2). */
+  timeZone: string;
 };
 
-export function createApp({ auth, db, mutators = defaultMutators }: AppOptions) {
+export function createApp({ auth, db, mutators = defaultMutators, timeZone }: AppOptions) {
   const app = new Hono<AuthEnv>()
     // Public. Registered before the auth middleware, which guards every other route.
     .get("/health", (c) => c.json({ ok: true }))
     .use("*", requireAuth(auth))
-    .route("/mutate", mutateRoute(db, mutators))
+    .route("/mutate", mutateRoute(db, mutators, timeZone))
     .route("/menus", menusRoute(db))
     .route("/recipes", recipesRoute(db))
     .route("/ingredients", ingredientsRoute(db))

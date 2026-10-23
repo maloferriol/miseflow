@@ -21,7 +21,7 @@ export type DishScale = { dishId: string; factor: number; source: "guests" | "se
 
 export type BatchParent = { kind: "dish" | "batch"; id: string; name: string };
 
-export type BatchSize = {
+export type SizedBatch = {
   subRecipeId: string;
   name: string;
   /** 1 when it can't be worked out. Exact: only labels round. */
@@ -67,7 +67,7 @@ function batchesFor(line: SnapshotLine, factor: number, child: RecipeSnapshot, r
   return (converted.value * times) / child.yield.quantity;
 }
 
-export function deriveBatches(input: ScaleInput): { dishes: DishScale[]; batches: BatchSize[] } {
+export function deriveBatches(input: ScaleInput): { dishes: DishScale[]; batches: SizedBatch[] } {
   const { recipes, region } = input;
   const dishes = input.dishes.map((d) => dishScale(input, d));
 
@@ -95,7 +95,7 @@ export function deriveBatches(input: ScaleInput): { dishes: DishScale[]; batches
   const childrenOf = new Map<string, string[]>();
   for (const id of order)
     for (const p of parentsOf.get(id)!) if (p.kind === "batch") childrenOf.set(p.recipeId, [...(childrenOf.get(p.recipeId) ?? []), id]);
-  const sizes = new Map<string, BatchSize>();
+  const sizes = new Map<string, SizedBatch>();
   const factorOfDish = new Map(dishes.map((d) => [d.dishId, d.factor]));
   while (pending.size) {
     const id = order.find((o) => pending.get(o) === 0);
@@ -159,7 +159,7 @@ export function formatFactor(factor: number): string {
 }
 
 /** "Chicken stock ×1.5 · for: Velouté, Beurre blanc", everywhere a Batch shows (spec §3). */
-export function batchLabel(b: BatchSize): string {
+export function batchLabel(b: SizedBatch): string {
   return `${b.name} ${formatFactor(b.factor)} · for: ${b.parents.map((p) => p.name).join(", ")}`;
 }
 
@@ -175,6 +175,6 @@ export type BatchRead = {
   fix: string | null;
 };
 
-export function toBatchRead(b: BatchSize, id: string | null): BatchRead {
+export function toBatchRead(b: SizedBatch, id: string | null): BatchRead {
   return { id, subRecipe: { id: b.subRecipeId, name: b.name }, factor: b.factor, scalable: b.scalable, for: b.parents, label: batchLabel(b), fix: b.fix };
 }

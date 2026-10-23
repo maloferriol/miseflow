@@ -10,7 +10,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { z } from "zod";
-import { parseQuantity } from "../recipe/quantity.ts";
+import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
 import { stepBodySchema, type StepToken } from "../recipe/tokens.ts";
 import { ingredientLines, ingredients, steps } from "../schema.ts";
 import {
@@ -28,7 +28,12 @@ import { appendRevision, lockRecipe, lockStep } from "./revision.ts";
 const lineInput = z.strictObject({
   lineId: z.uuid(),
   ingredientId: z.uuid(),
-  amount: z.string().max(100),
+  amount: z
+    .string()
+    .max(100)
+    .refine((amount) => isValidQuantity(parseQuantity(amount)), {
+      message: "An amount can't divide by zero or have a range whose end is below its start",
+    }),
   // The characters that delimit a ref in the shorthand can't be part of its name.
   wording: z
     .string()

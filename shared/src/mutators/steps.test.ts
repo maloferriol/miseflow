@@ -226,18 +226,41 @@ describe("addStep", () => {
     ).toBe(false);
   });
 
+  it("refuses an amount with a zero denominator, a non-finite number or an inverted range", () => {
+    const args = getMutator("addStep")!.args;
+    const lineId = crypto.randomUUID();
+    const withAmount = (amount: string) =>
+      args.safeParse({
+        recipeId: crypto.randomUUID(),
+        stepId: crypto.randomUUID(),
+        revisionId: crypto.randomUUID(),
+        body: [{ type: "line", lineId }],
+        lines: [
+          {
+            lineId,
+            ingredientId: crypto.randomUUID(),
+            amount,
+            wording: "salt",
+          },
+        ],
+      }).success;
+    expect(withAmount("1/0")).toBe(false);
+    expect(withAmount("0/0%g")).toBe(false);
+    expect(withAmount("1" + "0".repeat(400))).toBe(false);
+    expect(withAmount("3-2")).toBe(false);
+    expect(withAmount("2-3")).toBe(true);
+  });
+
   it("can't link a line to an Ingredient the caller can't see, and then appends nothing", async () => {
     await inRollback(async (tx) => {
       const f = await fixture(tx);
       const hidden = crypto.randomUUID();
-      await tx
-        .insert(ingredients)
-        .values({
-          id: hidden,
-          ownerId: crypto.randomUUID(),
-          name: "someone's thing",
-          source: "own",
-        });
+      await tx.insert(ingredients).values({
+        id: hidden,
+        ownerId: crypto.randomUUID(),
+        name: "someone's thing",
+        source: "own",
+      });
       const stepId = crypto.randomUUID();
       const lineId = crypto.randomUUID();
 

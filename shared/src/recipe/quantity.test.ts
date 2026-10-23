@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatQuantity, parseQuantity } from "./quantity.ts";
+import { formatQuantity, isValidQuantity, parseQuantity } from "./quantity.ts";
 
 describe("parseQuantity", () => {
   it('parses "1 1/2 cups" as 1.5 cup, a Fixed unit', () => {
@@ -120,5 +120,20 @@ describe("formatQuantity", () => {
     expect(formatQuantity(parseQuantity("1 1/2 cups"))).toBe("1.5%cup");
     expect(formatQuantity(parseQuantity("=2-3 cloves"))).toBe("=2-3%clove");
     expect(formatQuantity(parseQuantity("3"))).toBe("3");
+  });
+});
+
+describe("isValidQuantity", () => {
+  it("refuses a zero denominator, a non-finite number and an inverted range", () => {
+    expect(isValidQuantity(parseQuantity("1/0"))).toBe(false);
+    expect(isValidQuantity(parseQuantity("0/0 g"))).toBe(false);
+    expect(isValidQuantity(parseQuantity("1" + "0".repeat(400)))).toBe(false);
+    expect(isValidQuantity(parseQuantity("3-2"))).toBe(false);
+  });
+
+  it("accepts ordinary amounts, ranges and Vague amounts", () => {
+    for (const text of ["2-3", "2-2", "1 1/2 cups", "a pinch", "", "=1%tsp"]) {
+      expect(isValidQuantity(parseQuantity(text)), text).toBe(true);
+    }
   });
 });

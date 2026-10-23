@@ -141,6 +141,16 @@ export function parseQuantity(input: string): Quantity {
   return { value, max, unit, tier, fixed };
 }
 
+/**
+ * False for an amount no line can store: a zero denominator or a number too big to be finite
+ * ("1/0" → Infinity, "0/0" → NaN, which a jsonb snapshot can't hold), or a range whose upper
+ * end is below its lower end ("3-2").
+ */
+export function isValidQuantity(q: Quantity): boolean {
+  const ok = (n: number | null) => n === null || Number.isFinite(n);
+  return ok(q.value) && ok(q.max) && !(q.max !== null && q.value !== null && q.max < q.value);
+}
+
 /** Back to the Cooklang shorthand ("1.5%cup", "=2-3%clove"), so a saved line can be re-edited. */
 export function formatQuantity(q: Quantity): string {
   const number =

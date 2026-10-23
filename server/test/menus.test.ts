@@ -16,6 +16,29 @@ async function mutate(name: string, args: Record<string, unknown>) {
   expect(res.status).toBe(200);
 }
 
+describe("GET /menus", () => {
+  it("lists the caller's live Menus, most recently changed first, and no one else's", async () => {
+    const [older, newer, deleted, theirs] = Array.from({ length: 4 }, () => crypto.randomUUID());
+    await mutate("createMenu", { menuId: older, name: "Friday lunch", guestCount: 2 });
+    await mutate("createMenu", { menuId: newer, name: "Saturday dinner", guestCount: 6 });
+    await mutate("createMenu", { menuId: deleted, name: "Cancelled", guestCount: 4 });
+    await db.update(menus).set({ deletedAt: new Date() }).where(eq(menus.id, deleted));
+    await db.insert(menus).values({ id: theirs, ownerId: crypto.randomUUID(), name: "Theirs" });
+
+    const res = await send("GET", "/menus");
+
+    expect(res.status).toBe(200);
+    const listed: { id: string }[] = (await res.json()).menus;
+    const ids = listed.map((menu) => menu.id);
+    expect(listed.slice(0, 2)).toEqual([
+      { id: newer, name: "Saturday dinner", guestCount: 6 },
+      { id: older, name: "Friday lunch", guestCount: 2 },
+    ]);
+    expect(ids).not.toContain(deleted);
+    expect(ids).not.toContain(theirs);
+  });
+});
+
 describe("GET /menus/:menuId", () => {
   it("returns the Menu with its Courses, Dishes and Recipe names", async () => {
     const [menuId, courseId, recipeId, dishId] = Array.from({ length: 4 }, () => crypto.randomUUID());

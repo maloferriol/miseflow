@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { fetchMenu, type Menu, mutate } from "./api.ts";
+import { fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
 function menuIdFromUrl() {
@@ -17,7 +17,35 @@ function formText(event: FormEvent<HTMLFormElement>, name: string) {
 
 export function MenuScreen() {
   const [menuId, setMenuId] = useState(menuIdFromUrl);
-  return menuId ? <MenuView menuId={menuId} /> : <NewMenu onCreated={setMenuId} />;
+  if (menuId) return <MenuView menuId={menuId} />;
+  return (
+    <>
+      <MenuList />
+      <NewMenu onCreated={setMenuId} />
+    </>
+  );
+}
+
+// The start screen: every saved Menu, each a link that opens it (?menu=<id>).
+function MenuList() {
+  const menus = useQuery({ queryKey: ["menus"], queryFn: fetchMenus });
+
+  if (menus.isPending) return <p>Loading…</p>;
+  if (menus.isError) return <p role="alert">{menus.error.message}</p>;
+  if (!menus.data.length) return null;
+
+  return (
+    <nav aria-label="Your Menus">
+      <h2>Your Menus</h2>
+      <ul>
+        {menus.data.map((menu) => (
+          <li key={menu.id}>
+            <a href={`?menu=${menu.id}`}>{menu.name}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 }
 
 function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
@@ -69,6 +97,7 @@ function MenuView({ menuId }: { menuId: string }) {
 
   return (
     <section>
+      <a href="/">All Menus</a>
       <h2>{menu.data.name}</h2>
       <p>{menu.data.guestCount} guests</p>
       {menu.data.courses.map((course) => (
@@ -122,7 +151,12 @@ function CourseView({
       <h3>{course.name}</h3>
       <ul>
         {course.dishes.map((dish) => (
-          <li key={dish.id}>{dish.recipe.name}</li>
+          <li key={dish.id}>
+            {/* A full load: App reads the view from the URL. ?menu= stays for the way back. */}
+            <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: dish.recipe.id })}`}>
+              {dish.recipe.name}
+            </a>
+          </li>
         ))}
       </ul>
       <form

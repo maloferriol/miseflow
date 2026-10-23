@@ -81,19 +81,24 @@ export const ingredientAliases = pgTable(
 );
 
 // Your changes to a seed Ingredient live here, so the ODbL seed stays untouched.
-export const ingredientOverrides = pgTable("ingredient_overrides", {
-  id,
-  ownerId,
-  ingredientId: uuid("ingredient_id")
-    .notNull()
-    .references(() => ingredients.id),
-  mainUnit: text("main_unit"),
-  shoppingCategoryId: uuid("shopping_category_id").references(
-    () => shoppingCategories.id,
-  ),
-  updatedAt,
-  deletedAt,
-});
+// One row per owner and Ingredient, so an override is an atomic upsert.
+export const ingredientOverrides = pgTable(
+  "ingredient_overrides",
+  {
+    id,
+    ownerId,
+    ingredientId: uuid("ingredient_id")
+      .notNull()
+      .references(() => ingredients.id),
+    mainUnit: text("main_unit"),
+    shoppingCategoryId: uuid("shopping_category_id").references(
+      () => shoppingCategories.id,
+    ),
+    updatedAt,
+    deletedAt,
+  },
+  (t) => [unique("ingredient_overrides_owner_ingredient").on(t.ownerId, t.ingredientId)],
+);
 
 export const conversions = pgTable("conversions", {
   id,
@@ -177,6 +182,8 @@ export const ingredientLines = pgTable(
     // Neither ingredientId nor subRecipeId set means a Missing sub-recipe.
     subRecipeId: uuid("sub_recipe_id").references(() => recipes.id),
     quantity: numeric("quantity"),
+    // The upper end of a range ("2-3"); null for a single amount.
+    quantityMax: numeric("quantity_max"),
     unit: text("unit"),
     wording: text("wording"),
     preparation: text("preparation"),

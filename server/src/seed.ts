@@ -6,7 +6,7 @@ import {
   positionAfter,
   shoppingCategories,
 } from "@miseflow/shared";
-import { sql, type SQL } from "drizzle-orm";
+import { and, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { Db } from "./db.ts";
@@ -175,12 +175,14 @@ export async function loadSeed(
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 // insert … on conflict (id) do update set <columns> = excluded.<columns>, updated_at = now()
-// where (<columns>) is distinct from (excluded.<columns>). Returns the rows written.
+// where owner_id is null and (<columns>) is distinct from (excluded.<columns>). Returns the rows
+// written. A user's row that already holds a seed id is never taken over: the load throws, and
+// the caller's transaction rolls back.
 // Source: https://orm.drizzle.team/docs/insert#on-conflict-do-update
-async function upsert<T extends PgTable & { id: PgColumn }>(
+async function upsert<T extends PgTable & { id: PgColumn; ownerId: PgColumn }>(
   tx: Tx,
   table: T,
-  rows: T["$inferInsert"][],
+  rows: (T["$inferInsert"] & { id: string })[],
   columns: PgColumn[],
 ): Promise<number> {
   if (rows.length === 0) return 0;
@@ -194,12 +196,18 @@ async function upsert<T extends PgTable & { id: PgColumn }>(
     .onConflictDoUpdate({
       target: table.id,
       set,
-      setWhere: sql`(${sql.join(columns, sql`, `)}) is distinct from (${sql.join(
+      setWhere: sql`${table.ownerId} is null and (${sql.join(columns, sql`, `)}) is distinct from (${sql.join(
         columns.map(excluded),
         sql`, `,
       )})`,
     })
     .returning({ id: table.id });
+  const [owned] = await tx
+    .select({ id: table.id })
+    .from(table as PgTable)
+    .where(and(inArray(table.id, rows.map((row) => row.id)), isNotNull(table.ownerId)))
+    .limit(1);
+  if (owned) throw new Error(`${owned.id} is not a seed row: it belongs to a user`);
   return written.length;
 }
 

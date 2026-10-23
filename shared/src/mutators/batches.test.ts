@@ -251,14 +251,21 @@ describe("Batch conflicts and fixes", () => {
       const plan = await readPlan(tx, ownerId, serviceId, timeZone);
       expect(plan.unplaced).toEqual([]);
       const v3 = `dish:${w.dishes.veloute}:${w.steps.V3}`;
-      expect(plan.conflicts.map((c) => [c.steps[0]!.id, c.kind, c.use.key])).toEqual([
-        [w.steps.S1, "ShelfLifeExceeded", v3],
-        [w.steps.S2, "ShelfLifeExceeded", v3],
-        [w.steps.S3, "ShelfLifeExceeded", v3],
-      ]);
+      // Only the finished stock (S3, the Batch's last Task) must keep; S1 and S2 feed S3.
+      expect(plan.conflicts.map((c) => [c.steps[0]!.id, c.kind, c.use.key])).toEqual([[w.steps.S3, "ShelfLifeExceeded", v3]]);
       expect(plan.conflicts.find((c) => c.steps[0]!.id === w.steps.S3)!.sentence).toBe(
         `Strain the stock (Chicken stock ${s} ×1.5) keeps until Fri 21:30, but Blend and season (Velouté ${s}) uses it at Sat 18:50`,
       );
+    });
+  });
+
+  it("AC5: a stock kept 2 days has no conflict: the finished stock keeps until Sat 21:30, though Roast the bones is ready Thu 18:40", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await stockWalkthrough(tx);
+      await run(tx, "setMakeAhead", { target: { kind: "recipe", recipeId: w.recipes.stock! }, revisionId: revisionId(), window: { beforeDays: 3, shelfLifeDays: 2 } });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.conflicts).toEqual([]);
     });
   });
 
@@ -278,7 +285,7 @@ describe("Batch conflicts and fixes", () => {
       }
       const plan = await readPlan(tx, ownerId, serviceId, timeZone);
       expect(plan.unplaced).toEqual([]);
-      expect(plan.conflicts.filter((c) => c.kind === "ShelfLifeExceeded" && c.batch?.id === stockId)).toHaveLength(3);
+      expect(plan.conflicts.map((c) => [c.steps[0]!.id, c.kind])).toEqual([[w.steps.S3, "ShelfLifeExceeded"]]);
     });
   });
 

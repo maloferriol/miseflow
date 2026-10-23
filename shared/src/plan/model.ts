@@ -100,7 +100,8 @@ export function deriveScale(rows: Pick<PlanRows, "guestCount" | "region" | "dish
  * The scheduler's input for one Service. Each Dish's Step groups are its Tasks, and so are each
  * stored Batch's (a derived Batch with no row yet adds none, D8). A Task may start from its most
  * restrictive Step's make-ahead window, and a last-minute Step makes the whole Task last-minute
- * (#86 D3). A prep-ahead Task keeps for its shortest shelf life (spec §5 rule 4). Every Task of a
+ * (#86 D3). A prep-ahead Task keeps for its shortest shelf life (spec §5 rule 4); the scheduler
+ * checks it only on an owner's last Tasks, the finished Dish or Batch. Every Task of a
  * Batch finishes before every Task of each direct parent, a Dish or a parent Batch (D4).
  */
 export function toPlanningModel(

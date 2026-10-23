@@ -51,7 +51,10 @@ export interface TaskSpec {
   steps: StepSpec[];
   /** null: a last-minute Task (not before the Service date). Else the make-ahead lower bound. */
   earliestStart: Minute | null;
-  /** Shelf life once made (ready), in minutes; absent or null: no limit. */
+  /**
+   * Shelf life once made (ready), in minutes; absent or null: no limit. Checked only when no
+   * successor has the same owner: an earlier Step's result feeds the owner's own later Task.
+   */
   keepsMinutes?: number | null;
 }
 

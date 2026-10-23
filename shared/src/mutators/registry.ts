@@ -1,9 +1,10 @@
 import type { Mutator } from "./define.ts";
+import { addAlias, createIngredient, overrideIngredient } from "./ingredients.ts";
 import { addCourse, addDish, createMenu } from "./menus.ts";
 import { createRecipe } from "./recipes.ts";
 
 export type { Mutator, MutatorContext, Tx } from "./define.ts";
-export { defineMutator, NotFoundError } from "./define.ts";
+export { ConflictError, defineMutator, InvalidArgsError, NotFoundError } from "./define.ts";
 
 // Every named mutation the server accepts on POST /mutate (ADR 0007).
 export const mutators: Record<string, Mutator<any>> = {
@@ -11,6 +12,9 @@ export const mutators: Record<string, Mutator<any>> = {
   addCourse,
   createRecipe,
   addDish,
+  createIngredient,
+  addAlias,
+  overrideIngredient,
 };
 
 export function getMutator(

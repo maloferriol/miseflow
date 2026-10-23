@@ -34,6 +34,12 @@ export function CatalogScreen() {
         ))}
       </ul>
       <NewIngredient onCreated={setQuery} />
+      <p>
+        <small>
+          Ingredient seed: Open Food Facts contributors and USDA FoodData
+          Central, ODbL
+        </small>
+      </p>
     </section>
   );
 }

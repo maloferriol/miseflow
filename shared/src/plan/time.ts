@@ -103,3 +103,9 @@ export function fromTimeColumn(time: string): number {
 export function formatMinuteOfDay(minuteOfDay: number): string {
   return toTimeColumn(minuteOfDay).slice(0, 5);
 }
+
+/** "Thu 29 Oct 18:00": an instant in `timeZone`, for "Printed at" and the time behind is measured at. */
+export function formatInstant(date: Date, timeZone: string): string {
+  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone, ...options }).format(date);
+  return `${part({ weekday: "short" })} ${part({ day: "numeric", month: "short" })} ${part({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`;
+}

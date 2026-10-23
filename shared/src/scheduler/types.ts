@@ -43,6 +43,8 @@ export interface StepSpec {
   activeMinutes: number | null;
   /** null: none. */
   passiveMinutes: number | null;
+  /** When the Step was ticked done; absent or null: not done. Any minute (not snapped). */
+  doneAt?: Minute | null;
 }
 
 export interface TaskSpec {
@@ -76,10 +78,14 @@ export interface Plan {
 /**
  * A placed Task that breaks a rule. A Task is ready at its end, passive time included.
  * `use: null`: the Service itself, for a Task nothing else uses.
+ * `Outrun`: the Task starts before a done or in-progress Task it waits for (directly or through
+ * the Tasks between) can let it, because that Task was ticked late; `by` is the late Task and
+ * `readyAt` its real ready time (#88 owner decision 2).
  */
 export type Conflict =
   | { key: TaskKey; kind: "ShelfLifeExceeded"; readyAt: Minute; keepsUntil: Minute; use: TaskKey | null; useAt: Minute }
-  | { key: TaskKey; kind: "EarliestUseTooLate"; readyAt: Minute; use: TaskKey; useAt: Minute };
+  | { key: TaskKey; kind: "EarliestUseTooLate"; readyAt: Minute; use: TaskKey; useAt: Minute }
+  | { key: TaskKey; kind: "Outrun"; by: TaskKey; readyAt: Minute; start: Minute };
 
 export interface Placement {
   key: TaskKey;
@@ -95,7 +101,7 @@ export interface Unplaced {
   reason: UnplacedReason;
 }
 
-/** Open union: later tickets add `Outrun`. Shelf life and earliest use are a `Conflict`, not a reason (#87). */
+/** Open union. Shelf life, earliest use (#87) and `Outrun` (#88) are a `Conflict`, not a reason. */
 export type UnplacedReason =
   | { kind: "NoAvailability"; minutesNeeded: number; searched: Interval }
   | { kind: "BlockedByPin"; pin: TaskKey; searched: Interval }

@@ -385,13 +385,17 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
     const owner = task.batchId !== null ? batchNames.get(task.batchId) : names.get(task.dishId!);
     return `${labelOf(key)} (${owner})`;
   };
-  const conflicts = conflictsOf(model, rows.previous.filter((p) => tasks.has(p.key))).map((c) => ({
-    key: c.key,
-    kind: c.kind,
-    ...describe(tasks.get(c.key)!),
-    use: { key: c.use, label: c.use === null ? "Service" : taskLabel(c.use) },
-    sentence: describeConflict(c, taskLabel, timeZone),
-  }));
+  const conflicts = conflictsOf(model, rows.previous.filter((p) => tasks.has(p.key))).map((c) => {
+    // An Outrun Task is held up by the late Task, its `use` here.
+    const use = c.kind === "Outrun" ? c.by : c.use;
+    return {
+      key: c.key,
+      kind: c.kind,
+      ...describe(tasks.get(c.key)!),
+      use: { key: use, label: use === null ? "Service" : taskLabel(use) },
+      sentence: describeConflict(c, taskLabel, timeZone),
+    };
+  });
   const storedKeys = new Set(rows.previous.map((p) => p.key));
   const unplaced = schedule(model)
     .unplaced.filter((u) => !storedKeys.has(u.key))

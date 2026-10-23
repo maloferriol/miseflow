@@ -73,6 +73,8 @@ export type TaskInfo = {
   /** On the 5-minute grid, as the scheduler counts them; a Step with no duration counts 10 active. */
   activeMinutes: number;
   passiveMinutes: number;
+  /** The last Step's passive time, rounded: a Task is due when the last Step's active time ends (#88 D5). */
+  trailingPassiveMinutes: number;
   /** A Step has neither active nor passive time. */
   approximate: boolean;
 };
@@ -154,6 +156,7 @@ export function toPlanningModel(
         stepIds: group.stepIds,
         activeMinutes: steps.reduce((n, s) => n + (unknown(s) ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0)), 0),
         passiveMinutes: steps.reduce((n, s) => n + roundUp(s.passiveMinutes ?? 0), 0),
+        trailingPassiveMinutes: roundUp(steps.at(-1)!.passiveMinutes ?? 0),
         approximate: steps.some(unknown),
       });
       for (const id of group.stepIds) keyOfStep.set(id, key);

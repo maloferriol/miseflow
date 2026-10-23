@@ -230,37 +230,64 @@ async function stored(tx: Tx, serviceId: string) {
   const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
   return (await loadPlanRows(tx, ownerId, service!)).previous;
 }
-async function expectReplanned(tx: Tx, serviceId: string, before: Awaited<ReturnType<typeof stored>>) {
+async function expectReplanned(tx: Tx, serviceId: string, before: Awaited<ReturnType<typeof stored>>, { moved = true } = {}) {
   const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
   const rows = await loadPlanRows(tx, ownerId, service!);
   const { model, tasks } = toPlanningModel({ ...rows, previous: before }, timeZone);
   const live = rows.previous.map((p) => `${p.key}@${p.start}`).sort();
+  // The edit must force a move, or this would pass with no re-plan at all.
+  if (moved) expect(live).not.toEqual(before.map((p) => `${p.key}@${p.start}`).sort());
   expect(live).toEqual(schedule(model).placements.map((p) => `${p.key}@${p.start}`).sort());
   // No placement is left for a Task that no longer exists.
   expect(rows.previous.every((p) => tasks.has(p.key))).toBe(true);
 }
 
 const revisionId = () => crypto.randomUUID();
-const recipeEdits: [string, (w: Walkthrough) => [string, Record<string, unknown>]][] = [
-  ["addStep", (w) => ["addStep", { recipeId: w.recipes.veloute, stepId: crypto.randomUUID(), revisionId: revisionId(), body: [{ type: "text", text: "Garnish" }], lines: [] }]],
-  ["editStep", (w) => ["editStep", { stepId: w.steps.V3, revisionId: revisionId(), body: [{ type: "text", text: "Blend" }], lines: [] }]],
-  ["moveStep", (w) => ["moveStep", { stepId: w.steps.V3, revisionId: revisionId(), afterStepId: null }]],
-  ["removeStep", (w) => ["removeStep", { stepId: w.steps.V1, revisionId: revisionId() }]],
-  ["setStepTimes", (w) => ["setStepTimes", { stepId: w.steps.D3, revisionId: revisionId(), activeMinutes: 30, passiveMinutes: null }]],
-  ["setMakeAhead", (w) => ["setMakeAhead", { target: { kind: "recipe", recipeId: w.recipes.veloute }, revisionId: revisionId(), window: { beforeDays: 1, shelfLifeDays: 2 } }]],
-  ["setGroupWithPrevious", (w) => ["setGroupWithPrevious", { stepId: w.steps.D3, revisionId: revisionId(), value: true }]],
-  ["addStepDependency", (w) => ["addStepDependency", { dependencyId: crypto.randomUUID(), revisionId: revisionId(), beforeStepId: w.steps.V1, afterStepId: w.steps.V3 }]],
-  ["extractToSubRecipe", (w) => [
+type Edit = [string, Record<string, unknown>];
+// Each edit forces at least one placement to move. `setup` runs first, before the Plan is read.
+const recipeEdits: [string, { setup?: (tx: Tx, w: Walkthrough) => Promise<void>; edit: (w: Walkthrough) => Edit }][] = [
+  ["addStep", { edit: (w) => ["addStep", { recipeId: w.recipes.veloute, stepId: crypto.randomUUID(), revisionId: revisionId(), body: [{ type: "text", text: "Garnish" }], lines: [] }] }],
+  // With V1 and V2 grouped, moving V2 out of the group gives it its own Task key.
+  [
+    "moveStep",
+    {
+      setup: (tx, w) => run(tx, "setGroupWithPrevious", { stepId: w.steps.V2, revisionId: revisionId(), value: true }),
+      edit: (w) => ["moveStep", { stepId: w.steps.V2, revisionId: revisionId(), afterStepId: w.steps.V3 }],
+    },
+  ],
+  ["removeStep", { edit: (w) => ["removeStep", { stepId: w.steps.V1, revisionId: revisionId() }] }],
+  ["setStepTimes", { edit: (w) => ["setStepTimes", { stepId: w.steps.D3, revisionId: revisionId(), activeMinutes: 30, passiveMinutes: null }] }],
+  // D1 becomes last-minute: it can no longer start on Thursday.
+  ["setMakeAhead", { edit: (w) => ["setMakeAhead", { target: { kind: "step", stepId: w.steps.D1 }, revisionId: revisionId(), window: { beforeDays: 0, shelfLifeDays: 3 } }] }],
+  ["setGroupWithPrevious", { edit: (w) => ["setGroupWithPrevious", { stepId: w.steps.D3, revisionId: revisionId(), value: true }] }],
+  // The walkthrough's Steps are already chained, so add a Step and make it wait for V3, which ends
+  // at 19:00 when Saturday's hours close: it must move.
+  [
+    "addStepDependency",
+    {
+      setup: (tx, w) =>
+        run(tx, "addStep", { recipeId: w.recipes.veloute, stepId: GARNISH, revisionId: revisionId(), body: [{ type: "text", text: "Garnish" }], lines: [] }),
+      edit: (w) => ["addStepDependency", { dependencyId: crypto.randomUUID(), revisionId: revisionId(), beforeStepId: w.steps.V3, afterStepId: GARNISH }],
+    },
+  ],
+  [
     "extractToSubRecipe",
-    { recipeId: w.recipes.tarte, revisionId: revisionId(), stepIds: [w.steps.T1, w.steps.T2], subRecipeId: crypto.randomUUID(), subRecipeRevisionId: revisionId(), name: "Pastry", stepId: crypto.randomUUID(), lineId: crypto.randomUUID() },
-  ]],
+    {
+      edit: (w) => [
+        "extractToSubRecipe",
+        { recipeId: w.recipes.tarte, revisionId: revisionId(), stepIds: [w.steps.T1, w.steps.T2], subRecipeId: crypto.randomUUID(), subRecipeRevisionId: revisionId(), name: "Pastry", stepId: crypto.randomUUID(), lineId: crypto.randomUUID() },
+      ],
+    },
+  ],
 ];
+const GARNISH = crypto.randomUUID();
 
 describe("every edit that changes a Task re-plans", () => {
-  it.each(recipeEdits)("%s re-plans the Services using the Recipe", async (_, edit) => {
+  it.each(recipeEdits)("%s re-plans the Services using the Recipe", async (_, { setup, edit }) => {
     await inRollback(async (tx) => {
       const w = await walkthrough(tx);
       const serviceId = await addService(tx, w);
+      await setup?.(tx, w);
       const before = await stored(tx, serviceId);
       const [name, args] = edit(w);
       await run(tx, name, args);
@@ -268,14 +295,27 @@ describe("every edit that changes a Task re-plans", () => {
     });
   });
 
-  it("removeStepDependency re-plans the Services using the Recipe", async () => {
+  // Text only: no placement moves, so this only checks the stored Plan stays consistent.
+  it("editStep keeps the stored Plan in step with the scheduler", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const before = await stored(tx, serviceId);
+      await run(tx, "editStep", { stepId: w.steps.V3, revisionId: revisionId(), body: [{ type: "text", text: "Blend" }], lines: [] });
+      await expectReplanned(tx, serviceId, before, { moved: false });
+    });
+  });
+
+  // Removing a link frees a Task but forces no move (previous starts that still fit are kept),
+  // so this only checks the stored Plan stays consistent.
+  it("removeStepDependency keeps the stored Plan in step with the scheduler", async () => {
     await inRollback(async (tx) => {
       const w = await walkthrough(tx);
       const serviceId = await addService(tx, w);
       const [link] = await tx.execute(sql`select id from step_dependencies where before_step_id = ${w.steps.T2} and deleted_at is null`) as unknown as Row[];
       const before = await stored(tx, serviceId);
       await run(tx, "removeStepDependency", { dependencyId: link!.id, revisionId: revisionId() });
-      await expectReplanned(tx, serviceId, before);
+      await expectReplanned(tx, serviceId, before, { moved: false });
     });
   });
 

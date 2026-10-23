@@ -50,21 +50,105 @@ const RECIPES: { key: "veloute" | "duck" | "tarte"; name: string; course: string
   },
 ];
 
+// With `{ stock: true }` (#87 D11 and owner decision 2), ADR 0004's sub-recipes join: Chicken stock
+// (yield 2 L, 3 days ahead, keeps 4) used by the Velouté (servings 4, 1.5 L on V2) and by a
+// Beurre blanc sub-recipe (yield 300 ml, 750 ml on B1), which the duck (servings 6) uses on D4.
+// So the Velouté is ×1.5 and the Beurre blanc ×1, and the stock is (2.25 L + 0.75 L) / 2 L = ×1.5.
+// The Beurre blanc can be made 2 days ahead, so it fits before the dry-brine (D1) that waits for it.
+// S2's passive time is 120 minutes, not the #87 plan's illustrative 150: with the real scheduler the
+// whole chain S1–S3, B1, B2 must fit Thu 18:00 to D1's start at 21:50, and with 150 S1 is Unplaced.
+const SUB_RECIPES: { key: "stock" | "beurre"; name: string; yield: string; makeAhead: { beforeDays: number; shelfLifeDays: number }; steps: StepSpec[] }[] = [
+  {
+    key: "stock",
+    name: "Chicken stock",
+    yield: "2 L",
+    makeAhead: { beforeDays: 3, shelfLifeDays: 4 },
+    steps: [
+      { text: "Roast the bones", active: 20 },
+      { text: "Simmer the stock", active: 10, passive: 120 },
+      { text: "Strain the stock", active: 10, passive: 30 },
+    ],
+  },
+  {
+    key: "beurre",
+    name: "Beurre blanc",
+    yield: "300 ml",
+    makeAhead: { beforeDays: 2, shelfLifeDays: 3 },
+    steps: [
+      { text: "Reduce the shallots in the stock", active: 10 },
+      { text: "Whisk in the butter", active: 10 },
+    ],
+  },
+];
+
+type Line = { amount: string; wording: string; subRecipe: "stock" | "beurre" };
+// Which walkthrough Step uses a sub-recipe, and how its text reads around the line.
+const USES: Record<string, { before: string; line: Line; after: string }> = {
+  V2: { before: "Add the ", line: { amount: "1.5%L", wording: "stock", subRecipe: "stock" }, after: " and simmer" },
+  D4: { before: "Make the ", line: { amount: "300%ml", wording: "beurre blanc", subRecipe: "beurre" }, after: "" },
+  B1: { before: "Reduce the shallots in the ", line: { amount: "750%ml", wording: "stock", subRecipe: "stock" }, after: "" },
+};
+const SERVINGS: Partial<Record<string, number>> = { veloute: 4, duck: 6 };
+
+type StepKey = "V1" | "V2" | "V3" | "D1" | "D2" | "D3" | "D4" | "T1" | "T2" | "T3";
+type SubStepKey = "S1" | "S2" | "S3" | "B1" | "B2";
+
 export type Walkthrough = {
   menuId: string;
-  recipes: { veloute: string; duck: string; tarte: string };
+  recipes: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string };
   dishes: { veloute: string; duck: string; tarte: string };
-  /** V1–V3, D1–D4, T1–T3: each Recipe's Steps in order. */
-  steps: Record<"V1" | "V2" | "V3" | "D1" | "D2" | "D3" | "D4" | "T1" | "T2" | "T3", string>;
-  names: { veloute: string; duck: string; tarte: string };
+  /** V1–V3, D1–D4, T1–T3 (and with the stock S1–S3, B1–B2): each Recipe's Steps in order. */
+  steps: Record<StepKey, string> & Partial<Record<SubStepKey, string>>;
+  names: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string };
 };
 
-/** The three Recipes, their Planning pass, and the Menu with one Dish per Course. No Service. */
-export async function buildWalkthrough(run: Run, stamp: string): Promise<Walkthrough> {
+/** The Recipes, their Planning pass, and the Menu with one Dish per Course. No Service. */
+export async function buildWalkthrough(run: Run, stamp: string, options: { stock?: boolean } = {}): Promise<Walkthrough> {
   const revisionId = () => crypto.randomUUID();
   const menuId = crypto.randomUUID();
   const dishIds = sortedIds(3);
   const out = { menuId, recipes: {}, dishes: {}, steps: {}, names: {} } as Walkthrough;
+  const stepKey = (key: string, j: number) => `${key === "beurre" ? "B" : key === "stock" ? "S" : key[0]!.toUpperCase()}${j + 1}`;
+
+  // One Recipe's Steps in order, each after the previous one, with any sub-recipe line it uses.
+  const addSteps = async (key: string, recipeId: string, steps: StepSpec[]) => {
+    const stepIds = sortedIds(steps.length);
+    for (const [j, s] of steps.entries()) {
+      const stepId = stepIds[j]!;
+      const named = stepKey(key, j);
+      (out.steps as Record<string, string>)[named] = stepId;
+      const use = options.stock ? USES[named] : undefined;
+      const lineId = crypto.randomUUID();
+      const content = use
+        ? {
+            body: [
+              { type: "text", text: use.before },
+              { type: "line", lineId },
+              ...(use.after ? [{ type: "text", text: use.after }] : []),
+            ],
+            lines: [{ lineId, subRecipeId: out.recipes[use.line.subRecipe], amount: use.line.amount, wording: use.line.wording }],
+          }
+        : { body: [{ type: "text", text: s.text }], lines: [] };
+      await run("addStep", { recipeId, stepId, revisionId: revisionId(), ...content });
+      if (s.active !== null || s.passive != null)
+        await run("setStepTimes", { stepId, revisionId: revisionId(), activeMinutes: s.active, passiveMinutes: s.passive ?? null });
+      if (s.makeAhead) await run("setMakeAhead", { target: { kind: "step", stepId }, revisionId: revisionId(), window: s.makeAhead });
+      if (j > 0)
+        await run("addStepDependency", { dependencyId: crypto.randomUUID(), revisionId: revisionId(), beforeStepId: stepIds[j - 1], afterStepId: stepId });
+    }
+  };
+
+  if (options.stock) {
+    for (const r of SUB_RECIPES) {
+      const recipeId = crypto.randomUUID();
+      const name = `${r.name} ${stamp}`;
+      out.recipes[r.key] = recipeId;
+      out.names[r.key] = name;
+      await run("createSubRecipe", { recipeId, revisionId: revisionId(), name, yield: r.yield });
+      await run("setMakeAhead", { target: { kind: "recipe", recipeId }, revisionId: revisionId(), window: r.makeAhead });
+      await addSteps(r.key, recipeId, r.steps);
+    }
+  }
 
   await run("createMenu", { menuId, name: `Saturday dinner ${stamp}`, guestCount: 6 });
   for (const [i, r] of RECIPES.entries()) {
@@ -72,19 +156,10 @@ export async function buildWalkthrough(run: Run, stamp: string): Promise<Walkthr
     const name = `${r.name} ${stamp}`;
     out.recipes[r.key] = recipeId;
     out.names[r.key] = name;
-    await run("createRecipe", { recipeId, revisionId: revisionId(), name });
+    const servings = options.stock ? SERVINGS[r.key] : undefined;
+    await run("createRecipe", { recipeId, revisionId: revisionId(), name, ...(servings ? { servings } : {}) });
     if (r.makeAhead) await run("setMakeAhead", { target: { kind: "recipe", recipeId }, revisionId: revisionId(), window: r.makeAhead });
-    const stepIds = sortedIds(r.steps.length);
-    for (const [j, s] of r.steps.entries()) {
-      const stepId = stepIds[j]!;
-      (out.steps as Record<string, string>)[`${r.key[0]!.toUpperCase()}${j + 1}`] = stepId;
-      await run("addStep", { recipeId, stepId, revisionId: revisionId(), body: [{ type: "text", text: s.text }], lines: [] });
-      if (s.active !== null || s.passive != null)
-        await run("setStepTimes", { stepId, revisionId: revisionId(), activeMinutes: s.active, passiveMinutes: s.passive ?? null });
-      if (s.makeAhead) await run("setMakeAhead", { target: { kind: "step", stepId }, revisionId: revisionId(), window: s.makeAhead });
-      if (j > 0)
-        await run("addStepDependency", { dependencyId: crypto.randomUUID(), revisionId: revisionId(), beforeStepId: stepIds[j - 1], afterStepId: stepId });
-    }
+    await addSteps(r.key, recipeId, r.steps);
     const courseId = crypto.randomUUID();
     await run("addCourse", { courseId, menuId, name: r.course });
     await run("addDish", { dishId: dishIds[i], courseId, recipeId });

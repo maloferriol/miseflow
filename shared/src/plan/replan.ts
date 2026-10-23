@@ -1,7 +1,6 @@
 import { and, asc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { NotFoundError, type MutatorContext, type Tx } from "../mutators/define.ts";
 import { stepPlainText } from "../recipe/planning.ts";
-import { loadRecipeSnapshot, type RecipeSnapshot } from "../recipe/snapshot.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { taskKey, type TaskKey, type UnplacedReason } from "../scheduler/types.ts";
 import {
@@ -12,12 +11,13 @@ import {
   dishes,
   kitchenSettings,
   menus,
-  recipes,
   services,
   taskPlacements,
 } from "../schema.ts";
+import { batchLabel, type BatchSize } from "./batches.ts";
+import { loadBatchRows, loadScaleRows, recipeAndAncestors, reconcileBatches } from "./batch-rows.ts";
 import { diffPlacements, placementId, type StoredPlacement } from "./diff.ts";
-import { type Hours, type PlanRows, type TaskInfo, toPlanningModel } from "./model.ts";
+import { deriveScale, type Hours, type PlanRows, type TaskInfo, toPlanningModel } from "./model.ts";
 import { describeUnplaced } from "./reasons.ts";
 import { formatMinuteOfDay, fromTimeColumn, type LocalDate, localParts } from "./time.ts";
 
@@ -129,32 +129,14 @@ async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = 
   return service;
 }
 
-type LoadedRows = PlanRows & { service: PlanRows["service"] & { menuId: string; timeIsDefault: boolean }; snapshots: Map<string, RecipeSnapshot> };
+type LoadedRows = PlanRows & { service: PlanRows["service"] & { menuId: string; timeIsDefault: boolean } };
 
 /** Everything one Service's re-plan reads. Reads only: the implicit Cook's id is the owner's (D1). */
 export async function loadPlanRows(tx: Tx, ownerId: string, service: ServiceRow): Promise<LoadedRows> {
   const cookId = ownerId;
   const defaultTime = await loadDefaultServiceTime(tx, ownerId);
   const availability = await loadAvailability(tx, ownerId);
-  const dishRows = await tx
-    .select({ dishId: dishes.id, recipeId: dishes.recipeId, scaleFactor: dishes.scaleFactor })
-    .from(dishes)
-    .innerJoin(courses, eq(courses.id, dishes.courseId))
-    .innerJoin(recipes, eq(recipes.id, dishes.recipeId))
-    .where(
-      and(
-        eq(courses.menuId, service.menuId),
-        eq(dishes.ownerId, ownerId),
-        isNull(dishes.deletedAt),
-        isNull(courses.deletedAt),
-        eq(recipes.ownerId, ownerId),
-        isNull(recipes.deletedAt),
-      ),
-    )
-    .orderBy(asc(sql`${courses.position} collate "C"`), asc(sql`${dishes.position} collate "C"`), asc(dishes.id));
-  const snapshots = new Map<string, RecipeSnapshot>();
-  for (const { recipeId } of dishRows)
-    if (!snapshots.has(recipeId)) snapshots.set(recipeId, await loadRecipeSnapshot(tx, ownerId, recipeId));
+  const scale = await loadScaleRows(tx, ownerId, service.menuId);
   const stored = await loadStored(tx, service.id);
   return {
     service: {
@@ -168,18 +150,9 @@ export async function loadPlanRows(tx: Tx, ownerId: string, service: ServiceRow)
     cookId,
     weekly: availability.weekly,
     overrides: availability.overrides,
-    guestCount: null,
-    region: "metric",
-    dishes: dishRows.map((d) => ({
-      dishId: d.dishId,
-      recipeId: d.recipeId,
-      scaleFactor: d.scaleFactor === null ? null : Number(d.scaleFactor),
-      recipe: snapshots.get(d.recipeId)!,
-    })),
-    subRecipes: new Map(),
-    batches: [],
+    ...scale,
+    batches: await loadBatchRows(tx, service.id),
     previous: stored.filter((p) => p.live).map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned })),
-    snapshots,
   };
 }
 
@@ -189,6 +162,7 @@ async function loadStored(tx: Tx, serviceId: string): Promise<StoredPlacement[]>
     .select({
       id: taskPlacements.id,
       dishId: taskPlacements.dishId,
+      batchId: taskPlacements.batchId,
       firstStepId: taskPlacements.firstStepId,
       start: taskPlacements.startMinute,
       cookId: taskPlacements.cookId,
@@ -196,11 +170,11 @@ async function loadStored(tx: Tx, serviceId: string): Promise<StoredPlacement[]>
       deletedAt: taskPlacements.deletedAt,
     })
     .from(taskPlacements)
-    .where(and(eq(taskPlacements.serviceId, serviceId), isNotNull(taskPlacements.dishId)))
+    .where(eq(taskPlacements.serviceId, serviceId))
     .orderBy(asc(taskPlacements.id));
   return rows.map((r) => ({
     id: r.id,
-    key: taskKey({ kind: "dish", dishId: r.dishId! }, r.firstStepId),
+    key: taskKey(r.dishId !== null ? { kind: "dish", dishId: r.dishId } : { kind: "batch", batchId: r.batchId! }, r.firstStepId),
     start: r.start,
     cookId: r.cookId ?? "",
     pinned: r.pinned,
@@ -210,13 +184,17 @@ async function loadStored(tx: Tx, serviceId: string): Promise<StoredPlacement[]>
 
 /**
  * Re-plans one Service and writes only what moved (D5): locks the Service (D6), reads its rows,
- * runs the scheduler with the stored Plan as the previous one, and writes the diff.
+ * makes its Batch rows match the sub-recipes it uses (#87 D7), runs the scheduler with the stored
+ * Plan as the previous one, and writes the diff.
  */
 export async function replan(tx: Tx, ctx: MutatorContext, serviceId: string) {
   const service = await findService(tx, ctx.ownerId, serviceId, { lock: true });
   // Placements reference the Cook row.
   await ensureCook(tx, ctx.ownerId);
   const rows = await loadPlanRows(tx, ctx.ownerId, service);
+  const needed = deriveScale(rows).batches.map((b) => b.subRecipeId);
+  const reconciled = await reconcileBatches(tx, ctx.ownerId, serviceId, needed);
+  if (reconciled.inserted + reconciled.revived + reconciled.removed) rows.batches = await loadBatchRows(tx, serviceId);
   const { model, tasks } = toPlanningModel(rows, ctx.timeZone);
   const plan = schedule(model);
   const diff = diffPlacements(await loadStored(tx, serviceId), plan.placements);
@@ -230,6 +208,7 @@ export async function replan(tx: Tx, ctx: MutatorContext, serviceId: string) {
         ownerId: ctx.ownerId,
         serviceId,
         dishId: task.dishId,
+        batchId: task.batchId,
         firstStepId: task.stepIds[0]!,
         startMinute: p.start,
         cookId: p.cookId,
@@ -265,10 +244,12 @@ export async function servicesInScope(tx: Tx, ownerId: string, scope: ReplanScop
   const base = tx.selectDistinct({ id: services.id }).from(services).innerJoin(menus, eq(menus.id, services.menuId));
   let rows: { id: string }[];
   if ("recipeId" in scope) {
+    // A Service uses a Recipe through its Dishes, or through sub-recipes they reach (#87).
+    const used = await recipeAndAncestors(tx, ownerId, scope.recipeId);
     rows = await base
       .innerJoin(courses, eq(courses.menuId, services.menuId))
       .innerJoin(dishes, eq(dishes.courseId, courses.id))
-      .where(and(live, eq(dishes.recipeId, scope.recipeId), isNull(dishes.deletedAt), isNull(courses.deletedAt)))
+      .where(and(live, inArray(dishes.recipeId, used), isNull(dishes.deletedAt), isNull(courses.deletedAt)))
       .orderBy(asc(services.id));
   } else if ("menuId" in scope) {
     rows = await base.where(and(live, eq(services.menuId, scope.menuId))).orderBy(asc(services.id));
@@ -296,9 +277,35 @@ export async function replanAffected(tx: Tx, ctx: MutatorContext, scope: ReplanS
   for (const id of await servicesInScope(tx, ctx.ownerId, scope)) await replan(tx, ctx, id);
 }
 
+/** A Batch as every read shows it (spec §3): "Chicken stock ×1.5 · for: Velouté, Beurre blanc". */
+export type BatchRead = {
+  /** The Service's live Batch row, or null when there is none yet (D8). */
+  id: string | null;
+  subRecipe: { id: string; name: string };
+  factor: number;
+  scalable: boolean;
+  for: BatchSize["parents"];
+  label: string;
+  fix: string | null;
+};
+
+export function toBatchRead(b: BatchSize, id: string | null): BatchRead {
+  return {
+    id,
+    subRecipe: { id: b.subRecipeId, name: b.name },
+    factor: b.factor,
+    scalable: b.scalable,
+    for: b.parents,
+    label: batchLabel(b),
+    fix: b.fix,
+  };
+}
+
 export type PlanTask = {
   key: TaskKey;
-  dish: { id: string; name: string };
+  /** null on a Batch's Task. */
+  dish: { id: string; name: string } | null;
+  batch: { id: string; label: string } | null;
   steps: { id: string; text: string }[];
   start: string;
   end: string;
@@ -315,9 +322,12 @@ export type PlanRead = {
   approximate: boolean;
   /** Days in the kitchen's zone, Tasks by start. */
   days: { date: LocalDate; tasks: PlanTask[] }[];
+  /** The Service's live Batches, sized on read, in Menu order of first use. */
+  batches: BatchRead[];
   unplaced: {
     key: TaskKey;
-    dish: { id: string; name: string };
+    dish: { id: string; name: string } | null;
+    batch: { id: string; label: string } | null;
     steps: { id: string; text: string }[];
     kind: UnplacedReason["kind"];
     sentence: string;
@@ -331,11 +341,16 @@ export type PlanRead = {
 export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZone: string): Promise<PlanRead> {
   const service = await findService(tx, ownerId, serviceId);
   const rows = await loadPlanRows(tx, ownerId, service);
-  const { model, tasks } = toPlanningModel(rows, timeZone);
+  const { model, tasks, scale } = toPlanningModel(rows, timeZone);
   const names = new Map(rows.dishes.map((d) => [d.dishId, d.recipe.name]));
-  const stepText = new Map(rows.dishes.flatMap((d) => d.recipe.steps.map((s) => [s.id, stepPlainText(s)] as const)));
+  const recipes = [...rows.dishes.map((d) => d.recipe), ...rows.subRecipes.values()];
+  const stepText = new Map(recipes.flatMap((r) => r.steps.map((s) => [s.id, stepPlainText(s)] as const)));
+  const stored = new Map(rows.batches.map((b) => [b.subRecipeId, b.batchId]));
+  const batches = scale.batches.flatMap((b) => (stored.has(b.subRecipeId) ? [toBatchRead(b, stored.get(b.subRecipeId)!)] : []));
+  const labels = new Map(batches.map((b) => [b.id!, b.label]));
   const describe = (task: TaskInfo) => ({
-    dish: { id: task.dishId!, name: names.get(task.dishId!)! },
+    dish: task.dishId === null ? null : { id: task.dishId, name: names.get(task.dishId)! },
+    batch: task.batchId === null ? null : { id: task.batchId, label: labels.get(task.batchId)! },
     steps: task.stepIds.map((id) => ({ id, text: stepText.get(id) ?? "" })),
   });
   const clock = (minute: number) => {
@@ -392,6 +407,7 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
     },
     approximate: placed.some((t) => t.approximate),
     days,
+    batches,
     unplaced,
   };
 }

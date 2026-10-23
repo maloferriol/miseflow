@@ -17,11 +17,14 @@ function passive(minutes: number) {
   return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
 }
 
+// A Dish's name, or a Batch's label ("Chicken stock ×1.5 · for: Velouté, Beurre blanc").
+const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) => task.batch?.label ?? task.dish?.name;
+
 function TaskLine({ task, date }: { task: PlanTask; date: string }) {
   const end = task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`;
   return (
     <li>
-      {task.start}–{end} · {task.dish.name} · {task.steps.map((s) => s.text).join(", ")}
+      {task.start}–{end} · {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}
       {task.approximate && (
         <>
           {" "}
@@ -69,7 +72,7 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
         <ul aria-label="Unplaced Tasks">
           {unplaced.map((task) => (
             <li key={task.key}>
-              {task.dish.name} · {task.steps.map((s) => s.text).join(", ")}: {task.sentence}
+              {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}: {task.sentence}
             </li>
           ))}
         </ul>

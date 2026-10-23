@@ -80,6 +80,22 @@ export type TaskInfo = {
 const PLACEHOLDER_ACTIVE = 10;
 const roundUp = (minutes: number) => Math.ceil(minutes / 5) * 5;
 
+const recipesOf = (rows: Pick<PlanRows, "dishes" | "subRecipes">) => {
+  const recipes = new Map(rows.subRecipes);
+  for (const d of rows.dishes) if (!recipes.has(d.recipeId)) recipes.set(d.recipeId, d.recipe);
+  return recipes;
+};
+
+/** Each Dish's Scale factor and the Batches its Recipes need, sized (units spec §5). */
+export function deriveScale(rows: Pick<PlanRows, "guestCount" | "region" | "dishes" | "subRecipes">) {
+  return deriveBatches({
+    guestCount: rows.guestCount,
+    region: rows.region,
+    dishes: rows.dishes.map(({ dishId, recipeId, scaleFactor }) => ({ dishId, recipeId, scaleFactor })),
+    recipes: recipesOf(rows),
+  });
+}
+
 /**
  * The scheduler's input for one Service. Each Dish's Step groups are its Tasks, and so are each
  * stored Batch's (a derived Batch with no row yet adds none, D8). A Task may start from its most
@@ -154,14 +170,8 @@ export function toPlanningModel(
   const dishKeys = new Map<string, TaskKey[]>();
   for (const { dishId, recipe } of rows.dishes) dishKeys.set(dishId, addOwner({ kind: "dish", dishId }, recipe));
 
-  const recipes = new Map(rows.subRecipes);
-  for (const d of rows.dishes) if (!recipes.has(d.recipeId)) recipes.set(d.recipeId, d.recipe);
-  const scale = deriveBatches({
-    guestCount: rows.guestCount,
-    region: rows.region,
-    dishes: rows.dishes.map(({ dishId, recipeId, scaleFactor }) => ({ dishId, recipeId, scaleFactor })),
-    recipes,
-  });
+  const recipes = recipesOf(rows);
+  const scale = deriveScale(rows);
   const stored = new Map(rows.batches.map((b) => [b.subRecipeId, b.batchId]));
   const batchKeys = new Map<string, TaskKey[]>();
   // Every stored Batch's Tasks first, so a child Batch can link to its parent Batch's.

@@ -51,6 +51,8 @@ export interface TaskSpec {
   steps: StepSpec[];
   /** null: a last-minute Task (not before the Service date). Else the make-ahead lower bound. */
   earliestStart: Minute | null;
+  /** Shelf life once made (ready), in minutes; absent or null: no limit. */
+  keepsMinutes?: number | null;
 }
 
 export interface PreviousPlacement {
@@ -60,11 +62,21 @@ export interface PreviousPlacement {
   pinned: boolean;
 }
 
-/** Every Task appears in exactly one of the two arrays. Both are sorted by key. */
+/** Every Task appears in exactly one of the first two arrays. Each array is sorted by key. */
 export interface Plan {
   placements: Placement[];
   unplaced: Unplaced[];
+  /** Placed Tasks that break a rule but stay where they are (spec §3, CONTEXT Pin); by key, then kind. */
+  conflicts: Conflict[];
 }
+
+/**
+ * A placed Task that breaks a rule. A Task is ready at its end, passive time included.
+ * `use: null`: the Service itself, for a Task nothing else uses.
+ */
+export type Conflict =
+  | { key: TaskKey; kind: "ShelfLifeExceeded"; readyAt: Minute; keepsUntil: Minute; use: TaskKey | null; useAt: Minute }
+  | { key: TaskKey; kind: "EarliestUseTooLate"; readyAt: Minute; use: TaskKey; useAt: Minute };
 
 export interface Placement {
   key: TaskKey;
@@ -80,7 +92,7 @@ export interface Unplaced {
   reason: UnplacedReason;
 }
 
-/** Open union: later tickets add `ShelfLifeExceeded`, `EarliestUseTooLate`, `Outrun`. */
+/** Open union: later tickets add `Outrun`. Shelf life and earliest use are a `Conflict`, not a reason (#87). */
 export type UnplacedReason =
   | { kind: "NoAvailability"; minutesNeeded: number; searched: Interval }
   | { kind: "BlockedByPin"; pin: TaskKey; searched: Interval }

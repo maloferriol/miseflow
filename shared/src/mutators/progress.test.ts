@@ -1,9 +1,10 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql, TransactionRollbackError } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability } from "../../test/walkthrough.ts";
 import { batchId } from "../plan/batch-rows.ts";
 import { readPlan, type PlanRead } from "../plan/replan.ts";
+import { localParts } from "../plan/time.ts";
 import { dishes, stepEvents, taskPlacements } from "../schema.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
@@ -168,6 +169,119 @@ describe("tickStep and untickStep", () => {
       await run(tx, "createService", { serviceId: otherService, menuId, date: SERVICE_DATE, time: SERVICE_TIME });
       const theirs = { kind: "batch", batchId: await batchId(otherService, w.recipes.stock!) };
       await refused(tx, "tickStep", tick(serviceId, theirs, w.steps.S1!));
+    });
+  });
+});
+
+// Each live placement row's version (ctid), by the Step that keys its Task: a row that's written changes it.
+const versions = async (tx: Tx, serviceId: string) =>
+  new Map(
+    ((await tx.execute(sql`select first_step_id, ctid::text as v
+      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as unknown as Row[]).map((r) => [
+      r.first_step_id as string,
+      r.v as string,
+    ]),
+  );
+const writes = async (tx: Tx, table: string) => {
+  const a = await actions(tx, table);
+  return a.ins + a.upd + a.del;
+};
+const minute = (date: Date) => date.getTime() / 60_000;
+const at = (m: number) => new Date(m * 60_000);
+const revisionId = () => crypto.randomUUID();
+
+describe("Progress in the re-plan", () => {
+  it("AC2, late tick: Add the stock ticked 40 minutes after its planned end pushes Blend and season later; nothing else moves", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await walkthrough(tx);
+      // The Cook gets Saturday until Service after the Plan was made: the re-plan keeps every Task.
+      const rows = await versions(tx, serviceId);
+      await run(tx, "setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: SERVICE_DATE, availability: { kind: "hours", start: 9 * 60, end: 19 * 60 + 30 } });
+      expect(await versions(tx, serviceId)).toEqual(rows);
+
+      const before = await starts(tx, serviceId);
+      // V2: 5 minutes active, 20 passive.
+      const plannedEnd = before.get(w.steps.V2)! + 25;
+      const writesBefore = await writes(tx, "task_placements");
+      await run(tx, "tickStep", tick(serviceId, dishOwner(w.dishes.veloute), w.steps.V2), { now: () => at(plannedEnd + 40) });
+
+      const after = await starts(tx, serviceId);
+      const changed = [...(await versions(tx, serviceId))].filter(([step, v]) => rows.get(step) !== v).map(([step]) => step);
+      expect(changed).toEqual([w.steps.V3]);
+      expect(after.get(w.steps.V2)).toBe(before.get(w.steps.V2));
+      // Ready at the tick plus its 20 minutes of passive time.
+      expect(after.get(w.steps.V3)).toBeGreaterThanOrEqual(plannedEnd + 40 + 20);
+      expect(after.get(w.steps.V3)).toBeGreaterThan(before.get(w.steps.V3)!);
+      expect(localParts(after.get(w.steps.V3)!, timeZone)).toMatchObject({ date: SERVICE_DATE, minuteOfDay: 19 * 60 + 20 });
+      expect((await writes(tx, "task_placements")) - writesBefore).toBe(1);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, at(plannedEnd + 40));
+      expect(plan.conflicts).toEqual([]);
+    });
+  });
+
+  // D1 (Dry-brine the duck) with 2700 minutes of passive time must start before Thu 21:50 to be
+  // ready for Score and season on Saturday, so a re-plan moves it while it isn't done.
+  const longBrine = (stepId: string) => ({ stepId, revisionId: revisionId(), activeMinutes: 10, passiveMinutes: 2700 });
+
+  it("AC2, a done Task never moves: a longer brine moves Dry-brine the duck, unless it's ticked done", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await walkthrough(tx);
+      const d1 = (await starts(tx, serviceId)).get(w.steps.D1)!;
+      await tx
+        .transaction(async (sp) => {
+          await run(sp, "setStepTimes", longBrine(w.steps.D1));
+          expect((await starts(sp, serviceId)).get(w.steps.D1)).not.toBe(d1);
+          sp.rollback();
+        })
+        .catch((e) => expect(e).toBeInstanceOf(TransactionRollbackError));
+
+      await run(tx, "tickStep", tick(serviceId, dishOwner(w.dishes.duck), w.steps.D1));
+      const rows = await versions(tx, serviceId);
+      await run(tx, "setStepTimes", longBrine(w.steps.D1));
+      expect((await starts(tx, serviceId)).get(w.steps.D1)).toBe(d1);
+      expect((await versions(tx, serviceId)).get(w.steps.D1)).toBe(rows.get(w.steps.D1));
+    });
+  });
+
+  it("untick: a Task unticked is planned again, so the longer brine now moves it", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await walkthrough(tx);
+      const duck = dishOwner(w.dishes.duck);
+      const d1 = (await starts(tx, serviceId)).get(w.steps.D1)!;
+      await run(tx, "tickStep", tick(serviceId, duck, w.steps.D1));
+      await run(tx, "setStepTimes", longBrine(w.steps.D1));
+      expect((await starts(tx, serviceId)).get(w.steps.D1)).toBe(d1);
+
+      await run(tx, "untickStep", tick(serviceId, duck, w.steps.D1));
+      const moved = (await starts(tx, serviceId)).get(w.steps.D1)!;
+      expect(moved).toBeLessThan(d1);
+      expect(localParts(moved, timeZone)).toMatchObject({ date: "2026-10-29", minuteOfDay: 20 * 60 + 10 });
+    });
+  });
+
+  it("Outrun: Add the stock ticked so late that Blend and season can't follow keeps it placed with an Outrun conflict, until it's unticked", async () => {
+    await inRollback(async (tx) => {
+      const { w, s, serviceId } = await walkthrough(tx);
+      const before = await starts(tx, serviceId);
+      const tickAt = at(before.get(w.steps.V2)! + 25 + 40);
+      const veloute = dishOwner(w.dishes.veloute);
+      await run(tx, "tickStep", tick(serviceId, veloute, w.steps.V2), { now: () => tickAt });
+      expect(await starts(tx, serviceId)).toEqual(before);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, tickAt);
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.conflicts.map((c) => ({ step: c.steps[0]!.id, kind: c.kind, use: c.use, sentence: c.sentence }))).toEqual([
+        {
+          step: w.steps.V3,
+          kind: "Outrun",
+          use: { key: `dish:${w.dishes.veloute}:${w.steps.V2}`, label: `Add the stock and simmer (Velouté ${s})` },
+          sentence: `Blend and season (Velouté ${s}) starts at Sat 18:50, but Add the stock and simmer (Velouté ${s}) ran late and is only ready at Sat 19:20`,
+        },
+      ]);
+      expect(taskOf(plan, w.steps.V3).steps).toEqual([{ id: w.steps.V3, text: "Blend and season", done: false, doneAt: null }]);
+      expect(taskOf(plan, w.steps.V2).steps).toEqual([{ id: w.steps.V2, text: "Add the stock and simmer", done: true, doneAt: "19:00" }]);
+
+      await run(tx, "untickStep", tick(serviceId, veloute, w.steps.V2), { now: () => tickAt });
+      expect((await readPlan(tx, ownerId, serviceId, timeZone, tickAt)).conflicts).toEqual([]);
     });
   });
 });

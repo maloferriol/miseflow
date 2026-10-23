@@ -256,6 +256,7 @@ export function schedule(model: PlanningModel): Plan {
     const lower = lowerBound.at;
     const window: Interval = { start: lower, end: upper.at };
     if (upper.pin !== null) return { kind: "BlockedByPin", pin: upper.pin, searched: window };
+    // A pin-set lower bound is reported as BlockedByPin even when the real limit is Cook time after the pin (as decision 4).
     if (lowerBound.pin !== null) return { kind: "BlockedByPin", pin: lowerBound.pin, searched: window };
     if (upper.at - lower < task.duration) return { kind: "WindowTooTight", minutesNeeded: task.duration, window };
     for (const pin of pins) {

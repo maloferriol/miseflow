@@ -71,19 +71,21 @@ export const addAlias = defineMutator({
   async run(tx, args, { ownerId }) {
     await lockCatalog(tx, ownerId);
     await requireVisibleIngredient(tx, args.ingredientId, ownerId);
-    // Two kitchen aliases with one name would make "a kitchen alias wins" ambiguous. A kitchen
-    // alias equal to a seed name or alias is fine: that is how the kitchen wins.
+    // A kitchen alias that repeats another kitchen alias or the kitchen's own Ingredient name
+    // would make "a kitchen alias wins" ambiguous, or hide that Ingredient. A kitchen alias
+    // equal to a seed name or alias is fine: that is how the kitchen wins.
     const alias = normaliseName(args.name);
     const clash = (await loadCatalog(tx, ownerId)).find(
       (entry) =>
         entry.id !== args.ingredientId &&
-        entry.aliases.some(
-          (a) => a.source === "own" && normaliseName(a.name) === alias,
-        ),
+        ((entry.source === "own" && normaliseName(entry.name) === alias) ||
+          entry.aliases.some(
+            (a) => a.source === "own" && normaliseName(a.name) === alias,
+          )),
     );
     if (clash)
       throw new ConflictError(
-        `"${args.name}" is already an alias of "${clash.name}"`,
+        `"${args.name}" is already a name or alias of "${clash.name}"`,
       );
     await tx.insert(ingredientAliases).values({
       id: args.aliasId,

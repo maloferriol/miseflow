@@ -181,6 +181,22 @@ describe("addAlias", () => {
     });
   });
 
+  it("refuses an alias equal to the name of the kitchen's own Ingredient elsewhere", async () => {
+    await inRollback(async (tx) => {
+      const { tag, categoryId, ingredientId } = await seedFixture(tx);
+      await run(tx, "createIngredient", {
+        ingredientId: crypto.randomUUID(),
+        name: `${tag} Piment`,
+        preferredKind: "mass",
+        shoppingCategoryId: categoryId,
+      });
+
+      await expect(
+        run(tx, "addAlias", { aliasId: crypto.randomUUID(), ingredientId, name: `${tag} piment` }),
+      ).rejects.toThrow(ConflictError);
+    });
+  });
+
   it("refuses another owner's Ingredient", async () => {
     await inRollback(async (tx) => {
       const ingredientId = crypto.randomUUID();

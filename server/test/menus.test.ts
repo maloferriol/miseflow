@@ -55,13 +55,22 @@ describe("GET /menus/:menuId", () => {
         id: menuId,
         name: "Saturday dinner",
         guestCount: 6,
+        batches: [],
         service: null,
         courses: [
           {
             id: courseId,
             name: "Starter",
             position: "a0",
-            dishes: [{ id: dishId, position: "a0", recipe: { id: recipeId, name: "Velouté" } }],
+            dishes: [
+              {
+                id: dishId,
+                position: "a0",
+                recipe: { id: recipeId, name: "Velouté" },
+                scale: { factor: 1, source: "assumed" },
+                fixes: [{ subRecipe: null, text: "add servings" }],
+              },
+            ],
           },
         ],
       },

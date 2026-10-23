@@ -182,6 +182,8 @@ export const ingredientLines = pgTable(
     // Neither ingredientId nor subRecipeId set means a Missing sub-recipe.
     subRecipeId: uuid("sub_recipe_id").references(() => recipes.id),
     quantity: numeric("quantity"),
+    // The upper end of a range ("2-3"); null for a single amount.
+    quantityMax: numeric("quantity_max"),
     unit: text("unit"),
     wording: text("wording"),
     preparation: text("preparation"),

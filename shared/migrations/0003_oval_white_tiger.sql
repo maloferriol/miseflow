@@ -1,0 +1,1 @@
+ALTER TABLE "ingredient_lines" ADD COLUMN "quantity_max" numeric;

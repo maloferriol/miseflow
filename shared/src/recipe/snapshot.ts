@@ -2,11 +2,14 @@ import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Tx } from "../mutators/define.ts";
 import { ingredientLines, recipes, stepDependencies, steps } from "../schema.ts";
 import type { MakeAhead } from "./planning.ts";
+import type { Yield } from "./subrecipes.ts";
 import type { StepToken } from "./tokens.ts";
 
 export type SnapshotLine = {
   id: string;
   ingredientId: string | null;
+  /** The Recipe this line uses as a sub-recipe; at most one of this and `ingredientId` is set. */
+  subRecipeId: string | null;
   quantity: number | null;
   quantityMax: number | null;
   unit: string | null;
@@ -39,6 +42,8 @@ export type SnapshotDependency = {
 export type RecipeSnapshot = {
   name: string;
   servings: number | null;
+  /** The Quantity the Recipe makes (#84 Q8); null when it has none. */
+  yield: Yield | null;
   makeAhead: MakeAhead | null;
   steps: SnapshotStep[];
   dependencies: SnapshotDependency[];
@@ -66,6 +71,8 @@ export async function loadRecipeSnapshot(
     .select({
       name: recipes.name,
       servings: recipes.servings,
+      yieldQuantity: recipes.yieldQuantity,
+      yieldUnit: recipes.yieldUnit,
       makeAheadBeforeDays: recipes.makeAheadBeforeDays,
       shelfLifeDays: recipes.shelfLifeDays,
     })
@@ -139,6 +146,10 @@ export async function loadRecipeSnapshot(
   return {
     name: recipe.name,
     servings: toNumber(recipe.servings),
+    yield:
+      recipe.yieldQuantity === null
+        ? null
+        : { quantity: Number(recipe.yieldQuantity), unit: recipe.yieldUnit },
     makeAhead: toMakeAhead(recipe),
     steps: stepRows.map((step) => ({
       id: step.id,
@@ -149,6 +160,7 @@ export async function loadRecipeSnapshot(
         .map((line) => ({
           id: line.id,
           ingredientId: line.ingredientId,
+          subRecipeId: line.subRecipeId,
           quantity: toNumber(line.quantity),
           quantityMax: toNumber(line.quantityMax),
           unit: line.unit,

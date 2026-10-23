@@ -81,6 +81,7 @@ describe("findPlanningCycle", () => {
 const line = (id: string, wording: string, preparation: string | null, ingredientId: string | null = null): SnapshotLine => ({
   id,
   ingredientId,
+  subRecipeId: null,
   quantity: null,
   quantityMax: null,
   unit: null,
@@ -99,7 +100,7 @@ const step = (id: string, text: string, times: { active?: number | null; passive
   makeAhead: null,
   groupWithPrevious: false,
 });
-const recipe = (steps: SnapshotStep[]): RecipeSnapshot => ({ name: "Sauce", servings: null, makeAhead: null, steps, dependencies: [] });
+const recipe = (steps: SnapshotStep[]): RecipeSnapshot => ({ name: "Sauce", servings: null, yield: null, makeAhead: null, steps, dependencies: [] });
 
 describe("ready to plan", () => {
   it("lists exactly the Steps with neither active nor passive time; active 0 counts as set", () => {

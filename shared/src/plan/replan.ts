@@ -129,6 +129,11 @@ async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = 
   return service;
 }
 
+/** The caller's live Service on a live Menu, read without a row lock; anything else is missing. */
+export function findLiveService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
+  return findService(tx, ownerId, serviceId);
+}
+
 type LoadedRows = PlanRows & { service: PlanRows["service"] & { menuId: string; timeIsDefault: boolean } };
 
 /** Everything one Service's re-plan reads. Reads only: the implicit Cook's id is the owner's (D1). */

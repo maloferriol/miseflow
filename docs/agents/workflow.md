@@ -4,7 +4,7 @@ How a ticket goes from issue to PR here: branches, worktrees, tests, plans, revi
 
 ## Running the stages
 
-- **The main session orchestrates.** A subagent can't spawn subagents, so a "ticket orchestrator" subagent that delegates stages stalls (#91). The main session runs each stage (DEFINE, PLAN, BUILD, VERIFY, REVIEW, SHIP, RETRO) as its own subagent, with one common brief plus a stage line.
+- **Orchestrator and stages.** A ticket orchestrator subagent runs each stage (DEFINE, PLAN, BUILD, VERIFY, REVIEW, SHIP, RETRO) as its own subagent, with one common brief plus a stage line. Stage subagents always run in the background, and a stage's result reaches the orchestrator as a message on its next turn. Between stages, the orchestrator's report to the main session is interim. The main session waits for the report sent when the orchestrator has finished with no stage still running, and treats that one as final. In #89, two resumes were sent to an orchestrator that would have continued by itself.
 - If the `/addy:*` commands aren't installed, emulate each stage from the common brief. Say so in the PR.
 - Each stage writes its output and logs under `scratchpad/<n>/` (`spec.md`, `build/`, `verify/`, `review.md`). The next stage's brief points at those paths.
 - **Commits.** Only SHIP commits and pushes. If a Stop hook asks for a commit in an earlier stage, don't commit. Reply that the work is uncommitted on purpose until SHIP, and end the turn.

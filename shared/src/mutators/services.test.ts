@@ -9,13 +9,16 @@ import { localParts } from "../plan/time.ts";
 import { availabilityOverrides, availabilityWeekly, cooks, kitchenSettings, services, taskPlacements } from "../schema.ts";
 import { ConflictError, getMutator, NotFoundError, type Tx } from "./registry.ts";
 
+// A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
+const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
+
 const ownerId = crypto.randomUUID();
 const timeZone = "Europe/Paris";
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone, now: () => FIXED_NOW });
 }
 
 const hours = (weekday: number, start: number, end: number) => ({ availabilityId: crypto.randomUUID(), weekday, start, end });
@@ -160,7 +163,7 @@ describe("the walkthrough Plan", () => {
         [s.T2]: "Fri 19:50",
         [s.T3]: "Sat 18:00",
       });
-      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       const d4 = plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0]!.id === s.D4)!;
       expect(d4).toMatchObject({ start: "18:40", end: "18:50", approximate: true });
       expect(plan.approximate).toBe(true);
@@ -355,7 +358,7 @@ describe("every edit that changes a Task re-plans", () => {
       expect(after.has(w.steps.T1)).toBe(false);
       rows.delete(w.steps.T1);
       expect(after).toEqual(rows);
-      const plan = await readPlan(tx, ownerId, serviceId, timeZone);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(plan.unplaced).toEqual([
         expect.objectContaining({ kind: "NoAvailability", sentence: "No Cook has 20 free minutes between Fri 00:00 and Fri 19:50" }),
       ]);

@@ -1,6 +1,24 @@
-/* Printing (ADR 0004): the page without the app chrome, which carries `no-print`. */
+/* Printing the Plan (ADR 0004): the app's chrome hides, the printed Plan shows, one day per page.
+   Sources: https://developer.mozilla.org/en-US/docs/Web/CSS/@media,
+   https://developer.mozilla.org/en-US/docs/Web/CSS/break-before */
+@media screen {
+  .print-only {
+    display: none;
+  }
+}
+
 @media print {
-  .no-print {
+  .screen-only {
     display: none !important;
   }
+  .print-only {
+    display: block;
+  }
+  .printed-day + .printed-day {
+    break-before: page;
+  }
+}
+
+.behind {
+  color: #b00020;
 }

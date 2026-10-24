@@ -8,7 +8,7 @@ import {
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../../shared/test/walkthrough.ts";
-import { db, getToken, testApp } from "./helpers.ts";
+import { db, FIXED_NOW, getToken, testApp } from "./helpers.ts";
 
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 
@@ -91,7 +91,7 @@ describe("Services and the Plan read", () => {
   });
 
   it("answers 404 for another owner's Service", async () => {
-    const other = { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris" };
+    const other = { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris", now: () => FIXED_NOW };
     const [menuId, theirs] = [crypto.randomUUID(), crypto.randomUUID()];
     const [createMenu, createService] = [getMutator("createMenu")!, getMutator("createService")!];
     await db.transaction(async (tx) => {

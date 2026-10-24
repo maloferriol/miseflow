@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RecipeSnapshot } from "../recipe/snapshot.ts";
 import { freeIntervals, type PlanRows, toPlanningModel } from "./model.ts";
+import { stepKey } from "./progress.ts";
 
 const utc = (iso: string) => Date.parse(iso) / 60_000;
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
@@ -80,6 +81,7 @@ function rows(
     subRecipes: new Map(scale.subRecipes ?? []),
     batches: scale.batches ?? [],
     previous: [],
+    progress: new Map(),
   };
 }
 
@@ -256,5 +258,24 @@ describe("toPlanningModel with Batches", () => {
       paris,
     );
     expect(model.cooks[0]!.free).toEqual([{ start: utc("2026-10-28T17:00Z"), end: utc("2026-10-28T21:00Z") }]);
+  });
+});
+
+describe("toPlanningModel with Step progress", () => {
+  it("gives a done Step its tick time in minutes, on a Dish Task and on a Batch Task, and a Step not done none", () => {
+    const input = rows(
+      [{ dishId: "d", recipe: recipe([{ id: "v1" }, { id: "v2", subRecipeId: "stock" }]) }],
+      {},
+      { subRecipes: [["stock", { ...recipe([{ id: "k1" }]), yield: { quantity: 2, unit: "L" } }]], batches: [{ batchId: "b", subRecipeId: "stock" }] },
+    );
+    const tick = new Date("2026-10-31T16:20:30Z");
+    input.progress = new Map([
+      [stepKey({ kind: "dish", dishId: "d" }, "v1"), { done: true, doneAt: tick }],
+      [stepKey({ kind: "dish", dishId: "d" }, "v2"), { done: false, doneAt: null }],
+      [stepKey({ kind: "batch", batchId: "b" }, "k1"), { done: true, doneAt: tick }],
+    ]);
+    const { model } = toPlanningModel(input, paris);
+    const doneAt = Object.fromEntries(model.tasks.flatMap((t) => t.steps.map((s) => [s.stepId, s.doneAt ?? null])));
+    expect(doneAt).toEqual({ v1: utc("2026-10-31T16:21Z"), v2: null, k1: utc("2026-10-31T16:21Z") });
   });
 });

@@ -12,14 +12,17 @@ import {
   kitchenSettings,
   menus,
   services,
+  stepEvents,
   taskPlacements,
 } from "../schema.ts";
 import { formatFactor, toBatchRead, type BatchRead } from "./batches.ts";
 import { loadBatchRows, loadScaleRows, recipeAndAncestors, reconcileBatches } from "./batch-rows.ts";
 import { diffPlacements, placementId, type StoredPlacement } from "./diff.ts";
 import { deriveScale, type Hours, type PlanRows, type TaskInfo, toPlanningModel } from "./model.ts";
+import { behindTasks } from "./behind.ts";
+import { stepKey, stepStates } from "./progress.ts";
 import { describeConflict, describeUnplaced } from "./reasons.ts";
-import { formatMinuteOfDay, fromTimeColumn, type LocalDate, localParts } from "./time.ts";
+import { formatInstant, formatMinuteOfDay, fromTimeColumn, type LocalDate, localParts } from "./time.ts";
 
 // Re-plan against the database: read a Service's rows, run the pure scheduler, write the diff.
 
@@ -114,12 +117,14 @@ export async function loadDefaultServiceTime(tx: Tx, ownerId: string): Promise<{
 type ServiceRow = { id: string; menuId: string; date: LocalDate; time: string | null };
 
 // The caller's live Service on a live Menu, row-locked when asked (D6); anything else is missing.
+// FOR NO KEY UPDATE: rows that reference the Service (Step events, placements, Batches) take
+// FOR KEY SHARE on it when inserted, which FOR UPDATE would wait on (#88 owner decision 1).
 async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = false } = {}): Promise<ServiceRow> {
   const query = tx
     .select({ id: services.id, menuId: services.menuId, date: services.date, time: services.time })
     .from(services)
     .where(and(eq(services.id, serviceId), eq(services.ownerId, ownerId), isNull(services.deletedAt)));
-  const [service] = lock ? await query.for("update") : await query;
+  const [service] = lock ? await query.for("no key update") : await query;
   if (!service) throw new NotFoundError("Service");
   const [menu] = await tx
     .select({ id: menus.id })
@@ -132,6 +137,11 @@ async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = 
 /** The caller's live Service on a live Menu, read without a row lock; anything else is missing. */
 export function findLiveService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
   return findService(tx, ownerId, serviceId);
+}
+
+/** The caller's live Service, row-locked (D6), for a mutator that writes before re-planning it. */
+export function lockService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
+  return findService(tx, ownerId, serviceId, { lock: true });
 }
 
 type LoadedRows = PlanRows & { service: PlanRows["service"] & { menuId: string; timeIsDefault: boolean } };
@@ -158,7 +168,26 @@ export async function loadPlanRows(tx: Tx, ownerId: string, service: ServiceRow)
     ...scale,
     batches: await loadBatchRows(tx, service.id),
     previous: stored.filter((p) => p.live).map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned })),
+    progress: await loadProgress(tx, service.id),
   };
+}
+
+// Every Step event of the Service, reduced to each Step's state. Events of a removed Step, Dish
+// or Batch match no Task and are ignored downstream.
+async function loadProgress(tx: Tx, serviceId: string) {
+  const events = await tx
+    .select({ id: stepEvents.id, dishId: stepEvents.dishId, batchId: stepEvents.batchId, stepId: stepEvents.stepId, kind: stepEvents.kind, at: stepEvents.at })
+    .from(stepEvents)
+    .where(eq(stepEvents.serviceId, serviceId));
+  return stepStates(
+    events.map((e) => ({
+      id: e.id,
+      owner: e.dishId !== null ? { kind: "dish" as const, dishId: e.dishId } : { kind: "batch" as const, batchId: e.batchId! },
+      stepId: e.stepId,
+      kind: e.kind,
+      at: e.at,
+    })),
+  );
 }
 
 // Every placement row of the Service, soft-deleted ones too (a Task's row is unique across them).
@@ -270,7 +299,7 @@ export async function servicesInScope(tx: Tx, ownerId: string, scope: ReplanScop
 export async function lockServices(tx: Tx, ownerId: string, scope: ReplanScope): Promise<string[]> {
   const ids = await servicesInScope(tx, ownerId, scope);
   if (ids.length)
-    await tx.select({ id: services.id }).from(services).where(inArray(services.id, ids)).orderBy(asc(services.id)).for("update");
+    await tx.select({ id: services.id }).from(services).where(inArray(services.id, ids)).orderBy(asc(services.id)).for("no key update");
   return ids;
 }
 
@@ -284,10 +313,17 @@ export async function replanAffected(tx: Tx, ctx: MutatorContext, scope: ReplanS
 
 export type PlanTask = {
   key: TaskKey;
+  /** What `tickStep` takes. */
+  owner: { kind: "dish"; dishId: string } | { kind: "batch"; batchId: string };
   /** null on a Batch's Task. */
   dish: { id: string; name: string } | null;
   batch: { id: string; label: string } | null;
-  steps: { id: string; text: string }[];
+  /** `doneAt`: the tick's time in the kitchen's zone ("19:40"). */
+  steps: { id: string; text: string; done: boolean; doneAt: string | null }[];
+  /** Every Step is done. */
+  done: boolean;
+  /** Past due with a Step not done (#88 D5); `label`: "<Dish or Batch label> · <Step texts>". */
+  behind: { dueAt: string; dueDate: LocalDate; holdsUp: { key: TaskKey; label: string }[] } | null;
   start: string;
   end: string;
   endDate: LocalDate;
@@ -299,6 +335,10 @@ export type PlanTask = {
 
 export type PlanRead = {
   service: { id: string; menuId: string; date: LocalDate; time: string; timeIsDefault: boolean };
+  /** The kitchen's IANA zone, for "Printed at". */
+  timeZone: string;
+  /** When behind was measured ("Sat 31 Oct 17:35"). */
+  asOf: string;
   /** Any placed Task is approximate. */
   approximate: boolean;
   /** Days in the kitchen's zone, Tasks by start. */
@@ -328,10 +368,10 @@ export type PlanRead = {
 
 /**
  * The Plan as stored (ADR 0010, D9): placed Tasks from `task_placements`, ends and ≈ from the
- * Steps, and Unplaced Tasks derived on read by one scheduler run over the same rows.
+ * Steps, and Unplaced Tasks derived on read by one scheduler run over the same rows. Step
+ * progress and behind (measured at `now`) are derived on read too; the read never writes (#88 D8).
  */
-
-export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZone: string): Promise<PlanRead> {
+export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZone: string, now: Date): Promise<PlanRead> {
   const service = await findService(tx, ownerId, serviceId);
   const rows = await loadPlanRows(tx, ownerId, service);
   const { model, tasks, scale } = toPlanningModel(rows, timeZone);
@@ -351,15 +391,33 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
     return { date: p.date, time: formatMinuteOfDay(p.minuteOfDay) };
   };
 
+  // "Duck breast with beurre blanc · Sear the duck", as the Plan screen's line.
+  const lineOf = (key: TaskKey) => {
+    const d = describe(tasks.get(key)!);
+    return `${d.batch?.label ?? d.dish?.name} · ${d.steps.map((s) => s.text).join(", ")}`;
+  };
+  const behind = behindTasks({ placements: rows.previous, tasks, links: model.links, states: rows.progress, now: now.getTime() / 60_000 });
   const placed: (PlanTask & { at: number; date: LocalDate })[] = [];
   for (const p of rows.previous) {
     const task = tasks.get(p.key);
     if (!task) continue;
     const start = clock(p.start);
     const end = clock(p.start + task.activeMinutes + task.passiveMinutes);
+    const described = describe(task);
+    const steps = described.steps.map((step) => {
+      const state = rows.progress.get(stepKey(task.owner, step.id));
+      const doneAt = state?.done && state.doneAt ? clock(Math.floor(state.doneAt.getTime() / 60_000)).time : null;
+      return { ...step, done: state?.done ?? false, doneAt };
+    });
+    const late = behind.get(p.key);
+    const due = late ? clock(late.dueAt) : null;
     placed.push({
       key: p.key,
-      ...describe(task),
+      owner: task.owner,
+      ...described,
+      steps,
+      done: steps.every((step) => step.done),
+      behind: late ? { dueAt: due!.time, dueDate: due!.date, holdsUp: late.holdsUp.map((key) => ({ key, label: lineOf(key) })) } : null,
       start: start.time,
       end: end.time,
       endDate: end.date,
@@ -390,13 +448,17 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
     const owner = task.batchId !== null ? batchNames.get(task.batchId) : names.get(task.dishId!);
     return `${labelOf(key)} (${owner})`;
   };
-  const conflicts = conflictsOf(model, rows.previous.filter((p) => tasks.has(p.key))).map((c) => ({
-    key: c.key,
-    kind: c.kind,
-    ...describe(tasks.get(c.key)!),
-    use: { key: c.use, label: c.use === null ? "Service" : taskLabel(c.use) },
-    sentence: describeConflict(c, taskLabel, timeZone),
-  }));
+  const conflicts = conflictsOf(model, rows.previous.filter((p) => tasks.has(p.key))).map((c) => {
+    // An Outrun Task is held up by the late Task, its `use` here.
+    const use = c.kind === "Outrun" ? c.by : c.use;
+    return {
+      key: c.key,
+      kind: c.kind,
+      ...describe(tasks.get(c.key)!),
+      use: { key: use, label: use === null ? "Service" : taskLabel(use) },
+      sentence: describeConflict(c, taskLabel, timeZone),
+    };
+  });
   const storedKeys = new Set(rows.previous.map((p) => p.key));
   const unplaced = schedule(model)
     .unplaced.filter((u) => !storedKeys.has(u.key))
@@ -413,6 +475,8 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
       time: formatMinuteOfDay(rows.service.time ?? rows.defaultServiceTime),
       timeIsDefault: rows.service.timeIsDefault,
     },
+    timeZone,
+    asOf: formatInstant(now, timeZone),
     approximate: placed.some((t) => t.approximate),
     days,
     batches,

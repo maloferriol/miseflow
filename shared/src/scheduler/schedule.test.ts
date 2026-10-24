@@ -1134,3 +1134,165 @@ describe("schedule", () => {
     });
   });
 });
+
+describe("#88 Step progress", () => {
+  const A = "dish:a:s1";
+  const B = "dish:b:s1";
+  const C = "dish:c:s1";
+  const U = "dish:u:s1";
+  const service = { dayStart: at(0, 0, 0), at: at(0, 20, 0) };
+  const placementOf = (plan: Plan, key: string) => plan.placements.find((p) => p.key === key)!;
+  // A Plan's placements fed back as the previous Plan, as a re-plan reads them from the database.
+  const asPrevious = (plan: Plan) => plan.placements.map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned }));
+  const chain = [
+    { before: A, after: B },
+    { before: B, after: C },
+  ];
+  const chainTasks = (doneA?: number) => [
+    dishTask("a", [step("s1", 20, 0, doneA)]),
+    dishTask("b", [step("s1", 20)]),
+    dishTask("c", [step("s1", 20)]),
+    dishTask("u", [step("s1", 20)]),
+  ];
+  // The Plan was made when the Cook was free until 18:00 only; then the Cook got the evening, and
+  // the re-plan kept every Task where it was (stability), so the chain has room after 18:00.
+  const morning = [{ start: at(0, 16, 0), end: at(0, 18, 0) }];
+  const evening = [{ start: at(0, 16, 0), end: at(0, 20, 0) }];
+
+  it("#88 AC2: a Task done 40 minutes late pushes its dependent Tasks later and leaves unrelated Tasks where they were", () => {
+    const first = schedule(model({ service, free: morning, tasks: chainTasks(), links: chain }));
+    const kept = schedule(model({ service, free: evening, tasks: chainTasks(), links: chain, previous: asPrevious(first) }));
+    expect(kept.placements).toEqual(first.placements);
+
+    const readyAt = placementOf(first, A).end + 40;
+    const plan = schedule(model({ service, free: evening, tasks: chainTasks(readyAt), links: chain, previous: asPrevious(first) }));
+    expect(plan.unplaced).toEqual([]);
+    expect(plan.conflicts).toEqual([]);
+    expect(placementOf(plan, A)).toEqual(placementOf(first, A));
+    expect(placementOf(plan, B).start).toBeGreaterThanOrEqual(readyAt);
+    expect(placementOf(plan, B).start).toBeGreaterThan(placementOf(first, B).start);
+    expect(placementOf(plan, C).start).toBeGreaterThanOrEqual(placementOf(plan, B).end);
+    expect(placementOf(plan, C).start).toBeGreaterThan(placementOf(first, C).start);
+    expect(JSON.stringify(placementOf(plan, U))).toBe(JSON.stringify(placementOf(first, U)));
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([
+      [A, at(0, 16, 40)],
+      [B, at(0, 17, 40)],
+      [C, at(0, 18, 0)],
+      [U, at(0, 17, 20)],
+    ]);
+  });
+
+  it("#88 AC2: a done Task never moves, even where a pinned successor and the Cook's time would move it", () => {
+    const tasks = (doneA?: number) => [dishTask("a", [step("s1", 20, 0, doneA)]), dishTask("b", [step("s1", 20)])];
+    const links = [{ before: A, after: B }];
+    const first = schedule(model({ service, free: evening, tasks: tasks(), links }));
+    const a = placementOf(first, A);
+    // B pinned before A's end, and A's own slot no longer free.
+    const previous = [
+      { key: A, start: a.start, cookId: "c1", pinned: false },
+      { key: B, start: a.end - 10, cookId: "c1", pinned: true },
+    ];
+    const cut = [{ start: at(0, 16, 0), end: a.start }];
+    const notDone = schedule(model({ service, free: cut, tasks: tasks(), links, previous }));
+    expect(placementOf(notDone, A).start).not.toBe(a.start);
+
+    const plan = schedule(model({ service, free: cut, tasks: tasks(a.end + 5), links, previous }));
+    expect(placementOf(plan, A)).toEqual(a);
+  });
+
+  it("#88: a done Step with passive time is ready at its tick plus its passive time, and its successor waits for that", () => {
+    const tasks = (doneA?: number) => [dishTask("a", [step("s1", 10, 30, doneA)]), dishTask("b", [step("s1", 10)])];
+    const links = [{ before: A, after: B }];
+    const first = schedule(model({ service, free: morning, tasks: tasks(), links }));
+    // Ticked 2 minutes after its active time ended: ready at 17:22 + 30, on the grid.
+    const tick = placementOf(first, A).start + 12;
+    const plan = schedule(model({ service, free: evening, tasks: tasks(tick), links, previous: asPrevious(first) }));
+    expect(placementOf(plan, A).start).toBe(placementOf(first, A).start);
+    expect(placementOf(first, B).start).toBe(at(0, 17, 50));
+    expect(placementOf(plan, B).start).toBe(at(0, 17, 55));
+  });
+
+  it("#88: a done Task with no previous row is placed so it ends at its ready time", () => {
+    const plan = schedule(
+      model({
+        service,
+        free: evening,
+        tasks: [dishTask("a", [step("s1", 20, 0, at(0, 17, 3))]), dishTask("b", [step("s1", 20)])],
+        links: [{ before: A, after: B }],
+      }),
+    );
+    expect(placementOf(plan, A)).toEqual({ key: A, start: at(0, 16, 45), end: at(0, 17, 5), cookId: "c1", pinned: false, approximate: false });
+  });
+
+  it("#88: a Task in progress keeps its start, and a late tick on its first Step pushes its successor", () => {
+    const G = "dish:g:g1";
+    const tasks = (doneG1?: number) => [
+      dishTask("g", [step("g1", 10, 0, doneG1), step("g2", 10)]),
+      dishTask("b", [step("s1", 20)]),
+      dishTask("u", [step("s1", 20)]),
+    ];
+    const links = [{ before: G, after: B }];
+    const first = schedule(model({ service, free: morning, tasks: tasks(), links }));
+    const g = placementOf(first, G);
+    const plan = schedule(model({ service, free: evening, tasks: tasks(g.start + 10 + 40), links, previous: asPrevious(first) }));
+    expect(placementOf(plan, G)).toEqual(g);
+    // Its finish: Step 1's tick plus Step 2's 10 minutes.
+    expect(placementOf(plan, B).start).toBeGreaterThanOrEqual(g.start + 60);
+    expect(placementOf(plan, B).start).toBeGreaterThan(placementOf(first, B).start);
+    expect(placementOf(plan, U)).toEqual(placementOf(first, U));
+  });
+
+  it("#88 Outrun: a successor that no longer fits stays placed with an Outrun conflict naming the late Task, even two links up", () => {
+    const first = schedule(model({ service, free: evening, tasks: chainTasks(), links: chain }));
+    const readyAt = placementOf(first, A).end + 40;
+    const input = model({ service, free: evening, tasks: chainTasks(readyAt), links: chain, previous: asPrevious(first) });
+    const plan = schedule(input);
+    expect(plan.unplaced).toEqual([]);
+    expect(plan.placements).toEqual(first.placements);
+    expect(plan.conflicts).toEqual([
+      { key: B, kind: "Outrun", by: A, readyAt, start: placementOf(first, B).start },
+      { key: C, kind: "Outrun", by: A, readyAt, start: placementOf(first, C).start },
+    ]);
+    expect(conflictsOf(input, plan.placements)).toEqual(plan.conflicts);
+  });
+
+  describe("#88: a pin and a done Task bound the same Task; the later bound wins and its kind gives the reason", () => {
+    const P = "dish:p:s1";
+    const D = "dish:d:s1";
+    const T = "dish:t:s1";
+    const input = (pinAt: number, dDoneAt: number) =>
+      model({
+        service,
+        free: evening,
+        tasks: [dishTask("p", [step("s1", 20)]), dishTask("d", [step("s1", 20, 0, dDoneAt)]), dishTask("t", [step("s1", 20)])],
+        links: [
+          { before: P, after: T },
+          { before: D, after: T },
+        ],
+        previous: [
+          { key: P, start: pinAt, cookId: "c1", pinned: true },
+          { key: D, start: at(0, 17, 0), cookId: "c1", pinned: false },
+        ],
+      });
+
+    it("the done Task's ready time is later: the Task stays placed with Outrun", () => {
+      const plan = schedule(input(at(0, 18, 0), at(0, 19, 50)));
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.conflicts).toEqual([{ key: T, kind: "Outrun", by: D, readyAt: at(0, 19, 50), start: placementOf(plan, T).start }]);
+      expect(placementOf(plan, T).start).toBe(at(0, 19, 40));
+    });
+
+    it("the pin's end is later: the Task is Unplaced, BlockedByPin", () => {
+      const plan = schedule(input(at(0, 19, 50), at(0, 18, 30)));
+      expect(plan.unplaced).toEqual([{ key: T, reason: { kind: "BlockedByPin", pin: P, searched: { start: at(0, 20, 10), end: service.at } } }]);
+      expect(plan.conflicts).toEqual([]);
+    });
+  });
+
+  it("#88: a non-finite doneAt throws InvalidTime", () => {
+    for (const doneAt of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      const input = model({ service, free: evening, tasks: [dishTask("a", [step("s1", 20, 0, doneAt)])] });
+      expect(() => schedule(input)).toThrow(expect.objectContaining({ name: "SchedulerInputError", code: "InvalidTime" }));
+    }
+  });
+});

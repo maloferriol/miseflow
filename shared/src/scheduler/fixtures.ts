@@ -8,8 +8,8 @@ export function at(day: number, hours: number, minutes: number): Minute {
   return day * 1440 + hours * 60 + minutes;
 }
 
-export function step(stepId: string, activeMinutes: number | null, passiveMinutes: number | null = 0): StepSpec {
-  return { stepId, activeMinutes, passiveMinutes };
+export function step(stepId: string, activeMinutes: number | null, passiveMinutes: number | null = 0, doneAt?: Minute): StepSpec {
+  return doneAt === undefined ? { stepId, activeMinutes, passiveMinutes } : { stepId, activeMinutes, passiveMinutes, doneAt };
 }
 
 export function dishTask(dishId: string, steps: StepSpec[], earliestStart: Minute | null = null): TaskSpec {

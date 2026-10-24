@@ -48,11 +48,11 @@ export function ShoppingListScreen({ serviceId }: { serviceId: string }) {
 
   return (
     <>
-      <a className="no-print" href={`?menu=${service.menuId}`}>
+      <a className="screen-only" href={`?menu=${service.menuId}`}>
         Back to the Menu
       </a>
       <h2>Shopping list</h2>
-      <button type="button" className="no-print" onClick={() => window.print()}>
+      <button type="button" className="screen-only" onClick={() => window.print()}>
         Print
       </button>
       {missing.length > 0 && (

@@ -8,9 +8,11 @@ import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
 const ownerId = crypto.randomUUID();
 
+const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
+
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
 }
 
 // Seed-like Shopping categories and Ingredients of the test's own, so `shared` doesn't depend on

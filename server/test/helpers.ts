@@ -13,8 +13,11 @@ export const issuer = authConfigFromEnv().issuer;
 
 export const db = createDb(databaseUrlFromEnv());
 
+// A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
+export const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
+
 export function testApp(options: Partial<AppOptions> = {}) {
-  return createApp({ auth: authConfigFromEnv(), db, timeZone: "Europe/Paris", ...options });
+  return createApp({ auth: authConfigFromEnv(), db, timeZone: "Europe/Paris", now: () => FIXED_NOW, ...options });
 }
 
 let token: Promise<string> | undefined;

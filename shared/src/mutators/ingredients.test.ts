@@ -10,11 +10,14 @@ import {
 import { ConflictError, InvalidArgsError } from "./define.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
+// A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
+const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
+
 const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris" });
+  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
 }
 
 // A seed Shopping category and Ingredient of the tests' own, so `shared` doesn't depend on the

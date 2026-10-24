@@ -13,6 +13,7 @@ const task = (activeMinutes: number, passiveMinutes = 0): TaskInfo => ({
   stepIds: ["s"],
   activeMinutes,
   passiveMinutes,
+  trailingPassiveMinutes: 0,
   approximate: false,
 });
 const labelOf = () => "Sear the duck";
@@ -85,6 +86,20 @@ describe("describeConflict", () => {
     };
     expect(describeConflict(conflict, label, paris)).toBe(
       "Strain the stock (Chicken stock ×1.5) is ready at Thu 22:10, but Blend and season (Velouté) starts at Thu 21:50",
+    );
+  });
+
+  it("says a Task starts before the late Task it waits for is ready", () => {
+    const conflict = {
+      key: "dish:d:v2",
+      kind: "Outrun" as const,
+      by: "dish:d:v1",
+      readyAt: at("2026-10-31", 18, 10),
+      start: at("2026-10-31", 17, 55),
+    };
+    const names = (key: string) => (key === "dish:d:v1" ? "Sweat the shallots (Velouté)" : "Add the stock and simmer (Velouté)");
+    expect(describeConflict(conflict, names, paris)).toBe(
+      "Add the stock and simmer (Velouté) starts at Sat 17:55, but Sweat the shallots (Velouté) ran late and is only ready at Sat 18:10",
     );
   });
 });

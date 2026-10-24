@@ -2,7 +2,7 @@ import { and, asc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm"
 import { NotFoundError, type MutatorContext, type Tx } from "../mutators/define.ts";
 import { stepPlainText } from "../recipe/planning.ts";
 import { conflictsOf, schedule } from "../scheduler/schedule.ts";
-import { taskKey, type Conflict, type TaskKey, type UnplacedReason } from "../scheduler/types.ts";
+import { taskKey, type Conflict, type PlanningModel, type TaskKey, type UnplacedReason } from "../scheduler/types.ts";
 import {
   availabilityOverrides,
   availabilityWeekly,
@@ -325,6 +325,8 @@ export type PlanTask = {
   /** Past due with a Step not done (#88 D5); `label`: "<Dish or Batch label> · <Step texts>". */
   behind: { dueAt: string; dueDate: LocalDate; holdsUp: { key: TaskKey; label: string }[] } | null;
   start: string;
+  /** The start as a Minute, for the Gantt chart's axis. */
+  startMinute: number;
   end: string;
   endDate: LocalDate;
   activeMinutes: number;
@@ -335,8 +337,13 @@ export type PlanTask = {
 
 export type PlanRead = {
   service: { id: string; menuId: string; date: LocalDate; time: string; timeIsDefault: boolean };
-  /** The kitchen's IANA zone, for "Printed at". */
+  /** The kitchen's IANA zone, for "Printed at" and the Gantt chart's axis. */
   timeZone: string;
+  /**
+   * The scheduler's input over the stored Plan (`previous` by key), so the browser can run the same
+   * scheduler for an optimistic re-plan (#89); the stored Plan still wins (ADR 0010).
+   */
+  model: PlanningModel;
   /** When behind was measured ("Sat 31 Oct 17:35"). */
   asOf: string;
   /** Any placed Task is approximate. */
@@ -419,6 +426,7 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
       done: steps.every((step) => step.done),
       behind: late ? { dueAt: due!.time, dueDate: due!.date, holdsUp: late.holdsUp.map((key) => ({ key, label: lineOf(key) })) } : null,
       start: start.time,
+      startMinute: p.start,
       end: end.time,
       endDate: end.date,
       activeMinutes: task.activeMinutes,
@@ -476,6 +484,7 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
       timeIsDefault: rows.service.timeIsDefault,
     },
     timeZone,
+    model: { ...model, previous: [...model.previous].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)) },
     asOf: formatInstant(now, timeZone),
     approximate: placed.some((t) => t.approximate),
     days,

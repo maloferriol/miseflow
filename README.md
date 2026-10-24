@@ -24,13 +24,59 @@ test user (`.env.example` lists the names). An existing `.env` is kept; delete i
 one. Every checkout on this machine shares one local stack and one test user, so running it in a
 second checkout resets that user's password: copy the first checkout's `.env` instead.
 
-- `npm test` runs every workspace's tests against the local stack.
+- `npm test` runs every workspace's tests against the local stack. `npm run test:coverage` does
+  the same and writes `<workspace>/coverage/lcov.info` for `shared`, `server` and `web`.
 - `npm run e2e` runs the Playwright test (`npx playwright install chromium` once).
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
   Service times and Availability. Unset, the server uses its own zone and warns on startup.
 - `npm test`, `npm run e2e` and `npm run setup:local` refuse a `.env` whose `DATABASE_URL`,
   `SUPABASE_URL` or `VITE_SUPABASE_URL` is not on the local stack, so they never touch cloud data.
+
+## CI and the quality gate
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`: `npm ci`,
+`npm run typecheck`, `npm run build`, then `npm run setup:local`, `npm run db:migrate` and
+`npm run test:coverage` against a local Supabase stack on the runner. Any failing step fails the
+check. The three `lcov.info` files are uploaded as the run's `coverage` artifact, and then the
+SonarQube analysis runs on them.
+
+**Connecting the analysis** (once, by the repo owner). The workflow skips the analysis until
+`SONAR_TOKEN` is set.
+
+1. Create the project in SonarQube Cloud by importing this GitHub repository, with the key
+   `maloferriol_miseflow` (`sonar-project.properties`). Importing installs the SonarQube Cloud
+   GitHub app, which posts the results on each pull request. A private repository needs a paid
+   SonarQube Cloud plan. A self-hosted SonarQube server works too, with its GitHub integration
+   set up for pull request decoration.
+2. In the project's Administration → Analysis Method, turn off Automatic Analysis. It conflicts
+   with the CI analysis, which is the one that has coverage.
+3. In GitHub, Settings → Secrets and variables → Actions:
+   - secret `SONAR_TOKEN`: a SonarQube token with analysis rights. Store it only here, never in a
+     file.
+   - variable `SONAR_ORGANIZATION`: the SonarQube Cloud organization key. Leave it unset for a
+     SonarQube server.
+   - variable `SONAR_HOST_URL`, only for a SonarQube server. Unset, the workflow uses
+     `https://sonarcloud.io`.
+
+**The quality gate** is the project's gate in SonarQube, "Sonar way" by default. It checks new
+code only (the pull request's changes, or the new-code period on `main`): no new issues, every
+new security hotspot reviewed, coverage of at least 80%, and at most 3% duplicated lines. The
+scan waits for the gate (`sonar.qualitygate.wait`) and fails the CI check when the gate fails.
+To make a failing check block merges, add the `check` job as a required status check in a
+branch ruleset for `main`. On a private repository, rulesets need a paid GitHub plan. Until then
+the gate reports and does not block.
+
+**Running the analysis locally** uses the same properties file. Run `npm run test:coverage`
+first, then:
+
+```sh
+docker run --rm -v "$PWD:/usr/src" -e SONAR_TOKEN -e SONAR_HOST_URL=https://sonarcloud.io \
+  sonarsource/sonar-scanner-cli -Dsonar.organization=<organization>
+```
+
+`SONAR_TOKEN` comes from your shell, never from a file in the repo. A local run analyzes the
+current branch. Only CI runs report on pull requests.
 
 ## Cloud setup
 

@@ -11,3 +11,4 @@ supabase/signing_keys.json
 supabase/.temp
 test-results/
 playwright-report/
+coverage/

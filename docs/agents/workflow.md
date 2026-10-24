@@ -26,15 +26,18 @@ How a ticket goes from issue to PR here: branches, worktrees, tests, plans, revi
 
 ## A cloud session
 
-The session env holds cloud `DATABASE_URL`/`SUPABASE_*` values. `setup:local` and every test refuse them. #91 needed these steps:
+The session env holds cloud `DATABASE_URL`/`SUPABASE_*` values. `setup:local` and every test refuse them. The SessionStart hook (`.claude/hooks/session-start.sh`) runs only in cloud sessions and handles the setup #91 had to find by hand:
 
-1. Start Docker if `docker info` fails: run `dockerd` in the background, logging to the scratchpad, and wait for `docker info` to succeed.
-2. Run every repo command with the cloud vars removed, so the local `.env` applies:
-   `env -u DATABASE_URL -u SUPABASE_URL -u VITE_SUPABASE_URL -u VITE_SUPABASE_PUBLISHABLE_KEY -u SUPABASE_PUBLISHABLE_KEY -u SUPABASE_SECRET_KEY <cmd>`.
-   Put it in a scratchpad `localenv.sh` and use it for `setup:local`, `db:migrate`, `npm test`, `npm run e2e` and the typecheck.
-3. `npx playwright install --with-deps chromium` once, before the first e2e.
-4. Node may be older than the `>=24` in `engines` (#91 ran v22). `EBADENGINE` is a warning. Say in the PR which Node version ran the tests.
-5. Registry pulls during `supabase start` can print `Data limit exceeded` and retry. That's transient unless `setup:local` exits non-zero.
+1. It starts `dockerd` if `docker info` fails.
+2. It unsets the cloud vars for every later Bash command (through `$CLAUDE_ENV_FILE`), so the local `.env` applies.
+3. It runs `npm ci` and installs the Playwright chromium that the pinned `@playwright/test` needs.
+
+Then run `npm run setup:local` and `npm run db:migrate` as usual. If the hook didn't run (`env | grep DATABASE_URL` still shows a value, or `docker info` fails), do those steps by hand. To unset the vars yourself, prefix each command with `env -u DATABASE_URL -u SUPABASE_URL -u VITE_SUPABASE_URL -u VITE_SUPABASE_PUBLISHABLE_KEY -u SUPABASE_PUBLISHABLE_KEY -u SUPABASE_SECRET_KEY`.
+
+Also:
+
+1. Node may be older than the `>=24` in `engines` (#91 ran v22). `EBADENGINE` is a warning. Say in the PR which Node version ran the tests.
+2. Registry pulls during `supabase start` can print `Data limit exceeded` and retry. That's transient unless `setup:local` exits non-zero.
 
 Put these steps in every BUILD, VERIFY and REVIEW brief. A subagent doesn't read this file.
 

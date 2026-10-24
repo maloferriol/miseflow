@@ -50,10 +50,10 @@ Put these steps in every BUILD, VERIFY and REVIEW brief. A subagent doesn't read
 - **Combinations, not just cases.** When a function's result depends on several inputs the cook can set (an override Main unit, a Conversion, a Batch Scale factor, Fixed or Vague), list the paths in the Plan as a small grid, and test at least one case per pair that meets in the code. One test per input alone missed #91's B1: an override Main unit of kg with an `each→g` Conversion gave "needs conversion".
 - Include a value that isn't exact in binary (0.1 × 3) in a test that sums amounts. Float noise ("300.00000000000006 g") reached #91's display because every fixture amount was exact.
 - **E2e and optimistic UI.** The web app updates before the server answers, so an assertion right after a click proves only local state. Before a `reload()` or any assertion meant to prove persistence, wait for the mutation's response, for example `Promise.all([page.waitForResponse(r => r.url().endsWith("/api/mutate") && r.request().method() === "POST" && r.ok()), box.check()])`. Show the test going red by delaying `/api/mutate` with `page.route`, not by repeat runs. Three green runs hid #91's race.
-- The `web` workspace has no unit-test runner. Put any logic the web needs that a test should cover (number formatting, the ≈ prefix, grouping) in `shared/` as a pure function with a vitest test, and keep `web/` to rendering. If it must stay in `web/`, cover it in the e2e, or list it as untested in the PR.
+- The `web` workspace runs vitest for pure functions only (`web/src/need.test.ts`), with no DOM or React rendering. Put any logic the web needs that a test should cover (number formatting, the ≈ prefix, grouping) in `shared/` as a pure function with a vitest test, or in a pure `web/src` module with a test next to it, and keep components to rendering. The e2e covers rendering.
 - Logs and test output go in the session scratchpad.
 - The chrome-devtools MCP isn't configured here. The Playwright e2e is the browser check.
-- The repo has no CI (#105). The PR's evidence is the local run: commands and their quoted totals.
+- CI (`.github/workflows/ci.yml`) runs typecheck, build and `npm run test:coverage`, then the SonarQube quality gate (README "CI and the quality gate"). It doesn't run the e2e, so the PR's evidence still includes the local run: commands and their quoted totals.
 
 ## Plans
 

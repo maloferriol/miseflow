@@ -13,6 +13,7 @@
     "build": "npm run build -w shared && npm run build -w web && npm run build -w server",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w web",
     "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
     "setup:local": "npm run setup:local -w server",
     "db:migrate": "npm run db:migrate -w shared",
     "e2e": "playwright test"

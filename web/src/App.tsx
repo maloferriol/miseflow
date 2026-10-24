@@ -7,18 +7,19 @@ import { PlanScreen } from "./PlanScreen.tsx";
 import { RecipeScreen } from "./RecipeScreen.tsx";
 import { RecipesScreen } from "./RecipesScreen.tsx";
 import { SignIn } from "./SignIn.tsx";
+import { TodayScreen } from "./TodayScreen.tsx";
 import { supabase } from "./supabase.ts";
 
-type View = "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan";
-const VIEWS: View[] = ["menu", "catalog", "recipes", "recipe", "availability", "plan"];
+type View = "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan" | "today";
+const VIEWS: View[] = ["menu", "catalog", "recipes", "recipe", "availability", "plan", "today"];
 
 // The open view lives in the URL (?view=catalog, ?view=recipe&recipe=<id>,
-// ?view=plan&service=<id>) next to ?menu=, so a reload keeps them.
+// ?view=plan&service=<id>, ?view=today&service=<id>&day=<date>) next to ?menu=, so a reload keeps them.
 function viewFromUrl(): View {
   const params = new URLSearchParams(window.location.search);
   const view = VIEWS.find((v) => v === params.get("view")) ?? "menu";
   if (view === "recipe" && !params.get("recipe")) return "recipes";
-  if (view === "plan" && !params.get("service")) return "menu";
+  if ((view === "plan" || view === "today") && !params.get("service")) return "menu";
   return view;
 }
 
@@ -42,6 +43,7 @@ export function App() {
     if (nextRecipeId) params.set("recipe", nextRecipeId);
     else params.delete("recipe");
     params.delete("service");
+    params.delete("day");
     setRecipeId(nextRecipeId ?? null);
     const search = params.toString();
     window.history.replaceState(null, "", search ? `?${search}` : window.location.pathname);
@@ -50,30 +52,38 @@ export function App() {
 
   return (
     <main>
-      <h1>MiseFlow</h1>
+      <header className="screen-only">
+        <h1>MiseFlow</h1>
+        {session && (
+          <>
+            <button type="button" onClick={() => supabase.auth.signOut()}>
+              Sign out
+            </button>
+            <nav>
+              <button type="button" aria-pressed={view === "menu"} onClick={() => open("menu")}>
+                Menu
+              </button>
+              <button type="button" aria-pressed={view === "recipes" || view === "recipe"} onClick={() => open("recipes")}>
+                Recipes
+              </button>
+              <button type="button" aria-pressed={view === "catalog"} onClick={() => open("catalog")}>
+                Catalog
+              </button>
+              <button type="button" aria-pressed={view === "availability"} onClick={() => open("availability")}>
+                Availability
+              </button>
+            </nav>
+          </>
+        )}
+      </header>
       {session === undefined ? null : session ? (
         <>
-          <button type="button" onClick={() => supabase.auth.signOut()}>
-            Sign out
-          </button>
-          <nav>
-            <button type="button" aria-pressed={view === "menu"} onClick={() => open("menu")}>
-              Menu
-            </button>
-            <button type="button" aria-pressed={view === "recipes" || view === "recipe"} onClick={() => open("recipes")}>
-              Recipes
-            </button>
-            <button type="button" aria-pressed={view === "catalog"} onClick={() => open("catalog")}>
-              Catalog
-            </button>
-            <button type="button" aria-pressed={view === "availability"} onClick={() => open("availability")}>
-              Availability
-            </button>
-          </nav>
           {view === "catalog" ? (
             <CatalogScreen />
           ) : view === "availability" ? (
             <AvailabilityScreen />
+          ) : view === "today" && serviceId ? (
+            <TodayScreen key={serviceId} serviceId={serviceId} />
           ) : view === "plan" && serviceId ? (
             <PlanScreen key={serviceId} serviceId={serviceId} />
           ) : view === "recipes" ? (

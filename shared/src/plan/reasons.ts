@@ -48,6 +48,8 @@ export function describeUnplaced(
 export function describeConflict(conflict: Conflict, labelOf: (key: TaskKey) => string, timeZone: string): string {
   const what = labelOf(conflict.key);
   const when = (minute: Minute) => clock(minute, timeZone, false);
+  if (conflict.kind === "Outrun")
+    return `${what} starts at ${when(conflict.start)}, but ${labelOf(conflict.by)} ran late and is only ready at ${when(conflict.readyAt)}`;
   if (conflict.kind === "EarliestUseTooLate")
     return `${what} is ready at ${when(conflict.readyAt)}, but ${labelOf(conflict.use)} starts at ${when(conflict.useAt)}`;
   const use = conflict.use === null ? `Service is at ${when(conflict.useAt)}` : `${labelOf(conflict.use)} uses it at ${when(conflict.useAt)}`;

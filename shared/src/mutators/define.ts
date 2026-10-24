@@ -10,6 +10,8 @@ export type MutatorContext = {
   ownerId: string;
   /** The kitchen's IANA time zone (KITCHEN_TIME_ZONE), for Service times and Availability. */
   timeZone: string;
+  /** The server's clock, injected so no mutator reads the wall clock (#88): stamps Step events. */
+  now: () => Date;
 };
 
 export type Mutator<Args = unknown> = {

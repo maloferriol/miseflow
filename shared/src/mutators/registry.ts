@@ -12,6 +12,7 @@ import {
   setMakeAhead,
   setStepTimes,
 } from "./planning.ts";
+import { tickStep, untickStep } from "./progress.ts";
 import { createRecipe, editRecipe } from "./recipes.ts";
 import {
   createService,
@@ -65,6 +66,8 @@ export const mutators: Record<string, Mutator<any>> = {
   setKitchenSettings,
   setWeeklyAvailability,
   setAvailabilityOverride,
+  tickStep,
+  untickStep,
 };
 
 export function getMutator(

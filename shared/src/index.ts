@@ -19,3 +19,5 @@ export * from "./plan/model.ts";
 export * from "./plan/diff.ts";
 export * from "./plan/reasons.ts";
 export * from "./plan/replan.ts";
+export * from "./plan/progress.ts";
+export * from "./plan/behind.ts";

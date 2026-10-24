@@ -115,6 +115,18 @@ _Avoid_: Kanban (in the app), tracker
 The view the cook works from on the days before Service, to do the Plan rather than edit it. On a phone it shows one day at a time. On desktop it shows the prep days side by side per Cook, with a "By component" tab. A Task that is behind shows which later Tasks it holds up.
 _Avoid_: Prep list (that's per Station), to-do list
 
+**Today checklist**:
+The MVP's place to record progress: one tab per prep day with Tasks, each day's Tasks in Plan time order, and a tick per Step. A tick marks a Step done and an untick takes it back; the Plan re-plans after either. It prints as the per-day Plan with empty tick boxes and the time it was printed.
+_Avoid_: To-do list, Today view
+
+**Behind**:
+A placed Task whose last Step's active time should have ended by now while a Step is still not done. Passive time after it runs by itself, so a Task is behind from the end of its active time, not from its end. It shows in red, "behind · was due 19:25", with the later Tasks it holds up.
+_Avoid_: Late, overdue
+
+**Outrun**:
+A Task that would have to start before a done or in-progress Task it waits for (directly or through the Tasks between) is ready, because that Task was ticked late. It stays placed and shows as a conflict naming the late Task and when it's really ready.
+_Avoid_: Bumped, pushed out
+
 **Station prep list**:
 What one Station must have ready for a Service, across all prep days: one row per Batch or Dish the Station makes, with its scaled yield, what it's for, the day it's planned and when it must be ready, and that Station's Tasks for it underneath. A "From mise en place" section shows the Station's share of the day's Mise en place lines, read-only, ready once each is ticked. Shown on screen and printed one page per Station; the day's Mise en place lines print as their own page.
 _Avoid_: Par sheet, station sheet, prep view (that's per Cook and day)

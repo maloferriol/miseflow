@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, localParts, weekdayOf, zonedMinute } from "./time.ts";
+import { addDays, formatInstant, localParts, weekdayOf, zonedMinute } from "./time.ts";
 
 const utc = (iso: string) => Date.parse(iso) / 60_000;
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
@@ -28,5 +28,11 @@ describe("localParts", () => {
     expect(localParts(at, "Europe/Paris")).toEqual({ date: "2026-10-31", minuteOfDay: h(19, 30), weekday: 6 });
     expect(weekdayOf("2026-10-25")).toBe(0);
     expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
+  });
+});
+
+describe("formatInstant", () => {
+  it("formats an instant in the kitchen's zone as weekday, date and 24-hour time", () => {
+    expect(formatInstant(new Date("2026-10-29T17:00:00Z"), "Europe/Paris")).toBe("Thu 29 Oct 18:00");
   });
 });

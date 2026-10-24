@@ -11,6 +11,7 @@ import {
   taskKey,
 } from "../scheduler/types.ts";
 import { deriveBatches } from "./batches.ts";
+import { stepKey, type StepState } from "./progress.ts";
 import { addDays, type LocalDate, weekdayOf, zonedMinute } from "./time.ts";
 
 // Pure: the rows a re-plan reads, turned into the scheduler's PlanningModel. No drizzle here.
@@ -60,6 +61,8 @@ export type PlanRows = {
   batches: { batchId: string; subRecipeId: string }[];
   /** The live stored placements, as scheduler input. */
   previous: PreviousPlacement[];
+  /** Each Step's progress by `stepKey`, from the Service's `step_events`; a Step with no events is absent. */
+  progress: Map<string, StepState>;
 };
 
 /** What the Plan read shows for a Task, besides its placement. */
@@ -73,6 +76,8 @@ export type TaskInfo = {
   /** On the 5-minute grid, as the scheduler counts them; a Step with no duration counts 10 active. */
   activeMinutes: number;
   passiveMinutes: number;
+  /** The last Step's passive time, rounded: a Task is due when the last Step's active time ends (#88 D5). */
+  trailingPassiveMinutes: number;
   /** A Step has neither active nor passive time. */
   approximate: boolean;
 };
@@ -139,9 +144,14 @@ export function toPlanningModel(
         // 24-hour days (D2).
         keepsMinutes = Math.min(...windows.map((w) => w!.shelfLifeDays)) * 1440;
       }
+      // A done Step's tick, in whole minutes (rounded up), is frozen for the scheduler (#88).
+      const doneAt = (stepId: string) => {
+        const state = rows.progress.get(stepKey(owner, stepId));
+        return state?.done && state.doneAt ? { doneAt: Math.ceil(state.doneAt.getTime() / 60_000) } : {};
+      };
       specs.push({
         owner,
-        steps: steps.map((s) => ({ stepId: s.id, activeMinutes: s.activeMinutes, passiveMinutes: s.passiveMinutes })),
+        steps: steps.map((s) => ({ stepId: s.id, activeMinutes: s.activeMinutes, passiveMinutes: s.passiveMinutes, ...doneAt(s.id) })),
         earliestStart,
         keepsMinutes,
       });
@@ -154,6 +164,7 @@ export function toPlanningModel(
         stepIds: group.stepIds,
         activeMinutes: steps.reduce((n, s) => n + (unknown(s) ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0)), 0),
         passiveMinutes: steps.reduce((n, s) => n + roundUp(s.passiveMinutes ?? 0), 0),
+        trailingPassiveMinutes: roundUp(steps.at(-1)!.passiveMinutes ?? 0),
         approximate: steps.some(unknown),
       });
       for (const id of group.stepIds) keyOfStep.set(id, key);

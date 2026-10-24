@@ -2,7 +2,7 @@ import { getMutator, ingredientAliases, recipeRevisions, recipes } from "@misefl
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadSeed, readSeed } from "../src/seed.ts";
-import { db, getToken, testApp } from "./helpers.ts";
+import { db, FIXED_NOW, getToken, testApp } from "./helpers.ts";
 
 async function send(method: "GET" | "POST", path: string, body?: unknown) {
   return testApp().request(path, {
@@ -41,7 +41,7 @@ async function theirRecipe() {
     createRecipe.run(
       tx,
       createRecipe.args.parse({ recipeId, revisionId: crypto.randomUUID(), name: "Not yours" }),
-      { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris" },
+      { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris", now: () => FIXED_NOW },
     ),
   );
   othersRecipes.push(recipeId);

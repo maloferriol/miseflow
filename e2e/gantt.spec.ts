@@ -134,24 +134,45 @@ test("AC2 and AC3: the stock shows under the Velouté and, greyed, under the Beu
   await expect(veloute.getByRole("button", { name: /Roast the bones/ })).toHaveCount(0);
 });
 
-test("AC4: dragging Roast the bones to Wednesday 18:02 snaps to 18:00, pins it and re-fits the rest before the server answers; after reload it is still there", async ({ page }) => {
+test("AC4: dragging Roast the bones to Wednesday 18:03 snaps to 18:05, pins it and re-fits the rest before the server answers; after reload it is still there", async ({ page }) => {
   const gantt = await openPlan(page);
   const roast = gantt.getByRole("button", { name: /Roast the bones/ }).and(gantt.locator('[data-ghost="false"]'));
-  const wednesday18 = at("2026-10-28", 18);
+  const wednesday1805 = at("2026-10-28", 18, 5);
   const release = await holdMutations(page);
   const answered = page.waitForResponse((r) => r.url().endsWith("/api/mutate"));
 
-  await dragTo(page, gantt, roast, wednesday18 + 2);
-  await expect(roast).toHaveAttribute("data-start", String(wednesday18));
+  // 18:03 is off the grid: it rounds to the nearest 5 minutes.
+  await dragTo(page, gantt, roast, at("2026-10-28", 18, 3));
+  await expect(roast).toHaveAttribute("data-start", String(wednesday1805));
   await expect(roast).toHaveAttribute("data-pinned", "true");
   const optimistic = await starts(gantt);
 
   release();
   expect((await answered).status()).toBe(200);
   await page.reload();
-  await expect(roast).toHaveAttribute("data-start", String(wednesday18));
+  await expect(roast).toHaveAttribute("data-start", String(wednesday1805));
   await expect(roast).toHaveAttribute("data-pinned", "true");
   expect(await starts(gantt)).toEqual(optimistic);
+
+  // A pin that moves another Task: Blend and season (V3, Sat 18:50) to 18:40, over Make the beurre
+  // blanc (D4, 18:40), which the browser moves to 18:50 before the server answers (as pins.test.ts).
+  const v3 = gantt.getByRole("button", { name: /Blend and season/ });
+  const d4 = gantt.getByRole("button", { name: /Make the beurre blanc/ });
+  await expect(v3).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 50)));
+  await expect(d4).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 40)));
+  const releaseV3 = await holdMutations(page);
+  const answeredV3 = page.waitForResponse((r) => r.url().endsWith("/api/mutate"));
+  await dragTo(page, gantt, v3, at(SERVICE_DATE, 18, 40));
+  await expect(v3).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 40)));
+  await expect(d4).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 50)));
+  const refitted = await starts(gantt);
+
+  releaseV3();
+  expect((await answeredV3).status()).toBe(200);
+  await page.reload();
+  await expect(d4).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 50)));
+  await expect(v3).toHaveAttribute("data-pinned", "true");
+  expect(await starts(gantt)).toEqual(refitted);
 });
 
 test("AC5: two quick drags leave the Plan matching the second, never showing the first's start again", async ({ page }) => {

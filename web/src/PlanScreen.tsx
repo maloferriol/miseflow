@@ -73,7 +73,16 @@ function usePinTask(serviceId: string) {
 // The Plan of one Service, as stored: the Gantt chart, one list per day, then the Unplaced Tasks
 // with their reasons.
 export function PlanScreen({ serviceId }: { serviceId: string }) {
-  const plan = useQuery({ queryKey: ["plan", serviceId], queryFn: () => fetchPlan(serviceId) });
+  const queryClient = useQueryClient();
+  // No refetch on focus or reconnect while a pin is pending: it would show an earlier pin's answer
+  // over a later drag. The last pin to settle re-reads the Plan.
+  const noPinPending = () => queryClient.isMutating({ mutationKey: ["pinTask", serviceId] }) === 0;
+  const plan = useQuery({
+    queryKey: ["plan", serviceId],
+    queryFn: () => fetchPlan(serviceId),
+    refetchOnWindowFocus: noPinPending,
+    refetchOnReconnect: noPinPending,
+  });
   const menuId = plan.data?.service.menuId;
   // The Courses and Dishes for the Gantt chart's lanes.
   const menu = useQuery({ queryKey: ["menu", menuId], queryFn: () => fetchMenu(menuId!), enabled: Boolean(menuId) });

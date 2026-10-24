@@ -103,6 +103,36 @@ async function holdMutations(page: Page) {
   return release;
 }
 
+// Holds each POST /api/mutate on its own: `release(i)` lets the i-th one (from 0) through.
+async function holdEachMutation(page: Page) {
+  const gates: { promise: Promise<void>; resolve: () => void }[] = [];
+  const gate = (i: number) => {
+    while (gates.length <= i) {
+      let resolve!: () => void;
+      const promise = new Promise<void>((r) => (resolve = r));
+      gates.push({ promise, resolve });
+    }
+    return gates[i]!;
+  };
+  let count = 0;
+  await page.route("**/api/mutate", async (route) => {
+    await gate(count++).promise;
+    await route.continue();
+  });
+  return (i: number) => gate(i).resolve();
+}
+
+// Records every start any copy of the Task `key` shows from now on, in `window.seen`.
+const watchStarts = (page: Page, key: string) =>
+  page.evaluate((key) => {
+    const seen: string[] = [];
+    (window as unknown as { seen: string[] }).seen = seen;
+    const record = () => document.querySelectorAll(`[data-key="${key}"]`).forEach((el) => seen.push(el.getAttribute("data-start")!));
+    new MutationObserver(record).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-start"] });
+    record();
+  }, key);
+const seenStarts = (page: Page) => page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+
 test("AC2 and AC3: the stock shows under the Velouté and, greyed, under the Beurre blanc; dragging the ghost moves both; collapsing the Velouté folds it in", async ({ page }) => {
   const gantt = await openPlan(page);
   const stock = `Chicken stock ${s}`;
@@ -192,23 +222,52 @@ test("AC5: two quick drags leave the Plan matching the second, never showing the
   await expect(roast).toHaveAttribute("data-start", String(second));
 
   // From here on, record every start any copy of the Task shows.
-  await page.evaluate((key) => {
-    const seen: string[] = [];
-    (window as unknown as { seen: string[] }).seen = seen;
-    const record = () => document.querySelectorAll(`[data-key="${key}"]`).forEach((el) => seen.push(el.getAttribute("data-start")!));
-    new MutationObserver(record).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-start"] });
-    record();
-  }, key);
+  await watchStarts(page, key);
   release();
   await expect.poll(() => answers).toBe(2);
   // The re-read after the last answer has landed.
   await page.waitForLoadState("networkidle");
   await expect(roast).toHaveAttribute("data-start", String(second));
-  const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+  const seen = await seenStarts(page);
   expect(seen.length).toBeGreaterThan(0);
   expect(new Set(seen)).toEqual(new Set([String(second)]));
 
   await page.reload();
   await expect(roast).toHaveAttribute("data-start", String(second));
   await expect(roast).toHaveAttribute("data-pinned", "true");
+});
+
+test("AC5: coming back to the tab while the second drag is still saving doesn't show the first's start", async ({ page }) => {
+  const gantt = await openPlan(page);
+  const roast = gantt.getByRole("button", { name: /Roast the bones/ }).and(gantt.locator('[data-ghost="false"]'));
+  const key = (await roast.getAttribute("data-key"))!;
+  const [first, second] = [at("2026-10-28", 21), at("2026-10-28", 19, 30)];
+  const release = await holdEachMutation(page);
+  const answer = (n: number) => page.waitForResponse((r) => r.url().endsWith("/api/mutate") && r.request().postData()!.includes(String(n)));
+
+  await dragTo(page, gantt, roast, first);
+  await expect(roast).toHaveAttribute("data-start", String(first));
+  await dragTo(page, gantt, roast, second);
+  await expect(roast).toHaveAttribute("data-start", String(second));
+  await watchStarts(page, key);
+
+  // The first pin is saved; the second is still held when the tab becomes visible again, which is
+  // what TanStack Query listens for to refetch (window "visibilitychange").
+  const firstAnswered = answer(first);
+  release(0);
+  expect((await firstAnswered).status()).toBe(200);
+  const refetched = page.waitForResponse((r) => r.url().includes(`/api/services/${serviceId}/plan`), { timeout: 2000 }).catch(() => null);
+  await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
+  await refetched;
+  await expect(roast).toHaveAttribute("data-start", String(second));
+
+  const secondAnswered = answer(second);
+  release(1);
+  expect((await secondAnswered).status()).toBe(200);
+  await page.waitForLoadState("networkidle");
+  await expect(roast).toHaveAttribute("data-start", String(second));
+  expect(new Set(await seenStarts(page))).toEqual(new Set([String(second)]));
+
+  await page.reload();
+  await expect(roast).toHaveAttribute("data-start", String(second));
 });

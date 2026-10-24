@@ -5,9 +5,12 @@ import type { RecipeSnapshot, SnapshotStep } from "./snapshot.ts";
 // What the Planning pass sets for the scheduler (spec §2). Pure and free of drizzle, so the
 // server, the browser and the scheduler (#86) can all run it.
 
+/** The longest make-ahead window, in days before Service. */
+export const MAX_BEFORE_DAYS = 30;
+
 /** Whole days: `beforeDays` before Service (0 = on the Service date), kept `shelfLifeDays` once made. */
 export const makeAheadSchema = z.strictObject({
-  beforeDays: z.int().min(0).max(30),
+  beforeDays: z.int().min(0).max(MAX_BEFORE_DAYS),
   shelfLifeDays: z.int().min(0).max(365),
 });
 export type MakeAhead = z.infer<typeof makeAheadSchema>;

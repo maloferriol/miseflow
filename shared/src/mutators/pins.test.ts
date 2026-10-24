@@ -10,7 +10,7 @@ import { zonedMinute } from "../plan/time.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { taskKey } from "../scheduler/types.ts";
 import { taskPlacements } from "../schema.ts";
-import { getMutator, NotFoundError, type Tx } from "./registry.ts";
+import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 
 // A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
 const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
@@ -85,6 +85,12 @@ describe("pinTask", () => {
       expect(await refused(tx, pin({ start: wednesday18 + 2 }))).toBeInstanceOf(ZodError);
       expect(await refused(tx, pin({ start: wednesday18 + 0.5 }))).toBeInstanceOf(ZodError);
       expect(await refused(tx, pin(), crypto.randomUUID())).toEqual(new NotFoundError("Service"));
+      // Outside the window a pin can mean: before the start of the day 31 days before the Service
+      // (a make-ahead window is at most 30 days), or after the Service itself (Sat 19:30).
+      const serviceAt = zonedMinute(SERVICE_DATE, SERVICE_TIME, timeZone);
+      const earliest = zonedMinute("2026-09-30", 0, timeZone);
+      for (const start of [0, earliest - 5, serviceAt + 5])
+        expect(await refused(tx, pin({ start }))).toBeInstanceOf(InvalidArgsError);
 
       // The pastry goes Unplaced when Friday's hours shrink (the walkthrough's step 5).
       await run(tx, "setAvailabilityOverride", {
@@ -110,6 +116,12 @@ describe("pinTask", () => {
       const before = await placements(tx, serviceId);
       expect([...before.values()].some((p) => p.pinned)).toBe(false);
       expect(before.get(w.steps.S1!)!.start).not.toBe(wednesday18);
+
+      // The window's ends, and a drop in a night seam (Thu 03:00), are pins like any other.
+      for (const start of [earliest, serviceAt, zonedMinute("2026-10-29", h(3), timeZone)]) {
+        await run(tx, "pinTask", pin({ start }));
+        expect((await placements(tx, serviceId)).get(w.steps.S1!)).toEqual({ start, pinned: true });
+      }
     });
   });
 

@@ -4,11 +4,11 @@
 
 ### Ticket workflow
 
-Read `docs/agents/workflow.md` before starting, resuming or briefing work on a ticket. It covers branch bases and stacking, setting up a worktree, running tests, writing Plans, and row locks.
+Read `docs/agents/workflow.md` before starting, resuming or briefing work on a ticket. It covers running the stages, branch bases and stacking, setting up a worktree or a cloud session, running tests, writing Plans, and row locks.
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues, through the `gh` CLI or, in cloud sessions where `gh` isn't authenticated, the GitHub MCP tools. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

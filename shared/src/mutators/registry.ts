@@ -12,6 +12,7 @@ import {
   setMakeAhead,
   setStepTimes,
 } from "./planning.ts";
+import { pinTask } from "./pins.ts";
 import { tickStep, untickStep } from "./progress.ts";
 import { createRecipe, editRecipe } from "./recipes.ts";
 import {
@@ -71,6 +72,7 @@ export const mutators: Record<string, Mutator<any>> = {
   unmarkGot,
   tickStep,
   untickStep,
+  pinTask,
 };
 
 export function getMutator(

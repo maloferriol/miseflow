@@ -1,0 +1,177 @@
+/* The Plan's Gantt chart (#89), after variant C of the lanes prototype. */
+.gantt {
+  --gantt-line: #e7e5e4;
+  --gantt-mute: #78716c;
+  --gantt-free: #ecfdf5;
+  --gantt-away: #f5f5f4;
+  --gantt-service: #dc2626;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.gantt-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: var(--gantt-mute);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.gantt-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 10px;
+  border: 1px solid #555;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.gantt-swatch.active {
+  background: #555;
+}
+.gantt-swatch.passive {
+  background: repeating-linear-gradient(45deg, #555 0 3px, transparent 3px 7px);
+}
+.gantt-chart {
+  border: 1px solid var(--gantt-line);
+  border-radius: 8px;
+  overflow-x: auto;
+  background: #fff;
+}
+.gantt-row {
+  display: flex;
+  border-bottom: 1px solid var(--gantt-line);
+  min-height: 32px;
+}
+.gantt-row.course {
+  min-height: 24px;
+  background: #fafaf9;
+}
+.gantt-label {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  flex: 0 0 250px;
+  width: 250px;
+  box-sizing: border-box;
+  background: #fff;
+  border-right: 1px solid var(--gantt-line);
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gantt-row.course .gantt-label {
+  background: #fafaf9;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--gantt-mute);
+}
+.gantt-label.ghost {
+  color: var(--gantt-mute);
+  font-style: italic;
+}
+.gantt-twisty {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--gantt-mute);
+  padding: 0 2px;
+}
+.gantt-track {
+  position: relative;
+  flex: 0 0 auto;
+}
+.gantt-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.gantt-band.away {
+  background: repeating-linear-gradient(135deg, var(--gantt-away) 0 6px, #ebe9e7 6px 9px);
+}
+.gantt-free {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--gantt-free);
+}
+.gantt-seam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(90deg, #e7e5e4 0 2px, transparent 2px 6px);
+}
+.gantt-service {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--gantt-service);
+  z-index: 1;
+}
+.gantt-axis .gantt-track {
+  height: 40px;
+}
+.gantt-day {
+  position: absolute;
+  top: 2px;
+  padding-left: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.gantt-day small {
+  font-weight: 400;
+  color: var(--gantt-mute);
+}
+.gantt-tick {
+  position: absolute;
+  top: 22px;
+  font-size: 11px;
+  color: var(--gantt-mute);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.gantt-bar {
+  position: absolute;
+  top: 5px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  overflow: hidden;
+  z-index: 2;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+.gantt-bar.dragging {
+  cursor: grabbing;
+  box-shadow: 0 0 0 2px #111;
+  z-index: 5;
+}
+.gantt-bar.ghost {
+  opacity: 0.4;
+  outline: 1px dashed #111;
+}
+.gantt-bar.folded {
+  opacity: 0.55;
+}
+.gantt-bar .part {
+  height: 100%;
+  flex: 0 0 auto;
+}
+.gantt-bar .text {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  pointer-events: none;
+  color: #fff;
+  font-size: 11px;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}

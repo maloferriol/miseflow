@@ -1,5 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchPlan, type PlanTask } from "./api.ts";
+import { applyPlacements, withPin } from "@miseflow/shared/src/plan/pin.ts";
+import { schedule } from "@miseflow/shared/src/scheduler/schedule.ts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchMenu, fetchPlan, mutate, type Plan, type PlanTask } from "./api.ts";
+import { Gantt } from "./Gantt.tsx";
 import { PrintedPlan } from "./PrintedPlan.tsx";
 
 // "Thursday 29 October", from a kitchen-zone date. Formatted in UTC, so the browser's own zone
@@ -37,13 +40,58 @@ function TaskLine({ task, date }: { task: PlanTask; date: string }) {
   );
 }
 
-// The Plan of one Service, as stored: one list per day, then the Unplaced Tasks with their reasons.
+/**
+ * Dragging a bar on the Gantt chart (#89): `pinTask`, with the browser running the same scheduler
+ * over the read's model so the rest re-fits at once (ADR 0007, 0010). Pins of one Service run one
+ * after another (`scope`), and each lays its optimistic Plan over the one before. The Plan is read
+ * again only when the last of them settles, so an earlier answer never shows over a later drag; the
+ * stored Plan then wins, on success or error. Sources:
+ * https://tanstack.com/query/v5/docs/framework/react/guides/optimistic-updates,
+ * https://tanstack.com/query/v5/docs/framework/react/reference/useMutation (scope)
+ */
+function usePinTask(serviceId: string) {
+  const queryClient = useQueryClient();
+  const queryKey = ["plan", serviceId];
+  const mutationKey = ["pinTask", serviceId];
+  return useMutation({
+    mutationKey,
+    scope: { id: serviceId },
+    mutationFn: ({ task, start }: { task: PlanTask; start: number }) =>
+      mutate(crypto.randomUUID(), "pinTask", { serviceId, owner: task.owner, firstStepId: task.steps[0]!.id, start }),
+    onMutate: async ({ task, start }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const read = queryClient.getQueryData<Plan>(queryKey);
+      if (read) queryClient.setQueryData<Plan>(queryKey, applyPlacements(read, schedule(withPin(read.model, task.key, start))));
+    },
+    // Still counted here, so 1 means no other pin is pending.
+    onSettled: () => {
+      if (queryClient.isMutating({ mutationKey }) === 1) return queryClient.invalidateQueries({ queryKey });
+    },
+  });
+}
+
+// The Plan of one Service, as stored: the Gantt chart, one list per day, then the Unplaced Tasks
+// with their reasons.
 export function PlanScreen({ serviceId }: { serviceId: string }) {
-  const plan = useQuery({ queryKey: ["plan", serviceId], queryFn: () => fetchPlan(serviceId) });
+  const queryClient = useQueryClient();
+  // No refetch on focus or reconnect while a pin is pending: it would show an earlier pin's answer
+  // over a later drag. The last pin to settle re-reads the Plan.
+  const noPinPending = () => queryClient.isMutating({ mutationKey: ["pinTask", serviceId] }) === 0;
+  const plan = useQuery({
+    queryKey: ["plan", serviceId],
+    queryFn: () => fetchPlan(serviceId),
+    refetchOnWindowFocus: noPinPending,
+    refetchOnReconnect: noPinPending,
+  });
+  const menuId = plan.data?.service.menuId;
+  // The Courses and Dishes for the Gantt chart's lanes.
+  const menu = useQuery({ queryKey: ["menu", menuId], queryFn: () => fetchMenu(menuId!), enabled: Boolean(menuId) });
+  const pin = usePinTask(serviceId);
 
   if (plan.isPending) return <p>Loading…</p>;
   if (plan.isError) return <p role="alert">{plan.error.message}</p>;
   const { service, days, unplaced, approximate, batches, conflicts } = plan.data;
+  const courses = menu.data?.courses.map((c) => ({ id: c.id, name: c.name, dishes: c.dishes.map((d) => ({ id: d.id, name: d.recipe.name })) }));
 
   return (
     <>
@@ -58,6 +106,7 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
           {service.timeIsDefault && " (the kitchen's default)"}
         </h2>
         {approximate && <p>Plan is approximate</p>}
+        {courses && <Gantt plan={plan.data} courses={courses} onPin={(task, start) => pin.mutate({ task, start })} />}
         <section aria-label="Plan">
           {days.map((day) => {
             const heading = dayHeading(day.date);

@@ -1,6 +1,15 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
+Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations. If `gh auth status` fails (cloud sessions), use the GitHub MCP tools: load them with ToolSearch (`select:mcp__github__issue_read`, etc.), owner `maloferriol`, repo `miseflow`. Don't fall back to unauthenticated `curl`.
+
+| `gh` | MCP |
+|---|---|
+| `gh issue view <n> --comments` | `issue_read` method `get`, then `get_comments` |
+| `gh issue comment <n>` | `add_issue_comment` |
+| `gh issue edit --add-label` / `close` | `issue_write` (set `state_reason` when closing) |
+| `gh issue list` | `list_issues` / `search_issues` |
+| `gh pr create` | `create_pull_request` |
+| `gh pr view` / `gh pr diff` | `pull_request_read` |
 
 ## Conventions
 

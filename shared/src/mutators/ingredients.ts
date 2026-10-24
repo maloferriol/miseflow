@@ -183,8 +183,8 @@ async function lockCatalog(tx: Tx, ownerId: string) {
   );
 }
 
-// A seed Ingredient, or the caller's own live one; anything else reads as missing.
-async function requireVisibleIngredient(tx: Tx, id: string, ownerId: string) {
+/** A seed Ingredient, or the caller's own live one; anything else reads as missing. */
+export async function requireVisibleIngredient(tx: Tx, id: string, ownerId: string) {
   const [row] = await tx
     .select({
       id: ingredients.id,

@@ -134,6 +134,11 @@ async function findService(tx: Tx, ownerId: string, serviceId: string, { lock = 
   return service;
 }
 
+/** The caller's live Service on a live Menu, read without a row lock; anything else is missing. */
+export function findLiveService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
+  return findService(tx, ownerId, serviceId);
+}
+
 /** The caller's live Service, row-locked (D6), for a mutator that writes before re-planning it. */
 export function lockService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
   return findService(tx, ownerId, serviceId, { lock: true });

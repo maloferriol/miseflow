@@ -22,6 +22,7 @@ import {
   setServiceTime,
   setWeeklyAvailability,
 } from "./services.ts";
+import { markGot, unmarkGot } from "./shopping.ts";
 import { addStep, editStep, moveStep, removeStep } from "./steps.ts";
 import {
   createSubRecipe,
@@ -66,6 +67,8 @@ export const mutators: Record<string, Mutator<any>> = {
   setKitchenSettings,
   setWeeklyAvailability,
   setAvailabilityOverride,
+  markGot,
+  unmarkGot,
   tickStep,
   untickStep,
 };

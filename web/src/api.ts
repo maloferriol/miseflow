@@ -81,6 +81,15 @@ export async function fetchPlan(serviceId: string) {
 export type Plan = Awaited<ReturnType<typeof fetchPlan>>;
 export type PlanTask = Plan["days"][number]["tasks"][number];
 
+export async function fetchShoppingList(serviceId: string) {
+  const res = await api.services[":serviceId"]["shopping-list"].$get({ param: { serviceId } });
+  if (!res.ok) throw new Error(`Could not load the Shopping list (${res.status})`);
+  return (await res.json()).shoppingList;
+}
+
+export type ShoppingList = Awaited<ReturnType<typeof fetchShoppingList>>;
+export type ShoppingRow = ShoppingList["categories"][number]["rows"][number];
+
 export async function fetchAvailability() {
   const res = await api.availability.$get();
   if (!res.ok) throw new Error(`Could not load the Availability (${res.status})`);

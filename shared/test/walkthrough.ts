@@ -90,20 +90,53 @@ const USES: Record<string, { before: string; line: Line; after: string }> = {
 };
 const SERVINGS: Partial<Record<string, number>> = { veloute: 4, duck: 6 };
 
+// With `{ shopping }` (#91 owner decision 1), Steps gain Ingredient lines with small, plausible
+// amounts, and the Tarte tatin's pastry Steps (T1, T2) move into a Pastry sub-recipe by
+// Extract to sub-recipe, yield 1, used once. Flour is in grams: the seed has no flour Conversion
+// (owner decision 2). The text around each line keeps the Step's own words.
+type ShoppingIngredient = "shallot" | "butter" | "flour" | "salt" | "apple" | "sugar";
+type IngredientUse = { amount: string; wording: string; ingredient: ShoppingIngredient };
+const INGREDIENT_USES: Partial<Record<string, (string | IngredientUse)[]>> = {
+  V1: ["Sweat the ", { amount: "100%g", wording: "shallots", ingredient: "shallot" }],
+  B2: ["Whisk in the ", { amount: "200%g", wording: "butter", ingredient: "butter" }],
+  T1: [
+    "Make the pastry with ",
+    { amount: "200%g", wording: "flour", ingredient: "flour" },
+    ", ",
+    { amount: "100%g", wording: "butter", ingredient: "butter" },
+    " and ",
+    { amount: "a pinch", wording: "salt", ingredient: "salt" },
+  ],
+  T3: [
+    "Bake the tatin with ",
+    { amount: "6", wording: "apples", ingredient: "apple" },
+    " and ",
+    { amount: "150%g", wording: "sugar", ingredient: "sugar" },
+  ],
+};
+
 type StepKey = "V1" | "V2" | "V3" | "D1" | "D2" | "D3" | "D4" | "T1" | "T2" | "T3";
 type SubStepKey = "S1" | "S2" | "S3" | "B1" | "B2";
 
 export type Walkthrough = {
   menuId: string;
-  recipes: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string };
+  recipes: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string; pastry?: string };
   dishes: { veloute: string; duck: string; tarte: string };
   /** V1–V3, D1–D4, T1–T3 (and with the stock S1–S3, B1–B2): each Recipe's Steps in order. */
   steps: Record<StepKey, string> & Partial<Record<SubStepKey, string>>;
-  names: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string };
+  names: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string; pastry?: string };
+};
+
+export type WalkthroughOptions = {
+  stock?: boolean;
+  /** The catalog's Ingredient ids for the lines; implies `stock`. */
+  shopping?: Record<ShoppingIngredient, string>;
 };
 
 /** The Recipes, their Planning pass, and the Menu with one Dish per Course. No Service. */
-export async function buildWalkthrough(run: Run, stamp: string, options: { stock?: boolean } = {}): Promise<Walkthrough> {
+export async function buildWalkthrough(run: Run, stamp: string, options: WalkthroughOptions = {}): Promise<Walkthrough> {
+  const { shopping } = options;
+  const stock = options.stock || !!shopping;
   const revisionId = () => crypto.randomUUID();
   const menuId = crypto.randomUUID();
   const dishIds = sortedIds(3);
@@ -117,9 +150,12 @@ export async function buildWalkthrough(run: Run, stamp: string, options: { stock
       const stepId = stepIds[j]!;
       const named = stepKey(key, j);
       (out.steps as Record<string, string>)[named] = stepId;
-      const use = options.stock ? USES[named] : undefined;
+      const use = stock ? USES[named] : undefined;
+      const uses = shopping ? INGREDIENT_USES[named] : undefined;
       const lineId = crypto.randomUUID();
-      const content = use
+      const content = uses
+        ? ingredientContent(uses, shopping!)
+        : use
         ? {
             body: [
               { type: "text", text: use.before },
@@ -138,7 +174,7 @@ export async function buildWalkthrough(run: Run, stamp: string, options: { stock
     }
   };
 
-  if (options.stock) {
+  if (stock) {
     for (const r of SUB_RECIPES) {
       const recipeId = crypto.randomUUID();
       const name = `${r.name} ${stamp}`;
@@ -156,16 +192,49 @@ export async function buildWalkthrough(run: Run, stamp: string, options: { stock
     const name = `${r.name} ${stamp}`;
     out.recipes[r.key] = recipeId;
     out.names[r.key] = name;
-    const servings = options.stock ? SERVINGS[r.key] : undefined;
+    const servings = stock ? SERVINGS[r.key] : undefined;
     await run("createRecipe", { recipeId, revisionId: revisionId(), name, ...(servings ? { servings } : {}) });
     if (r.makeAhead) await run("setMakeAhead", { target: { kind: "recipe", recipeId }, revisionId: revisionId(), window: r.makeAhead });
     await addSteps(r.key, recipeId, r.steps);
+    if (shopping && r.key === "tarte") {
+      const pastryId = crypto.randomUUID();
+      const name = `Pastry ${stamp}`;
+      out.recipes.pastry = pastryId;
+      out.names.pastry = name;
+      await run("extractToSubRecipe", {
+        recipeId,
+        revisionId: revisionId(),
+        stepIds: [out.steps.T1, out.steps.T2],
+        subRecipeId: pastryId,
+        subRecipeRevisionId: revisionId(),
+        name,
+        stepId: crypto.randomUUID(),
+        lineId: crypto.randomUUID(),
+      });
+      await run("setYield", { recipeId: pastryId, revisionId: revisionId(), yield: "1" });
+    }
     const courseId = crypto.randomUUID();
     await run("addCourse", { courseId, menuId, name: r.course });
     await run("addDish", { dishId: dishIds[i], courseId, recipeId });
     out.dishes[r.key] = dishIds[i]!;
   }
   return out;
+}
+
+// A Step's text and Ingredient lines, from its parts in order.
+function ingredientContent(parts: (string | IngredientUse)[], ids: Record<ShoppingIngredient, string>) {
+  const body: unknown[] = [];
+  const lines: unknown[] = [];
+  for (const part of parts) {
+    if (typeof part === "string") {
+      body.push({ type: "text", text: part });
+      continue;
+    }
+    const lineId = crypto.randomUUID();
+    body.push({ type: "line", lineId });
+    lines.push({ lineId, ingredientId: ids[part.ingredient], amount: part.amount, wording: part.wording });
+  }
+  return { body, lines };
 }
 
 /** Thu and Fri 18:00–22:00, Sat 09:00–19:00, and the override Fri 30 Oct from `fridayStart` to 21:00. */

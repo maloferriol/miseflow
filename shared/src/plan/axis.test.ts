@@ -70,6 +70,11 @@ describe("the Gantt time axis", () => {
     expect(snap5(fromAxis(axis, x))).toBe(night);
   });
 
+  it("snap5 rounds to the nearest 5 minutes", () => {
+    expect([1080, 1082, 1083, 1085, 1087, 1088].map(snap5)).toEqual([1080, 1080, 1085, 1085, 1085, 1090]);
+    expect(snap5(1082.5)).toBe(1085);
+  });
+
   it("B1: a placed Task outside a date's hours widens that date", () => {
     // A pin Wed 07:00–07:20, before the envelope's 09:00, and one Sat 19:00–19:30, after Availability ends.
     const axis = walkthroughAxis([

@@ -90,6 +90,21 @@ describe("Services and the Plan read", () => {
     ]);
   });
 
+  it("POST /mutate pinTask then GET plan shows the Task pinned at its new start", async () => {
+    const owner = { kind: "dish", dishId: w.dishes.veloute };
+    // Sat 31 Oct 16:00 in Paris (UTC+1), on the 5-minute grid.
+    const start = Date.UTC(2026, 9, 31, 15, 0) / 60_000;
+    const offGrid = await mutate("pinTask", { serviceId, owner, firstStepId: w.steps.V1, start: start + 1 });
+    expect(offGrid.status).toBe(400);
+    expect((await offGrid.json()).error.code).toBe("INVALID_ARGS");
+    expect(taskOf(await readPlan(serviceId), w.steps.V1)).toMatchObject({ pinned: false });
+
+    await ok("pinTask", { serviceId, owner, firstStepId: w.steps.V1, start });
+    const plan = await readPlan(serviceId);
+    expect(taskOf(plan, w.steps.V1)).toMatchObject({ start: "16:00", startMinute: start, pinned: true });
+    expect(plan.model.previous).toContainEqual(expect.objectContaining({ key: `dish:${w.dishes.veloute}:${w.steps.V1}`, start, pinned: true }));
+  });
+
   it("answers 404 for another owner's Service", async () => {
     const other = { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris", now: () => FIXED_NOW };
     const [menuId, theirs] = [crypto.randomUUID(), crypto.randomUUID()];

@@ -1,0 +1,6 @@
+/* Printing (ADR 0004): the page without the app chrome, which carries `no-print`. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

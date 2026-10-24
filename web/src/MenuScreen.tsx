@@ -256,7 +256,7 @@ function DishScale({ dish, onChanged }: { dish: Menu["courses"][number]["dishes"
 }
 
 // The Menu's one Service: a date and an optional time (empty: the kitchen's default). Saving it
-// re-plans on the server; Open Plan shows the result.
+// re-plans on the server; Open Plan shows the result, Open Shopping list what to buy.
 function ServiceForm({ menuId, service }: { menuId: string; service: Menu["service"] }) {
   const queryClient = useQueryClient();
   const intent = useIntent();
@@ -304,6 +304,9 @@ function ServiceForm({ menuId, service }: { menuId: string; service: Menu["servi
         {service ? "Save Service" : "Add Service"}
       </button>
       {service && <a href={`?${new URLSearchParams({ menu: menuId, view: "plan", service: service.id })}`}>Open Plan</a>}
+      {service && (
+        <a href={`?${new URLSearchParams({ menu: menuId, view: "shopping", service: service.id })}`}>Open Shopping list</a>
+      )}
       {save.error && <p role="alert">{save.error.message}</p>}
     </form>
   );

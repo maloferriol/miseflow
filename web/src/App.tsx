@@ -6,19 +6,20 @@ import { MenuScreen } from "./MenuScreen.tsx";
 import { PlanScreen } from "./PlanScreen.tsx";
 import { RecipeScreen } from "./RecipeScreen.tsx";
 import { RecipesScreen } from "./RecipesScreen.tsx";
+import { ShoppingListScreen } from "./ShoppingListScreen.tsx";
 import { SignIn } from "./SignIn.tsx";
 import { supabase } from "./supabase.ts";
 
-type View = "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan";
-const VIEWS: View[] = ["menu", "catalog", "recipes", "recipe", "availability", "plan"];
+type View = "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan" | "shopping";
+const VIEWS: View[] = ["menu", "catalog", "recipes", "recipe", "availability", "plan", "shopping"];
 
 // The open view lives in the URL (?view=catalog, ?view=recipe&recipe=<id>,
-// ?view=plan&service=<id>) next to ?menu=, so a reload keeps them.
+// ?view=plan&service=<id>, ?view=shopping&service=<id>) next to ?menu=, so a reload keeps them.
 function viewFromUrl(): View {
   const params = new URLSearchParams(window.location.search);
   const view = VIEWS.find((v) => v === params.get("view")) ?? "menu";
   if (view === "recipe" && !params.get("recipe")) return "recipes";
-  if (view === "plan" && !params.get("service")) return "menu";
+  if ((view === "plan" || view === "shopping") && !params.get("service")) return "menu";
   return view;
 }
 
@@ -48,15 +49,16 @@ export function App() {
     setView(next);
   }
 
+  // `no-print` marks the app chrome that print.css hides.
   return (
     <main>
-      <h1>MiseFlow</h1>
+      <h1 className="no-print">MiseFlow</h1>
       {session === undefined ? null : session ? (
         <>
-          <button type="button" onClick={() => supabase.auth.signOut()}>
+          <button type="button" className="no-print" onClick={() => supabase.auth.signOut()}>
             Sign out
           </button>
-          <nav>
+          <nav className="no-print">
             <button type="button" aria-pressed={view === "menu"} onClick={() => open("menu")}>
               Menu
             </button>
@@ -76,6 +78,8 @@ export function App() {
             <AvailabilityScreen />
           ) : view === "plan" && serviceId ? (
             <PlanScreen key={serviceId} serviceId={serviceId} />
+          ) : view === "shopping" && serviceId ? (
+            <ShoppingListScreen key={serviceId} serviceId={serviceId} />
           ) : view === "recipes" ? (
             <RecipesScreen onOpen={(id) => open("recipe", id)} />
           ) : view === "recipe" && recipeId ? (

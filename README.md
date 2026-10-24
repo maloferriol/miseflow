@@ -46,9 +46,9 @@ SonarQube analysis runs on them.
 
 1. Create the project in SonarQube Cloud by importing this GitHub repository, with the key
    `maloferriol_miseflow` (`sonar-project.properties`). Importing installs the SonarQube Cloud
-   GitHub app, which posts the results on each pull request. A private repository needs a paid
-   SonarQube Cloud plan. A self-hosted SonarQube server works too, with its GitHub integration
-   set up for pull request decoration.
+   GitHub app, which posts the results on each pull request. SonarQube Cloud is free for a public
+   repository like this one. A self-hosted SonarQube server works too, with its GitHub
+   integration set up for pull request decoration.
 2. In the project's Administration → Analysis Method, turn off Automatic Analysis. It conflicts
    with the CI analysis, which is the one that has coverage.
 3. In GitHub, Settings → Secrets and variables → Actions:
@@ -64,8 +64,9 @@ code only (the pull request's changes, or the new-code period on `main`): no new
 new security hotspot reviewed, coverage of at least 80%, and at most 3% duplicated lines. The
 scan waits for the gate (`sonar.qualitygate.wait`) and fails the CI check when the gate fails.
 To make a failing check block merges, add the `check` job as a required status check in a
-branch ruleset for `main`. On a private repository, rulesets need a paid GitHub plan. Until then
-the gate reports and does not block.
+branch ruleset for `main` (Settings → Rules → Rulesets). GitHub withholds secrets from pull
+requests opened from forks, so on those the analysis is skipped and `check` covers typecheck,
+build and tests only.
 
 **Running the analysis locally** uses the same properties file. Run `npm run test:coverage`
 first, then:

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlan, type PlanTask } from "./api.ts";
+import { PrintedPlan } from "./PrintedPlan.tsx";
 
 // "Thursday 29 October", from a kitchen-zone date. Formatted in UTC, so the browser's own zone
 // can't move it to another day.
@@ -46,59 +47,66 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
 
   return (
     <>
-      <a href={`?menu=${service.menuId}`}>Back to the Menu</a>
-      <h2>
-        Plan for {dayHeading(service.date)} at {service.time}
-        {service.timeIsDefault && " (the kitchen's default)"}
-      </h2>
-      {approximate && <p>Plan is approximate</p>}
-      <section aria-label="Plan">
-        {days.map((day) => {
-          const heading = dayHeading(day.date);
-          return (
-            <div key={day.date}>
-              <h3>{heading}</h3>
-              <ol aria-label={heading}>
-                {day.tasks.map((task) => (
-                  <TaskLine key={task.key} task={task} date={day.date} />
-                ))}
-              </ol>
-            </div>
-          );
-        })}
-      </section>
-      <h3>Unplaced Tasks</h3>
-      {unplaced.length ? (
-        <ul aria-label="Unplaced Tasks">
-          {unplaced.map((task) => (
-            <li key={task.key}>
-              {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}: {task.sentence}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>Every Task is planned</p>
-      )}
-      <h3>Conflicts</h3>
-      {conflicts.length ? (
-        <ul aria-label="Conflicts">
-          {conflicts.map((c) => (
-            <li key={`${c.key}:${c.kind}`}>{c.sentence}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No conflicts</p>
-      )}
-      <h3>Batches</h3>
-      {batches.length ? (
-        <ul aria-label="Batches">
-          {batches.map((b) => (
-            <li key={b.subRecipe.id}>{b.label}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No Batches</p>
-      )}
+      <div className="screen-only">
+        <a href={`?menu=${service.menuId}`}>Back to the Menu</a>
+        <a href={`?view=today&service=${service.id}`}>Today checklist</a>
+        <button type="button" onClick={() => window.print()}>
+          Print the Plan
+        </button>
+        <h2>
+          Plan for {dayHeading(service.date)} at {service.time}
+          {service.timeIsDefault && " (the kitchen's default)"}
+        </h2>
+        {approximate && <p>Plan is approximate</p>}
+        <section aria-label="Plan">
+          {days.map((day) => {
+            const heading = dayHeading(day.date);
+            return (
+              <div key={day.date}>
+                <h3>{heading}</h3>
+                <ol aria-label={heading}>
+                  {day.tasks.map((task) => (
+                    <TaskLine key={task.key} task={task} date={day.date} />
+                  ))}
+                </ol>
+              </div>
+            );
+          })}
+        </section>
+        <h3>Unplaced Tasks</h3>
+        {unplaced.length ? (
+          <ul aria-label="Unplaced Tasks">
+            {unplaced.map((task) => (
+              <li key={task.key}>
+                {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}: {task.sentence}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Every Task is planned</p>
+        )}
+        <h3>Conflicts</h3>
+        {conflicts.length ? (
+          <ul aria-label="Conflicts">
+            {conflicts.map((c) => (
+              <li key={`${c.key}:${c.kind}`}>{c.sentence}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>No conflicts</p>
+        )}
+        <h3>Batches</h3>
+        {batches.length ? (
+          <ul aria-label="Batches">
+            {batches.map((b) => (
+              <li key={b.subRecipe.id}>{b.label}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>No Batches</p>
+        )}
+      </div>
+      <PrintedPlan plan={plan.data} />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMenu, fetchPlan, mutate, type Plan, type PlanTask } from "./api.ts";
 import { Gantt } from "./Gantt.tsx";
 import { PrintedPlan } from "./PrintedPlan.tsx";
+import { quickFixes, troubleBadge } from "./quick-fixes.ts";
 
 // "Thursday 29 October", from a kitchen-zone date. Formatted in UTC, so the browser's own zone
 // can't move it to another day.
@@ -70,6 +71,23 @@ function usePinTask(serviceId: string) {
   });
 }
 
+/**
+ * The quick fixes and Re-plan from scratch (#90): server-only mutations, so the screen waits for
+ * the answer and then reads the Plan (and the Menu, which removeDish changes) again; nothing is
+ * shown optimistically (Plan §4, ADR 0007).
+ */
+function usePlanFix(serviceId: string, menuId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, args }: { name: string; args: Record<string, unknown> }) => mutate(crypto.randomUUID(), name, args),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["plan", serviceId] }),
+        queryClient.invalidateQueries({ queryKey: ["menu", menuId] }),
+      ]),
+  });
+}
+
 // The Plan of one Service, as stored: the Gantt chart, one list per day, then the Unplaced Tasks
 // with their reasons.
 export function PlanScreen({ serviceId }: { serviceId: string }) {
@@ -87,10 +105,12 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
   // The Courses and Dishes for the Gantt chart's lanes.
   const menu = useQuery({ queryKey: ["menu", menuId], queryFn: () => fetchMenu(menuId!), enabled: Boolean(menuId) });
   const pin = usePinTask(serviceId);
+  const fix = usePlanFix(serviceId, menuId);
 
   if (plan.isPending) return <p>Loading…</p>;
   if (plan.isError) return <p role="alert">{plan.error.message}</p>;
   const { service, days, unplaced, approximate, batches, conflicts } = plan.data;
+  const badge = troubleBadge(plan.data);
   const courses = menu.data?.courses.map((c) => ({ id: c.id, name: c.name, dishes: c.dishes.map((d) => ({ id: d.id, name: d.recipe.name })) }));
 
   return (
@@ -105,6 +125,15 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
           Plan for {dayHeading(service.date)} at {service.time}
           {service.timeIsDefault && " (the kitchen's default)"}
         </h2>
+        {badge && (
+          <span role="status" aria-label={badge}>
+            {badge}
+          </span>
+        )}
+        <button type="button" disabled={fix.isPending} onClick={() => fix.mutate({ name: "replanFromScratch", args: { serviceId } })}>
+          Re-plan from scratch
+        </button>
+        {fix.isError && <p role="alert">{fix.error.message}</p>}
         {approximate && <p>Plan is approximate</p>}
         {courses && <Gantt plan={plan.data} courses={courses} onPin={(task, start) => pin.mutate({ task, start })} />}
         <section aria-label="Plan">
@@ -128,6 +157,18 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
             {unplaced.map((task) => (
               <li key={task.key}>
                 {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}: {task.sentence}
+                {quickFixes(serviceId, task).map((f) => (
+                  <button
+                    key={f.label}
+                    type="button"
+                    disabled={fix.isPending}
+                    onClick={() => {
+                      if (f.confirm === null || window.confirm(f.confirm)) fix.mutate({ name: f.name, args: f.args });
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </li>
             ))}
           </ul>

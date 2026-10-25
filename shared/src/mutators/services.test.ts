@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../../test/walkthrough.ts";
 import { toPlanningModel } from "../plan/model.ts";
+import { smallestOverride } from "../plan/more-time.ts";
+import { planTrouble } from "../plan/trouble.ts";
 import { ensureCook, loadAvailability, loadPlanRows, readPlan } from "../plan/replan.ts";
 import { schedule } from "../scheduler/schedule.ts";
-import { localParts } from "../plan/time.ts";
+import { taskKey } from "../scheduler/types.ts";
+import { localParts, zonedMinute } from "../plan/time.ts";
 import { availabilityOverrides, availabilityWeekly, cooks, kitchenSettings, services, taskPlacements } from "../schema.ts";
-import { ConflictError, getMutator, NotFoundError, type Tx } from "./registry.ts";
+import { ConflictError, getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 
 // A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
 const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
@@ -363,6 +366,258 @@ describe("every edit that changes a Task re-plans", () => {
         expect.objectContaining({ kind: "NoAvailability", sentence: "No Cook has 20 free minutes between Fri 00:00 and Fri 19:50" }),
       ]);
       expect(plan.days.flatMap((d) => d.tasks)).toHaveLength(9);
+    });
+  });
+});
+
+// Runs a mutation that should be refused in a savepoint, so the checks after it can still run.
+async function refused(tx: Tx, name: string, args: unknown, owner = ownerId) {
+  let thrown: unknown;
+  await tx.transaction(async (sp) => run(sp, name, args, owner)).catch((e) => (thrown = e));
+  return thrown;
+}
+const tableWrites = async (tx: Tx, table: string) =>
+  Number(
+    ((await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
+      from pg_stat_xact_user_tables where relname = ${table}`)) as unknown as Row[])[0]?.n ?? 0,
+  );
+const liveOverrides = (tx: Tx, owner = ownerId) =>
+  tx
+    .select({ id: availabilityOverrides.id, date: availabilityOverrides.date, startTime: availabilityOverrides.startTime, endTime: availabilityOverrides.endTime })
+    .from(availabilityOverrides)
+    .where(and(eq(availabilityOverrides.ownerId, owner), isNull(availabilityOverrides.deletedAt)));
+
+const NO_FIT = "No extra time on one date fits this Task without moving others";
+
+describe("giveCookMoreTime", () => {
+  it("giveCookMoreTime adds the smallest override, the pastry comes back, and every other placement's start is unchanged", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      // The walkthrough's step 5: Friday shortened to 19:35–21:00 leaves the pastry Unplaced.
+      await run(tx, "setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: "2026-10-30", availability: { kind: "hours", start: h(19, 35), end: h(21) } });
+      const tarte = { kind: "dish" as const, dishId: w.dishes.tarte };
+      expect((await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW)).unplaced.map((u) => u.key)).toEqual([taskKey(tarte, w.steps.T1)]);
+      const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
+      const expected = smallestOverride(await loadPlanRows(tx, ownerId, service!), timeZone, taskKey(tarte, w.steps.T1))!;
+      const rows = await versions(tx, serviceId);
+      const starts = await placements(tx, serviceId);
+
+      const overrideId = crypto.randomUUID();
+      await run(tx, "giveCookMoreTime", { serviceId, owner: tarte, firstStepId: w.steps.T1, overrideId });
+
+      // The live override for Friday is the new row, with the smallest hours.
+      expect(await liveOverrides(tx)).toEqual([
+        { id: overrideId, date: "2026-10-30", startTime: `${String(Math.floor(expected.start / 60)).padStart(2, "0")}:${String(expected.start % 60).padStart(2, "0")}:00`, endTime: "21:00:00" },
+      ]);
+      expect(expected).toEqual({ date: "2026-10-30", start: h(19, 30), end: h(21) });
+      const after = await versions(tx, serviceId);
+      expect(after.has(w.steps.T1)).toBe(true);
+      // Only the pastry's row is written: every other row is the same version, so the same start.
+      expect(new Map([...after].filter(([step]) => step !== w.steps.T1))).toEqual(rows);
+      const afterStarts = await placements(tx, serviceId);
+      for (const [step, at] of starts) expect(afterStarts.get(step)).toBe(at);
+      expect(afterStarts.get(w.steps.T1)).toBe("Fri 19:30");
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.days.flatMap((d) => d.tasks)).toHaveLength(10);
+    });
+  });
+
+  it("gives a BlockedByPin Task more time: the pastry blocked by its chill pinned at Fri 19:15 comes back, and the pin and every other start stay", async () => {
+    await inRollback(async (tx) => {
+      // pins.test.ts's setup: the ADR 0004 walkthrough with its stock, T2 pinned at Fri 19:15.
+      const w = await buildWalkthrough((name, args) => run(tx, name, args), crypto.randomUUID().slice(0, 8), { stock: true });
+      await setWalkthroughAvailability((name, args) => run(tx, name, args));
+      const serviceId = await addService(tx, w);
+      const tarte = { kind: "dish" as const, dishId: w.dishes.tarte };
+      await run(tx, "pinTask", { serviceId, owner: tarte, firstStepId: w.steps.T2, start: zonedMinute("2026-10-30", h(19, 15), timeZone) });
+      const blocked = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(blocked.unplaced.map((u) => [u.steps[0]!.id, u.kind, u.moreTime])).toEqual([[w.steps.T1, "BlockedByPin", true]]);
+      const starts = await placements(tx, serviceId);
+
+      const overrideId = crypto.randomUUID();
+      await run(tx, "giveCookMoreTime", { serviceId, owner: tarte, firstStepId: w.steps.T1, overrideId });
+
+      // Friday's override starts 5 minutes earlier, so the pastry ends at the pinned chill.
+      expect(await liveOverrides(tx)).toEqual([{ id: overrideId, date: "2026-10-30", startTime: "18:55:00", endTime: "21:00:00" }]);
+      const afterStarts = await placements(tx, serviceId);
+      for (const [step, at] of starts) expect(afterStarts.get(step)).toBe(at);
+      expect(afterStarts.get(w.steps.T1)).toBe("Fri 18:55");
+      expect(afterStarts.get(w.steps.T2)).toBe("Fri 19:15");
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(plan.unplaced).toEqual([]);
+      expect(plan.conflicts).toEqual([]);
+    });
+  });
+
+  it("refuses a WindowTooTight Task with InvalidArgs and writes nothing", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      // 20 hours of pastry can't fit between Fri 00:00 and the chill at Fri 19:50, whatever the hours.
+      await run(tx, "setStepTimes", { stepId: w.steps.T1, revisionId: revisionId(), activeMinutes: 1200, passiveMinutes: null });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(plan.unplaced.map((u) => u.kind)).toEqual(["WindowTooTight"]);
+      const before = [await tableWrites(tx, "availability_overrides"), await tableWrites(tx, "task_placements"), await liveOverrides(tx)];
+      const thrown = await refused(tx, "giveCookMoreTime", { serviceId, owner: { kind: "dish", dishId: w.dishes.tarte }, firstStepId: w.steps.T1, overrideId: crypto.randomUUID() });
+      expect(thrown).toEqual(new InvalidArgsError(NO_FIT));
+      expect([await tableWrites(tx, "availability_overrides"), await tableWrites(tx, "task_placements"), await liveOverrides(tx)]).toEqual(before);
+    });
+  });
+
+  it("refuses when every override would push a placed predecessor (owner decision 2), writing no override", async () => {
+    await inRollback(async (tx) => {
+      // P (30 min) then K (40 min), a Service on Fri 30 Oct 18:30, and only Fri 18:00–18:30, which P holds.
+      const recipeId = crypto.randomUUID();
+      const [p, k] = [crypto.randomUUID(), crypto.randomUUID()].sort();
+      await run(tx, "createRecipe", { recipeId, revisionId: revisionId(), name: "Two steps" });
+      for (const [stepId, active] of [[p!, 30], [k!, 40]] as const) {
+        await run(tx, "addStep", { recipeId, stepId, revisionId: revisionId(), body: [{ type: "text", text: stepId }], lines: [] });
+        await run(tx, "setStepTimes", { stepId, revisionId: revisionId(), activeMinutes: active, passiveMinutes: null });
+      }
+      await run(tx, "addStepDependency", { dependencyId: crypto.randomUUID(), revisionId: revisionId(), beforeStepId: p, afterStepId: k });
+      const [menuId, courseId, dishId, serviceId] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+      await run(tx, "createMenu", { menuId, name: "Friday", guestCount: 2 });
+      await run(tx, "addCourse", { courseId, menuId, name: "Main" });
+      await run(tx, "addDish", { dishId, courseId, recipeId });
+      await run(tx, "setWeeklyAvailability", { hours: [hours(5, h(18), h(18, 30))] });
+      await run(tx, "createService", { serviceId, menuId, date: "2026-10-30", time: h(18, 30) });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(plan.unplaced.map((u) => [u.steps[0]!.id, u.kind])).toEqual([[k, "NoAvailability"]]);
+
+      const before = [await tableWrites(tx, "availability_overrides"), await liveOverrides(tx)];
+      const thrown = await refused(tx, "giveCookMoreTime", { serviceId, owner: { kind: "dish", dishId }, firstStepId: k, overrideId: crypto.randomUUID() });
+      expect(thrown).toEqual(new InvalidArgsError(NO_FIT));
+      expect([await tableWrites(tx, "availability_overrides"), await liveOverrides(tx)]).toEqual(before);
+    });
+  });
+
+  it("refuses another owner's Service as missing", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      const thrown = await refused(tx, "giveCookMoreTime", { serviceId, owner: { kind: "dish", dishId: w.dishes.tarte }, firstStepId: w.steps.T1, overrideId: crypto.randomUUID() }, crypto.randomUUID());
+      expect(thrown).toEqual(new NotFoundError("Service"));
+    });
+  });
+});
+
+describe("replanFromScratch", () => {
+  const at = (hours: number, minutes = 0) => zonedMinute(SERVICE_DATE, h(hours, minutes), timeZone);
+  // Several moves (AC4, CONTEXT Pin: moving a Task pins it): Blend and season (V3) pinned at 18:40
+  // pushes Make the beurre blanc (D4) to 18:50; Sweat the shallots (V1) pinned at Sat 10:00; then
+  // V3 unpinned. D4 keeps 18:50 through a normal re-plan.
+  async function moved(tx: Tx) {
+    const w = await walkthrough(tx);
+    const serviceId = await addService(tx, w);
+    const veloute = { kind: "dish" as const, dishId: w.dishes.veloute };
+    await run(tx, "pinTask", { serviceId, owner: veloute, firstStepId: w.steps.V3, start: at(18, 40) });
+    await run(tx, "pinTask", { serviceId, owner: veloute, firstStepId: w.steps.V1, start: at(10) });
+    await run(tx, "unpinTask", { serviceId, owner: veloute, firstStepId: w.steps.V3 });
+    return { w, serviceId };
+  }
+  const startsOf = (placed: { key: string; start: number }[]) => new Map(placed.map((p) => [p.key, p.start]));
+  const storedStarts = async (tx: Tx, serviceId: string) =>
+    new Map((await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW)).days.flatMap((d) => d.tasks).map((t) => [t.key, t.startMinute]));
+
+  it("AC4: after pinTask ×2 and unpinTask, replanFromScratch equals schedule({...model, previous: pins}) and the pin stays where it was", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await moved(tx);
+      const read = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      const pins = read.model.previous.filter((p) => p.pinned);
+      const v1 = taskKey({ kind: "dish", dishId: w.dishes.veloute }, w.steps.V1);
+      expect(pins.map((p) => [p.key, p.start])).toEqual([[v1, at(10)]]);
+      const fresh = schedule({ ...read.model, previous: pins });
+      expect(fresh.unplaced).toEqual([]);
+      // Not vacuous: a normal re-plan on the same input keeps D4 where the V3 pin pushed it.
+      const normal = schedule(read.model);
+      expect(startsOf(normal.placements)).toEqual(await storedStarts(tx, serviceId));
+      expect(startsOf(fresh.placements)).not.toEqual(startsOf(normal.placements));
+
+      await run(tx, "replanFromScratch", { serviceId });
+      expect(await storedStarts(tx, serviceId)).toEqual(startsOf(fresh.placements));
+      const after = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(after.model.previous.filter((p) => p.pinned).map((p) => [p.key, p.start])).toEqual([[v1, at(10)]]);
+      expect(after.unplaced).toEqual([]);
+    });
+  });
+
+  it("AC4: a Task with a ticked Step keeps its start through replanFromScratch (owner decision 5)", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await moved(tx);
+      const duck = { kind: "dish" as const, dishId: w.dishes.duck };
+      await run(tx, "tickStep", { eventId: crypto.randomUUID(), serviceId, owner: duck, stepId: w.steps.D4 });
+      const read = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      const d4 = taskKey(duck, w.steps.D4);
+      const ticked = read.model.previous.find((p) => p.key === d4)!;
+      expect(ticked.pinned).toBe(false);
+      const pins = read.model.previous.filter((p) => p.pinned);
+      const expected = schedule({ ...read.model, previous: [...pins, ticked] });
+      expect(expected.unplaced).toEqual([]);
+      // Not vacuous: from the pins alone, D4 would move.
+      expect(startsOf(schedule({ ...read.model, previous: pins }).placements).get(d4)).not.toBe(ticked.start);
+
+      await run(tx, "replanFromScratch", { serviceId });
+      const after = await storedStarts(tx, serviceId);
+      expect(after.get(d4)).toBe(ticked.start);
+      expect(after).toEqual(startsOf(expected.placements));
+    });
+  });
+
+  it("refuses another owner's Service as missing, writing nothing", async () => {
+    await inRollback(async (tx) => {
+      const { serviceId } = await moved(tx);
+      const before = [await tableWrites(tx, "task_placements"), await storedStarts(tx, serviceId)];
+      expect(await refused(tx, "replanFromScratch", { serviceId }, crypto.randomUUID())).toEqual(new NotFoundError("Service"));
+      expect([await tableWrites(tx, "task_placements"), await storedStarts(tx, serviceId)]).toEqual(before);
+    });
+  });
+});
+
+describe("Plan trouble and the Unplaced quick-fix fields", () => {
+  it("AC5: planTrouble from readPlan is 1 after the shortening and 0 after giveCookMoreTime; the pastry offers more time and its own Dish", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      expect(planTrouble(await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW))).toBe(0);
+      await run(tx, "setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: "2026-10-30", availability: { kind: "hours", start: h(19, 35), end: h(21) } });
+      const short = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(planTrouble(short)).toBe(1);
+      const tarte = { id: w.dishes.tarte, name: w.names.tarte };
+      expect(short.unplaced).toMatchObject([{ steps: [{ id: w.steps.T1 }], kind: "NoAvailability", blockingPin: null, dishes: [tarte], moreTime: true }]);
+
+      await run(tx, "giveCookMoreTime", { serviceId, owner: { kind: "dish", dishId: w.dishes.tarte }, firstStepId: w.steps.T1, overrideId: crypto.randomUUID() });
+      expect(planTrouble(await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW))).toBe(0);
+    });
+  });
+
+  it("a WindowTooTight Task offers no more time (owner decision 3)", async () => {
+    await inRollback(async (tx) => {
+      const w = await walkthrough(tx);
+      const serviceId = await addService(tx, w);
+      await run(tx, "setStepTimes", { stepId: w.steps.T1, revisionId: revisionId(), activeMinutes: 1200, passiveMinutes: null });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(plan.unplaced).toMatchObject([{ kind: "WindowTooTight", blockingPin: null, dishes: [{ id: w.dishes.tarte, name: w.names.tarte }], moreTime: false }]);
+      expect(planTrouble(plan)).toBe(1);
+    });
+  });
+
+  it("an Unplaced Batch Task lists every top-level Dish the Batch feeds, through a parent Batch too (owner decision 4)", async () => {
+    await inRollback(async (tx) => {
+      const w = await buildWalkthrough((name, args) => run(tx, name, args), crypto.randomUUID().slice(0, 8), { stock: true });
+      await setWalkthroughAvailability((name, args) => run(tx, name, args));
+      const serviceId = await addService(tx, w);
+      // Thursday off: the stock (made up to 3 days ahead) and the Beurre blanc have nowhere to go.
+      await run(tx, "setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: "2026-10-29", availability: { kind: "off" } });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      const item = (stepId: string) => plan.unplaced.find((u) => u.steps[0]!.id === stepId)!;
+      const veloute = { id: w.dishes.veloute, name: w.names.veloute };
+      const duck = { id: w.dishes.duck, name: w.names.duck };
+      // The stock feeds the Velouté and the Beurre blanc, which feeds the duck: both, in Menu order.
+      expect(item(w.steps.S1!)).toMatchObject({ dish: null, dishes: [veloute, duck], blockingPin: null, moreTime: true });
+      expect(item(w.steps.B1!)).toMatchObject({ dish: null, dishes: [duck], moreTime: true });
+      expect(planTrouble(plan)).toBe(plan.unplaced.length + plan.conflicts.length);
     });
   });
 });

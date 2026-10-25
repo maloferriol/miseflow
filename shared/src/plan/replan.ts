@@ -2,7 +2,14 @@ import { and, asc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm"
 import { NotFoundError, type MutatorContext, type Tx } from "../mutators/define.ts";
 import { stepPlainText } from "../recipe/planning.ts";
 import { conflictsOf, schedule } from "../scheduler/schedule.ts";
-import { taskKey, type Conflict, type PlanningModel, type TaskKey, type UnplacedReason } from "../scheduler/types.ts";
+import {
+  taskKey,
+  type Conflict,
+  type PlanningModel,
+  type PreviousPlacement,
+  type TaskKey,
+  type UnplacedReason,
+} from "../scheduler/types.ts";
 import {
   availabilityOverrides,
   availabilityWeekly,
@@ -221,7 +228,35 @@ async function loadStored(tx: Tx, serviceId: string): Promise<StoredPlacement[]>
  * makes its Batch rows match the sub-recipes it uses (#87 D7), runs the scheduler with the stored
  * Plan as the previous one, and writes the diff.
  */
-export async function replan(tx: Tx, ctx: MutatorContext, serviceId: string) {
+export function replan(tx: Tx, ctx: MutatorContext, serviceId: string) {
+  return replanWith(tx, ctx, serviceId, {});
+}
+
+/**
+ * `replan` with one Task released (#90 AC2, plan addendum 2): its previous start is dropped, so
+ * it is placed afresh; every other Task keeps its previous start, as in a normal re-plan.
+ */
+export function replanReleasing(tx: Tx, ctx: MutatorContext, serviceId: string, key: TaskKey) {
+  return replanWith(tx, ctx, serviceId, { keep: (p) => p.key !== key });
+}
+
+/**
+ * "Re-plan from scratch" (#90 AC4, owner decision 5): every Task is placed as if there were no
+ * previous Plan, except pinned Tasks and Tasks with a ticked Step, which keep their starts.
+ */
+export function replanFromScratchOf(tx: Tx, ctx: MutatorContext, serviceId: string) {
+  return replanWith(tx, ctx, serviceId, { keep: (p, progressed) => p.pinned || progressed.has(p.key) });
+}
+
+// `keep`: which stored placements go to the scheduler as `previous` (all, by default); it is
+// given the Tasks with a ticked Step. The diff still runs against every stored row, so a dropped
+// Task's row is updated, not inserted again.
+async function replanWith(
+  tx: Tx,
+  ctx: MutatorContext,
+  serviceId: string,
+  opts: { keep?: (p: PreviousPlacement, progressed: Set<TaskKey>) => boolean },
+) {
   const service = await findService(tx, ctx.ownerId, serviceId, { lock: true });
   // Placements reference the Cook row.
   await ensureCook(tx, ctx.ownerId);
@@ -230,6 +265,13 @@ export async function replan(tx: Tx, ctx: MutatorContext, serviceId: string) {
   const reconciled = await reconcileBatches(tx, ctx.ownerId, serviceId, needed);
   if (reconciled.inserted + reconciled.revived + reconciled.removed) rows.batches = await loadBatchRows(tx, serviceId);
   const { model, tasks } = toPlanningModel(rows, ctx.timeZone);
+  if (opts.keep) {
+    // The Tasks are known only once the rows are modelled; `previous` doesn't change them.
+    const progressed = new Set(
+      [...tasks.values()].filter((t) => t.stepIds.some((id) => rows.progress.get(stepKey(t.owner, id))?.done)).map((t) => t.key),
+    );
+    model.previous = model.previous.filter((p) => opts.keep!(p, progressed));
+  }
   const plan = schedule(model);
   const diff = diffPlacements(await loadStored(tx, serviceId), plan.placements);
 
@@ -359,6 +401,12 @@ export type PlanRead = {
     steps: { id: string; text: string }[];
     kind: UnplacedReason["kind"];
     sentence: string;
+    /** The pin that leaves no room, for "Unpin <label>" (`BlockedByPin` only); label "Chill the pastry (Tarte tatin)". */
+    blockingPin: { owner: PlanTask["owner"]; firstStepId: string; label: string } | null;
+    /** For "Remove <Dish>": the Task's Dish, or every top-level Dish a Batch's Task feeds, in Menu order. */
+    dishes: { id: string; name: string }[];
+    /** "Give the Cook more time" can help: not for `WindowTooTight` (owner decision 3). */
+    moreTime: boolean;
   }[];
   /** Placed Tasks that break a rule, derived on read over the stored Plan (ADR 0010). */
   conflicts: {
@@ -467,12 +515,38 @@ export async function readPlan(tx: Tx, ownerId: string, serviceId: string, timeZ
       sentence: describeConflict(c, taskLabel, timeZone),
     };
   });
+  // The top-level Dishes a Batch feeds, through parent Batches, by its sub-recipe.
+  const parentsOf = new Map(scale.batches.map((b) => [b.subRecipeId, b.parents]));
+  const subRecipeOf = new Map(rows.batches.map((b) => [b.batchId, b.subRecipeId]));
+  const fedDishes = (subRecipeId: string, seen = new Set<string>()): Set<string> => {
+    const out = new Set<string>();
+    if (seen.has(subRecipeId)) return out;
+    seen.add(subRecipeId);
+    for (const p of parentsOf.get(subRecipeId) ?? []) {
+      if (p.kind === "dish") out.add(p.id);
+      else for (const id of fedDishes(p.id, seen)) out.add(id);
+    }
+    return out;
+  };
+  const dishesOf = (task: TaskInfo) => {
+    const ids = task.dishId !== null ? new Set([task.dishId]) : fedDishes(subRecipeOf.get(task.batchId!)!);
+    return rows.dishes.filter((d) => ids.has(d.dishId)).map((d) => ({ id: d.dishId, name: d.recipe.name }));
+  };
   const storedKeys = new Set(rows.previous.map((p) => p.key));
   const unplaced = schedule(model)
     .unplaced.filter((u) => !storedKeys.has(u.key))
     .map((u) => {
       const task = tasks.get(u.key)!;
-      return { key: u.key, ...describe(task), kind: u.reason.kind, sentence: describeUnplaced(u.reason, task, timeZone, labelOf) };
+      const pin = u.reason.kind === "BlockedByPin" ? tasks.get(u.reason.pin) : undefined;
+      return {
+        key: u.key,
+        ...describe(task),
+        kind: u.reason.kind,
+        sentence: describeUnplaced(u.reason, task, timeZone, labelOf),
+        blockingPin: pin ? { owner: pin.owner, firstStepId: pin.stepIds[0]!, label: taskLabel(pin.key) } : null,
+        dishes: dishesOf(task),
+        moreTime: u.reason.kind !== "WindowTooTight",
+      };
     });
 
   return {

@@ -206,11 +206,17 @@ export const setAvailabilityOverride = defineMutator({
     // Lock order Service, then Cook (D6); every Service follows the Cook's Availability.
     const serviceIds = await lockServices(tx, ownerId, { allServices: true });
     const cookId = await lockCook(tx, ownerId);
-    const a = args.availability;
-    await writeOverride(tx, ownerId, cookId, args.overrideId, args.date, a.kind === "weekly" ? "weekly" : a.kind === "off" ? null : a);
+    await writeOverride(tx, ownerId, cookId, args.overrideId, args.date, overrideHours(args.availability));
     for (const id of serviceIds) await replan(tx, ctx, id);
   },
 });
+
+// setAvailabilityOverride's choice as writeOverride's hours.
+function overrideHours(a: { kind: "weekly" } | { kind: "off" } | ({ kind: "hours" } & Hours)): Hours | null | "weekly" {
+  if (a.kind === "weekly") return "weekly";
+  if (a.kind === "off") return null;
+  return a;
+}
 
 const owner = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("dish"), dishId: z.uuid() }),
@@ -236,6 +242,6 @@ export const giveCookMoreTime = defineMutator({
     const proposal = smallestOverride(rows, ctx.timeZone, taskKey(args.owner, args.firstStepId));
     if (!proposal) throw new InvalidArgsError("No extra time on one date fits this Task without moving others");
     await writeOverride(tx, ownerId, cookId, args.overrideId, proposal.date, { start: proposal.start, end: proposal.end });
-    for (const id of serviceIds) await replan(tx, ctx, id);
+    await replanAffected(tx, ctx, { allServices: true });
   },
 });

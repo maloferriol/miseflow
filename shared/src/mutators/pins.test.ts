@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { inRollback } from "../../test/db.ts";
@@ -161,6 +161,83 @@ describe("pinTask", () => {
       const second = applyPlacements(stored, schedule(withPin(stored.model, v3, at1840)));
       await run(tx, "pinTask", { serviceId, owner: { kind: "dish", dishId: w.dishes.veloute }, firstStepId: w.steps.V3, start: at1840 });
       expect(second).toEqual(await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW));
+    });
+  });
+});
+
+// Inserts, updates and deletes on a table in this transaction so far (the stats are per transaction).
+const tableWrites = async (tx: Tx, table: string) =>
+  Number(
+    ((await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
+      from pg_stat_xact_user_tables where relname = ${table}`)) as unknown as { n: string }[])[0]?.n ?? 0,
+  );
+
+async function refusedUnpin(tx: Tx, args: unknown, owner = ownerId) {
+  let thrown: unknown;
+  await tx.transaction(async (sp) => run(sp, "unpinTask", args, owner)).catch((e) => (thrown = e));
+  return thrown;
+}
+
+describe("unpinTask", () => {
+  // The pastry's chill (T2) pinned at Fri 19:15 leaves the pastry (T1) no room: Friday's hours start at 19:00.
+  const fri1915 = zonedMinute("2026-10-30", h(19, 15), timeZone);
+
+  it("AC2: unpinTask on the blocking pin lets the blocked Task place", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await stockWalkthrough(tx);
+      const tarte = { kind: "dish" as const, dishId: w.dishes.tarte };
+      await run(tx, "pinTask", { serviceId, owner: tarte, firstStepId: w.steps.T2, start: fri1915 });
+      const blocked = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(blocked.unplaced.map((u) => [u.steps[0]!.id, u.kind])).toEqual([[w.steps.T1, "BlockedByPin"]]);
+      expect((await placements(tx, serviceId)).has(w.steps.T1)).toBe(false);
+
+      // Expected: the re-plan with only the unpinned chill's previous start dropped (plan addendum 2).
+      const chill = taskKey(tarte, w.steps.T2);
+      const released = schedule({ ...blocked.model, previous: blocked.model.previous.filter((p) => p.key !== chill) });
+      expect(released.unplaced).toEqual([]);
+      // Non-vacuous: a plain re-plan (the chill only set to pinned: false) still leaves the pastry Unplaced.
+      const plain = schedule({ ...blocked.model, previous: blocked.model.previous.map((p) => ({ ...p, pinned: false })) });
+      expect(plain.unplaced.map((u) => [u.key, u.reason.kind])).toEqual([[taskKey(tarte, w.steps.T1), "NoAvailability"]]);
+
+      await run(tx, "unpinTask", { serviceId, owner: tarte, firstStepId: w.steps.T2 });
+      const after = await placements(tx, serviceId);
+      expect(after.get(w.steps.T2)!.pinned).toBe(false);
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(plan.unplaced).toEqual([]);
+      expect(new Map(plan.days.flatMap((d) => d.tasks).map((t) => [t.key, t.startMinute]))).toEqual(
+        new Map(released.placements.map((p) => [p.key, p.start])),
+      );
+    });
+  });
+
+  it("the read names the pin that blocks a BlockedByPin Task, and offers it more time", async () => {
+    await inRollback(async (tx) => {
+      const { w, s, serviceId } = await stockWalkthrough(tx);
+      const tarte = { kind: "dish" as const, dishId: w.dishes.tarte };
+      await run(tx, "pinTask", { serviceId, owner: tarte, firstStepId: w.steps.T2, start: fri1915 });
+      const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
+      expect(plan.unplaced).toMatchObject([
+        {
+          kind: "BlockedByPin",
+          blockingPin: { owner: tarte, firstStepId: w.steps.T2, label: `Chill the pastry (Tarte tatin ${s})` },
+          dishes: [{ id: w.dishes.tarte, name: `Tarte tatin ${s}` }],
+          moreTime: true,
+        },
+      ]);
+    });
+  });
+
+  it("AC2: unpinning a Task that isn't pinned, isn't placed, or is another owner's is NotFound, writing nothing", async () => {
+    await inRollback(async (tx) => {
+      const { w, serviceId } = await stockWalkthrough(tx);
+      const tarte = { kind: "dish" as const, dishId: w.dishes.tarte };
+      await run(tx, "pinTask", { serviceId, owner: tarte, firstStepId: w.steps.T2, start: fri1915 });
+      const before = [await tableWrites(tx, "task_placements"), await placements(tx, serviceId)];
+      // T3 is placed but not pinned; T1 is Unplaced, so it has no placement.
+      expect(await refusedUnpin(tx, { serviceId, owner: tarte, firstStepId: w.steps.T3 })).toEqual(new NotFoundError("Task"));
+      expect(await refusedUnpin(tx, { serviceId, owner: tarte, firstStepId: w.steps.T1 })).toEqual(new NotFoundError("Task"));
+      expect(await refusedUnpin(tx, { serviceId, owner: tarte, firstStepId: w.steps.T2 }, crypto.randomUUID())).toEqual(new NotFoundError("Service"));
+      expect([await tableWrites(tx, "task_placements"), await placements(tx, serviceId)]).toEqual(before);
     });
   });
 });

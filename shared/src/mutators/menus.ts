@@ -108,6 +108,30 @@ export const setDishScale = defineMutator({
   },
 });
 
+/**
+ * The "remove the Dish" quick fix (#90 AC3, spec §6.5): soft-deletes a Dish, then re-plans its
+ * Menu's Services. The re-plan does the rest: Batches nothing else uses drop out
+ * (`reconcileBatches`), and the diff removes the Dish's placements.
+ */
+export const removeDish = defineMutator({
+  name: "removeDish",
+  args: z.strictObject({ dishId: z.uuid() }),
+  async run(tx, args, ctx) {
+    // The Dish first, then the Services inside the re-plan, as addDish (child row, then Services).
+    // FOR NO KEY UPDATE: Step events and placements take FOR KEY SHARE on the Dish when inserted,
+    // so a tickStep holding the Service doesn't wait on it (#84, #87).
+    const [dish] = await tx
+      .select({ id: dishes.id, menuId: courses.menuId })
+      .from(dishes)
+      .innerJoin(courses, eq(courses.id, dishes.courseId))
+      .where(and(eq(dishes.id, args.dishId), eq(dishes.ownerId, ctx.ownerId), isNull(dishes.deletedAt)))
+      .for("no key update", { of: dishes });
+    if (!dish) throw new NotFoundError("Dish");
+    await tx.update(dishes).set({ deletedAt: sql`now()`, updatedAt: sql`now()` }).where(eq(dishes.id, dish.id));
+    await replanAffected(tx, ctx, { menuId: dish.menuId });
+  },
+});
+
 // A parent row must exist, be live and belong to the caller; anything else reads as missing.
 // `lock` takes a row lock on the parent until the transaction ends, so concurrent appends to the
 // same parent read the last sibling one after another and never get the same position.

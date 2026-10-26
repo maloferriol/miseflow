@@ -4,7 +4,7 @@ import {
   createIngredient,
   overrideIngredient,
 } from "./ingredients.ts";
-import { addCourse, addDish, createMenu, setDishScale } from "./menus.ts";
+import { addCourse, addDish, createMenu, removeDish, setDishScale } from "./menus.ts";
 import {
   addStepDependency,
   removeStepDependency,
@@ -12,11 +12,13 @@ import {
   setMakeAhead,
   setStepTimes,
 } from "./planning.ts";
-import { pinTask } from "./pins.ts";
+import { pinTask, unpinTask } from "./pins.ts";
 import { tickStep, untickStep } from "./progress.ts";
 import { createRecipe, editRecipe } from "./recipes.ts";
 import {
   createService,
+  giveCookMoreTime,
+  replanFromScratch,
   replanService,
   setAvailabilityOverride,
   setKitchenSettings,
@@ -59,20 +61,24 @@ export const mutators: Record<string, Mutator<any>> = {
   extractToSubRecipe,
   addDish,
   setDishScale,
+  removeDish,
   createIngredient,
   addAlias,
   overrideIngredient,
   createService,
   setServiceTime,
   replanService,
+  replanFromScratch,
   setKitchenSettings,
   setWeeklyAvailability,
   setAvailabilityOverride,
+  giveCookMoreTime,
   markGot,
   unmarkGot,
   tickStep,
   untickStep,
   pinTask,
+  unpinTask,
 };
 
 export function getMutator(

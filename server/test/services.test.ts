@@ -105,6 +105,22 @@ describe("Services and the Plan read", () => {
     expect(plan.model.previous).toContainEqual(expect.objectContaining({ key: `dish:${w.dishes.veloute}:${w.steps.V1}`, start, pinned: true }));
   });
 
+  it("POST /mutate giveCookMoreTime then GET plan shows the pastry placed, with no Plan trouble", async () => {
+    // Its own state: Friday shortened so the pastry is Unplaced (replaces the date's live override, so it runs alone too).
+    await ok("setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: "2026-10-30", availability: { kind: "hours", start: h(19, 35), end: h(21) } });
+    const before = await readPlan(serviceId);
+    expect(before.unplaced).toEqual([expect.objectContaining({ steps: [expect.objectContaining({ id: w.steps.T1 })], moreTime: true, blockingPin: null })]);
+    const starts = new Map(before.days.flatMap((d: { tasks: { key: string; startMinute: number }[] }) => d.tasks).map((t: { key: string; startMinute: number }) => [t.key, t.startMinute]));
+
+    await ok("giveCookMoreTime", { serviceId, owner: { kind: "dish", dishId: w.dishes.tarte }, firstStepId: w.steps.T1, overrideId: crypto.randomUUID() });
+    const plan = await readPlan(serviceId);
+    expect(plan.unplaced).toEqual([]);
+    expect(plan.conflicts).toEqual([]);
+    expect(taskOf(plan, w.steps.T1)).toMatchObject({ start: "19:30" });
+    const after = new Map(plan.days.flatMap((d: { tasks: { key: string; startMinute: number }[] }) => d.tasks).map((t: { key: string; startMinute: number }) => [t.key, t.startMinute]));
+    for (const [key, start] of starts) expect(after.get(key)).toBe(start);
+  });
+
   it("answers 404 for another owner's Service", async () => {
     const other = { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris", now: () => FIXED_NOW };
     const [menuId, theirs] = [crypto.randomUUID(), crypto.randomUUID()];

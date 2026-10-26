@@ -1,9 +1,12 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { lockCook, lockServices, replan, replanAffected } from "../plan/replan.ts";
+import type { Hours } from "../plan/model.ts";
+import { smallestOverride } from "../plan/more-time.ts";
+import { findLiveService, loadPlanRows, lockCook, lockServices, replan, replanAffected, replanFromScratchOf } from "../plan/replan.ts";
 import { toTimeColumn } from "../plan/time.ts";
+import { taskKey } from "../scheduler/types.ts";
 import { availabilityOverrides, availabilityWeekly, kitchenSettings, menus, services } from "../schema.ts";
-import { ConflictError, defineMutator, NotFoundError } from "./define.ts";
+import { ConflictError, defineMutator, InvalidArgsError, NotFoundError, type Tx } from "./define.ts";
 
 // Services, the kitchen's default Service time and the implicit Cook's Availability (#86).
 // A time of day is a minute of day on the 5-minute grid; an end may be 1440 (midnight).
@@ -63,6 +66,18 @@ export const replanService = defineMutator({
   args: z.strictObject({ serviceId: z.uuid() }),
   async run(tx, args, ctx) {
     await replan(tx, ctx, args.serviceId);
+  },
+});
+
+/**
+ * "Re-plan from scratch" (#90 AC4): places the Service's Tasks as if there were no previous Plan,
+ * keeping pinned Tasks and Tasks with a ticked Step where they are (owner decision 5).
+ */
+export const replanFromScratch = defineMutator({
+  name: "replanFromScratch",
+  args: z.strictObject({ serviceId: z.uuid() }),
+  async run(tx, args, ctx) {
+    await replanFromScratchOf(tx, ctx, args.serviceId);
   },
 });
 
@@ -142,6 +157,38 @@ export const setWeeklyAvailability = defineMutator({
   },
 });
 
+// Replaces the date's live override (soft-deleting it) with `overrideId`'s hours; null: not
+// available that date; "weekly": back to the weekly hours, so no new row. Under the Cook's lock.
+async function writeOverride(tx: Tx, ownerId: string, cookId: string, overrideId: string, date: string, hours: Hours | null | "weekly") {
+  await tx
+    .update(availabilityOverrides)
+    .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+    .where(
+      and(
+        eq(availabilityOverrides.cookId, cookId),
+        eq(availabilityOverrides.ownerId, ownerId),
+        eq(availabilityOverrides.date, date),
+        isNull(availabilityOverrides.deletedAt),
+      ),
+    );
+  if (hours === "weekly") return;
+  const values = {
+    date,
+    startTime: hours === null ? null : toTimeColumn(hours.start),
+    endTime: hours === null ? null : toTimeColumn(hours.end),
+  };
+  const written = await tx
+    .insert(availabilityOverrides)
+    .values({ id: overrideId, ownerId, cookId, ...values })
+    .onConflictDoUpdate({
+      target: availabilityOverrides.id,
+      set: { ...values, deletedAt: null, updatedAt: sql`now()` },
+      setWhere: and(eq(availabilityOverrides.ownerId, ownerId), eq(availabilityOverrides.cookId, cookId)),
+    })
+    .returning({ id: availabilityOverrides.id });
+  if (!written.length) throw new ConflictError("A row with one of these ids already exists");
+}
+
 /** One date's hours, or not available that date ("off"), or back to the weekly hours ("weekly"). */
 export const setAvailabilityOverride = defineMutator({
   name: "setAvailabilityOverride",
@@ -159,35 +206,42 @@ export const setAvailabilityOverride = defineMutator({
     // Lock order Service, then Cook (D6); every Service follows the Cook's Availability.
     const serviceIds = await lockServices(tx, ownerId, { allServices: true });
     const cookId = await lockCook(tx, ownerId);
-    await tx
-      .update(availabilityOverrides)
-      .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
-      .where(
-        and(
-          eq(availabilityOverrides.cookId, cookId),
-          eq(availabilityOverrides.ownerId, ownerId),
-          eq(availabilityOverrides.date, args.date),
-          isNull(availabilityOverrides.deletedAt),
-        ),
-      );
-    const a = args.availability;
-    if (a.kind !== "weekly") {
-      const values = {
-        date: args.date,
-        startTime: a.kind === "hours" ? toTimeColumn(a.start) : null,
-        endTime: a.kind === "hours" ? toTimeColumn(a.end) : null,
-      };
-      const written = await tx
-        .insert(availabilityOverrides)
-        .values({ id: args.overrideId, ownerId, cookId, ...values })
-        .onConflictDoUpdate({
-          target: availabilityOverrides.id,
-          set: { ...values, deletedAt: null, updatedAt: sql`now()` },
-          setWhere: and(eq(availabilityOverrides.ownerId, ownerId), eq(availabilityOverrides.cookId, cookId)),
-        })
-        .returning({ id: availabilityOverrides.id });
-      if (!written.length) throw new ConflictError("A row with one of these ids already exists");
-    }
+    await writeOverride(tx, ownerId, cookId, args.overrideId, args.date, overrideHours(args.availability));
     for (const id of serviceIds) await replan(tx, ctx, id);
+  },
+});
+
+// setAvailabilityOverride's choice as writeOverride's hours.
+function overrideHours(a: { kind: "weekly" } | { kind: "off" } | ({ kind: "hours" } & Hours)): Hours | null | "weekly" {
+  if (a.kind === "weekly") return "weekly";
+  if (a.kind === "off") return null;
+  return a;
+}
+
+const owner = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("dish"), dishId: z.uuid() }),
+  z.strictObject({ kind: z.literal("batch"), batchId: z.uuid() }),
+]);
+
+/**
+ * "Give the Cook more time" (#90, spec §6.5): the smallest one-date override that places this
+ * Unplaced Task and moves no other placement (`smallestOverride`), written as the date's override,
+ * then every Service re-planned. Refused, writing nothing, when no such override exists (owner
+ * decision 2), including a `WindowTooTight` Task and one that is placed.
+ */
+export const giveCookMoreTime = defineMutator({
+  name: "giveCookMoreTime",
+  args: z.strictObject({ serviceId: z.uuid(), owner, firstStepId: z.uuid(), overrideId: z.uuid() }),
+  async run(tx, args, ctx) {
+    const { ownerId } = ctx;
+    // Lock order Service, then Cook (D6), as setAvailabilityOverride.
+    const serviceIds = await lockServices(tx, ownerId, { allServices: true });
+    const cookId = await lockCook(tx, ownerId);
+    if (!serviceIds.includes(args.serviceId)) throw new NotFoundError("Service");
+    const rows = await loadPlanRows(tx, ownerId, await findLiveService(tx, ownerId, args.serviceId));
+    const proposal = smallestOverride(rows, ctx.timeZone, taskKey(args.owner, args.firstStepId));
+    if (!proposal) throw new InvalidArgsError("No extra time on one date fits this Task without moving others");
+    await writeOverride(tx, ownerId, cookId, args.overrideId, proposal.date, { start: proposal.start, end: proposal.end });
+    await replanAffected(tx, ctx, { allServices: true });
   },
 });

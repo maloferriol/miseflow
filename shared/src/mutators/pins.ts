@@ -1,8 +1,9 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { MAX_BEFORE_DAYS } from "../recipe/planning.ts";
-import { loadDefaultServiceTime, lockService, replan } from "../plan/replan.ts";
+import { loadDefaultServiceTime, lockService, replan, replanReleasing } from "../plan/replan.ts";
 import { addDays, fromTimeColumn, zonedMinute } from "../plan/time.ts";
+import { taskKey } from "../scheduler/types.ts";
 import { taskPlacements } from "../schema.ts";
 import { defineMutator, InvalidArgsError, NotFoundError } from "./define.ts";
 
@@ -47,5 +48,37 @@ export const pinTask = defineMutator({
       .set({ startMinute: args.start, pinned: true, updatedAt: sql`now()` })
       .where(eq(taskPlacements.id, row.id));
     await replan(tx, ctx, args.serviceId);
+  },
+});
+
+/**
+ * The "unpin" quick fix (#90, spec §6.5): clears the pin on a pinned, placed Task, then re-plans
+ * its Service, so a Task the pin blocked can place. A Task that isn't pinned here is NotFound.
+ */
+export const unpinTask = defineMutator({
+  name: "unpinTask",
+  args: z.strictObject({ serviceId: z.uuid(), owner, firstStepId: z.uuid() }),
+  async run(tx, args, ctx) {
+    // FOR NO KEY UPDATE on the Service (D6), before the placement row, as pinTask.
+    await lockService(tx, ctx.ownerId, args.serviceId);
+    const o = args.owner;
+    const [row] = await tx
+      .select({ id: taskPlacements.id })
+      .from(taskPlacements)
+      .where(
+        and(
+          eq(taskPlacements.serviceId, args.serviceId),
+          eq(taskPlacements.ownerId, ctx.ownerId),
+          o.kind === "dish" ? eq(taskPlacements.dishId, o.dishId) : eq(taskPlacements.batchId, o.batchId),
+          eq(taskPlacements.firstStepId, args.firstStepId),
+          eq(taskPlacements.pinned, true),
+          isNull(taskPlacements.deletedAt),
+        ),
+      );
+    if (!row) throw new NotFoundError("Task");
+    // The diff writes only start and Cook, so the pin is cleared here.
+    await tx.update(taskPlacements).set({ pinned: false, updatedAt: sql`now()` }).where(eq(taskPlacements.id, row.id));
+    // Only this Task's previous start is dropped, so it can move off the blocked Task's way (addendum 2).
+    await replanReleasing(tx, ctx, args.serviceId, taskKey(o, args.firstStepId));
   },
 });

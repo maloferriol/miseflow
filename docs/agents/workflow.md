@@ -7,6 +7,7 @@ How a ticket goes from issue to PR here: branches, worktrees, tests, plans, revi
 - **Orchestrator and stages.** A ticket orchestrator subagent runs each stage (DEFINE, PLAN, BUILD, VERIFY, REVIEW, SHIP, RETRO) as its own subagent, with one common brief plus a stage line. Stage subagents always run in the background, and a stage's result reaches the orchestrator as a message on its next turn. Between stages, the orchestrator's report to the main session is interim. The main session waits for the report sent when the orchestrator has finished with no stage still running, and treats that one as final. In #89, two resumes were sent to an orchestrator that would have continued by itself.
 - If the `/addy:*` commands aren't installed, emulate each stage from the common brief. Say so in the PR.
 - Each stage writes its output and logs under `scratchpad/<n>/` (`spec.md`, `build/`, `verify/`, `review.md`). The next stage's brief points at those paths.
+- **Owner-only criteria.** An AC that needs an account, a token, a secret or a repo setting (#104's SonarCloud project and `SONAR_TOKEN`) is the owner's. No agent may create accounts or enter tokens. Name it in DEFINE under Needs the owner. At SHIP, open an issue with its steps and "Done when" (#119), so the PR can ship the rest. Tell the owner this at the start: a `/goal` whose condition includes such a step never clears, and #104's Stop hook fired for over an hour. Suggest wording the goal as "PR merged, owner steps filed".
 - **Commits.** Only SHIP commits and pushes. If a Stop hook asks for a commit in an earlier stage, don't commit. Reply that the work is uncommitted on purpose until SHIP, and end the turn.
 
 ## Branches
@@ -43,6 +44,7 @@ Put these steps in every BUILD, VERIFY and REVIEW brief. A subagent doesn't read
 
 ## Tests
 
+- **Sign-in fails first.** `Test user sign-in failed ... Invalid login credentials` from every server suite means another checkout's `setup:local` reset the shared test user's password. Run `npm run setup:local` in your own worktree. It resets the password to your `.env`, so tell the owner that other checkouts must rerun it. Don't read other checkouts' `.env` files to find the current password. That is credential exploration, and #104's attempt was blocked.
 - **Ports first.** `npm run e2e` reuses any server already listening on :8787 or :5173, which may be serving another worktree. Check with `lsof -iTCP:8787 -iTCP:5173 -sTCP:LISTEN`, and stop that server or run the e2e from the worktree that owns it.
 - **One file:** `npm test -w <shared|server> -- <path relative to that workspace> -t "<name>"`. Run from the root without `-w`, vitest reports "no tests" or `ECONNREFUSED ::1:5432`.
 - **Totals:** `npm test` prints one block per workspace. Report both: shared files/tests and server files/tests.
@@ -67,8 +69,17 @@ Put these steps in every BUILD, VERIFY and REVIEW brief. A subagent doesn't read
   - **Touches the same file:** both add or edit a file, but neither needs the other's content. Base on `main`, and let the second merge resolve the conflict.
 
   Only "Blocks" justifies "start after #n". #91's Plan called a shared new `print.css` a blocker, and the owner had to unblock it.
+- **Open questions in the issue count too.** #104 listed three, and the run answered them itself in the PR instead of posting a Plan and stopping. The owner's later answers (make the repo public, add a ruleset) changed two of them, and those meant two more commits and a second CI run. Infra tickets follow "Open questions block DEFINE" like any other.
 - **Needs the owner.** Before adding a question, check whether an AC, ADR, `CONTEXT.md` or the units spec already answers it. If one does, cite it and plan to it. Give every remaining question a recommended answer and a one-line reason, so the owner can reply "as recommended" or list exceptions.
 - Open questions block DEFINE. Post the Plan, then stop and tell the owner the count. Restart from the owner's answer comment. After the answers, post a **Plan addendum** that replaces the Plan where they differ and ends with "Needs the owner: None". #91 followed this pattern.
+
+## CI and GitHub
+
+- **One push per fix.** A push to a PR branch cancels its running CI (`cancel-in-progress`). A full run takes about 5 minutes, mostly `supabase start`. Batch doc and fix commits into one push. #104 restarted CI twice for docs-only commits.
+- **Workflow code is analyzed too.** SonarCloud failed #118's gate on `.github/workflows/ci.yml`. Pin every third-party action (anything not under `actions/`) to the full commit SHA behind its tag, with the tag in a comment (rule S7637). Keep `--ignore-scripts` on `npm ci` (S6505). No dependency here needs its install script. Check `hasInstallScript` in `package-lock.json` before adding one that does.
+- **Check the repo's plan before planning a gate.** On a private repo on the free plan, rulesets and the branch protection API answer 403. #104 planned a gate that reports only, until the owner made the repo public.
+- **SonarCloud's Automatic Analysis** posts its own "SonarCloud Code Analysis" check with 0.0% coverage, because it can't read CI's lcov files. The CI analysis needs it off (#119).
+- **Merge-blocking.** The `main: require CI check` ruleset requires the GitHub Actions `check` job, with no bypass list. A PR stays BLOCKED until `check` passes.
 
 ## Code and review
 

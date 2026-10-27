@@ -1,3 +1,4 @@
+import { SERVINGS } from "@miseflow/shared/src/recipe/servings.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchRecipe, mutate } from "./api.ts";
@@ -92,7 +93,8 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
           <input
             name="servings"
             type="number"
-            min={0}
+            min={SERVINGS.min}
+            max={SERVINGS.max}
             step="any"
             defaultValue={recipe.data.servings ?? ""}
           />

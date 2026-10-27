@@ -85,8 +85,10 @@ const VULGAR: Record<string, number> = {
   "⅛": 1 / 8,
 };
 
-// "1", "1.5", "1/2", "1 1/2", "½", "1½"
-const NUMBER = String.raw`(?:\d+(?:\.\d+)?(?:\s+\d+\/\d+|\s*[½⅓⅔¼¾⅛])?|\d+\/\d+|[½⅓⅔¼¾⅛])`;
+// "1", "1.5", "1,5", "1/2", "1 1/2", "½", "1½". A comma is a decimal separator only before one or
+// two digits: "1,000" could be a thousand or one, so parseQuantity gives it a NaN value.
+const FRACTION_DIGITS = String.raw`(?:\.\d+|,\d{1,2}(?!\d))`;
+const NUMBER = String.raw`(?:\d+${FRACTION_DIGITS}?(?:\s+\d+\/\d+|\s*[½⅓⅔¼¾⅛])?|\d+\/\d+|[½⅓⅔¼¾⅛])`;
 const AMOUNT = new RegExp(
   String.raw`^(${NUMBER})(?:\s*[-–]\s*(${NUMBER}))?(?=\s|%|[^\d./]|$)\s*(.*)$`,
   "u",
@@ -94,12 +96,12 @@ const AMOUNT = new RegExp(
 
 function parseNumber(text: string): number {
   let total = 0;
-  for (const part of text.match(/\d+\/\d+|\d+(?:\.\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
+  for (const part of text.match(/\d+(?:\/\d+|[.,]\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
     if (part in VULGAR) total += VULGAR[part];
     else if (part.includes("/")) {
       const [n, d] = part.split("/").map(Number);
       total += n / d;
-    } else total += Number(part);
+    } else total += Number(part.replace(",", "."));
   }
   return total;
 }
@@ -114,6 +116,26 @@ function parseUnit(raw: string): { unit: string | null; tier: QuantityTier } {
   return known ?? { unit: text, tier: "unknown" };
 }
 
+/** The number at the start of an amount and the text after it; `numbered` is false for "a"/"an". */
+function readAmount(amount: string) {
+  const match = AMOUNT.exec(amount);
+  if (match) {
+    // A number only partly read ("1,000" stops at ","): NaN, which isValidQuantity refuses,
+    // even when a "%" means the rest isn't the unit.
+    const partial = /^[.,]\d/.test(match[3]);
+    return {
+      value: partial ? Number.NaN : parseNumber(match[1]),
+      max: match[2] ? parseNumber(match[2]) : null,
+      rest: match[3],
+      numbered: true,
+    };
+  }
+  // "a pinch", "an onion": the article is one.
+  const article = /^an?\s+(.*)$/i.exec(amount);
+  if (article) return { value: 1, max: null, rest: article[1], numbered: false };
+  return { value: null, max: null, rest: amount, numbered: false };
+}
+
 export function parseQuantity(input: string): Quantity {
   let text = input.trim();
   const fixed = text.startsWith("=");
@@ -125,24 +147,9 @@ export function parseQuantity(input: string): Quantity {
   const amount = percent >= 0 ? text.slice(0, percent).trim() : text;
   const unitText = percent >= 0 ? text.slice(percent + 1) : null;
 
-  const match = AMOUNT.exec(amount);
-  let value: number | null = null;
-  let max: number | null = null;
-  let rest = amount;
-  if (match) {
-    value = parseNumber(match[1]);
-    max = match[2] ? parseNumber(match[2]) : null;
-    rest = match[3]!;
-  } else {
-    // "a pinch", "an onion": the article is one.
-    const article = /^an?\s+(.*)$/i.exec(amount);
-    if (article) {
-      value = 1;
-      rest = article[1]!;
-    }
-  }
+  const { value, max, rest, numbered } = readAmount(amount);
   const { unit, tier } = parseUnit(unitText ?? rest);
-  if (tier === "vague") return { value: match ? value : null, max, unit, tier, fixed };
+  if (tier === "vague") return { value: numbered ? value : null, max, unit, tier, fixed };
   // Words with no number and no known unit ("some") stay as written.
   if (value === null && tier === "ingredient" && unit === null)
     return { value: null, max: null, unit: null, tier: "vague", fixed };
@@ -150,12 +157,14 @@ export function parseQuantity(input: string): Quantity {
 }
 
 /**
- * False for an amount no line can store: a zero denominator or a number too big to be finite
- * ("1/0" → Infinity, "0/0" → NaN, which a jsonb snapshot can't hold), or a range whose upper
- * end is below its lower end ("3-2").
+ * False for an amount no line can store: zero (an empty amount is the placeholder), a zero
+ * denominator or a number too big to be finite ("1/0" → Infinity, "0/0" → NaN, which a jsonb
+ * snapshot can't hold), a number only partly read ("1,000 g"), a range whose upper end is below
+ * its lower end ("3-2"), or one that formatQuantity would write with an exponent.
  */
 export function isValidQuantity(q: Quantity): boolean {
-  const ok = (n: number | null) => n === null || Number.isFinite(n);
+  // String(n) switches to an exponent from 1e21 and below 1e-6, which parseQuantity can't read.
+  const ok = (n: number | null) => n === null || (n >= 1e-6 && n < 1e21);
   return ok(q.value) && ok(q.max) && !(q.max !== null && q.value !== null && q.max < q.value);
 }
 

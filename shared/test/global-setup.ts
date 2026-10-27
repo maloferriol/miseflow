@@ -14,6 +14,7 @@ export default async function checkDatabase() {
     throw new Error(
       `The local database is not ready at ${new URL(url).host} (${(error as Error).message}). ` +
         "Run `npx supabase start`, `npm run setup:local` and `npm run db:migrate` first.",
+      { cause: error },
     );
   } finally {
     await sql.end();

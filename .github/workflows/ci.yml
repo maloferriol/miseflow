@@ -1,4 +1,4 @@
-# Format check, typecheck, build, tests with coverage, then the SonarQube analysis and its quality gate
+# Format check, lint, typecheck, build, tests with coverage, then the SonarQube analysis and its quality gate
 # (README "CI and the quality gate"). Any failing step fails the check.
 name: CI
 
@@ -35,6 +35,7 @@ jobs:
       # No dependency needs its install script: esbuild's binary comes from its platform package.
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run format:check
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
 

@@ -117,7 +117,7 @@ describe("loadSeed", () => {
     const [before] = await db.select().from(ingredients).where(eq(ingredients.id, id));
     const seed = readSeed();
     const extra = {
-      ...seed.ingredients[0]!,
+      ...seed.ingredients[0],
       id,
       name: "seeded over theirs",
       aliases: [],

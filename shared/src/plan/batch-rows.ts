@@ -182,7 +182,10 @@ export async function recipeAndAncestors(
   const queue = [recipeId];
   for (let id = queue.shift(); id !== undefined; id = queue.shift())
     for (const parent of parentsOf.get(id) ?? [])
-      if (!seen.has(parent)) (seen.add(parent), queue.push(parent));
+      if (!seen.has(parent)) {
+        seen.add(parent);
+        queue.push(parent);
+      }
   return [...seen];
 }
 

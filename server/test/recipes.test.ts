@@ -88,7 +88,7 @@ async function revisionState(recipeId: string) {
     .select()
     .from(recipeRevisions)
     .where(eq(recipeRevisions.recipeId, recipeId));
-  return { latest: recipe!.latestRevision, count: rows.length };
+  return { latest: recipe.latestRevision, count: rows.length };
 }
 
 describe("GET /recipes/:recipeId", () => {
@@ -232,7 +232,7 @@ describe("GET /recipes/:recipeId in one read-only transaction (#128)", () => {
 
     expect(res.status, await res.clone().text()).toBe(200);
     const { recipe } = await res.json();
-    expect(recipe).toMatchObject({ id: recipeId, name: before!.name });
+    expect(recipe).toMatchObject({ id: recipeId, name: before.name });
     expect(recipe.steps.map((s: { id: string }) => s.id)).toEqual([stepId]);
     expect((await send("GET", `/recipes/${recipeId}`)).status).toBe(404);
   });
@@ -392,9 +392,9 @@ describe("Planning pass (read and /mutate)", () => {
     const [dice, sweat, strain, line] = Array.from({ length: 4 }, () => crypto.randomUUID());
     const add = (stepId: string, body: unknown[], lines: unknown[] = []) =>
       ok("addStep", { recipeId, stepId, revisionId: crypto.randomUUID(), body, lines });
-    await add(dice!, [{ type: "text", text: "Dice the shallots" }]);
+    await add(dice, [{ type: "text", text: "Dice the shallots" }]);
     await add(
-      sweat!,
+      sweat,
       [
         { type: "text", text: "Sweat " },
         { type: "line", lineId: line },
@@ -409,8 +409,8 @@ describe("Planning pass (read and /mutate)", () => {
         },
       ],
     );
-    await add(strain!, [{ type: "text", text: "Strain" }]);
-    return { recipeId, dice: dice!, sweat: sweat!, strain: strain!, line: line! };
+    await add(strain, [{ type: "text", text: "Strain" }]);
+    return { recipeId, dice, sweat, strain, line };
   }
 
   it("the read includes planning fields, the effective window, dependencies and ready to plan", async () => {

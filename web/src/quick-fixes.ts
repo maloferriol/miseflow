@@ -38,7 +38,7 @@ export function quickFixes(
     fixes.push({
       label: "Give the Cook more time",
       name: "giveCookMoreTime",
-      args: { serviceId, owner, firstStepId: item.steps[0]!.id, overrideId: newId() },
+      args: { serviceId, owner, firstStepId: item.steps[0].id, overrideId: newId() },
       confirm: null,
     });
   const pin = item.blockingPin;

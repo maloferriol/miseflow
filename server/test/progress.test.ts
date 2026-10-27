@@ -45,7 +45,7 @@ type Task = { key: string; start: string; steps: { id: string }[]; behind: unkno
 const taskOf = (plan: { days: { date: string; tasks: Task[] }[] }, stepId: string) =>
   plan.days
     .flatMap((d) => d.tasks.map((t) => ({ ...t, date: d.date })))
-    .find((t) => t.steps[0]!.id === stepId)!;
+    .find((t) => t.steps[0].id === stepId)!;
 
 const eventsOf = (stepId: string) =>
   db

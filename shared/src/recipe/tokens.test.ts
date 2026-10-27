@@ -100,8 +100,8 @@ describe("refName", () => {
       ["-'nduja", "nduja"],
       ["olive oil", "olive oil"],
     ]) {
-      expect(refName(name!)).toBe(safe);
-      expect(parseStepText(`Add @${refName(name!)}{}`)).toEqual([
+      expect(refName(name)).toBe(safe);
+      expect(parseStepText(`Add @${refName(name)}{}`)).toEqual([
         { type: "text", text: "Add " },
         { type: "ref", name: safe, amount: "", preparation: null },
       ]);

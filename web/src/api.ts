@@ -35,7 +35,8 @@ export async function mutate(id: string, name: string, args: Record<string, unkn
     body: JSON.stringify({ id, name, args }),
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => undefined);
+    const body = (await res.json().catch(() => undefined)) as
+      { error?: { message?: string } } | undefined;
     throw new Error(body?.error?.message ?? `${name} failed (${res.status})`);
   }
 }

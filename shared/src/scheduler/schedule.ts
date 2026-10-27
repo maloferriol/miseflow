@@ -64,7 +64,7 @@ function prepare(model: PlanningModel): Prepared[] {
   return model.tasks.map((task) => {
     if (task.steps.length === 0)
       throw new SchedulerInputError("EmptyTask", "A Task needs at least one Step");
-    const key = taskKey(task.owner, task.steps[0]!.stepId);
+    const key = taskKey(task.owner, task.steps[0].stepId);
     if (task.earliestStart !== null)
       assertTime(task.earliestStart, `Earliest start of ${key}`, [key]);
     let offset = 0;
@@ -260,7 +260,7 @@ export function schedule(model: PlanningModel): Plan {
       `Expected exactly one Cook, got ${model.cooks.length}`,
     );
   }
-  const cook = model.cooks[0]!;
+  const cook = model.cooks[0];
   const cookFree = normalize(cook.free);
   const tasks = new Map<TaskKey, Prepared>();
   for (const task of prepare(model)) {
@@ -547,7 +547,7 @@ function conflictsAmong(
     const keeps = keepsOf(task, tasks, successors);
     if (keeps === null) continue;
     // The latest use, ties to the lower key; Service when nothing uses it.
-    const latest = uses.length ? uses.filter((u) => u.at === uses.at(-1)!.at)[0]! : null;
+    const latest = uses.length ? uses.filter((u) => u.at === uses.at(-1)!.at)[0] : null;
     if (!latest && (successors.get(key) ?? []).length) continue;
     const useAt = latest ? latest.at : model.service.at;
     const keepsUntil = readyAt + keeps;

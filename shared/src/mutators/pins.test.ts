@@ -61,8 +61,8 @@ async function placements(tx: Tx, serviceId: string) {
 }
 
 const taskOf = (plan: PlanRead, stepId: string) => {
-  const day = plan.days.find((d) => d.tasks.some((t) => t.steps[0]!.id === stepId))!;
-  return { date: day.date, ...day.tasks.find((t) => t.steps[0]!.id === stepId)! };
+  const day = plan.days.find((d) => d.tasks.some((t) => t.steps[0].id === stepId))!;
+  return { date: day.date, ...day.tasks.find((t) => t.steps[0].id === stepId)! };
 };
 
 // Runs a mutation that should be refused in a savepoint, so the checks after it can still run.
@@ -134,7 +134,7 @@ describe("pinTask", () => {
         availability: { kind: "hours", start: h(19, 35), end: h(21) },
       });
       const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
-      expect(plan.unplaced.map((u) => u.steps[0]!.id)).toEqual([w.steps.T1]);
+      expect(plan.unplaced.map((u) => u.steps[0].id)).toEqual([w.steps.T1]);
       const tarte = { kind: "dish", dishId: w.dishes.tarte };
       expect(await refused(tx, pin({ owner: tarte, firstStepId: w.steps.T1 }))).toEqual(
         new NotFoundError("Task"),
@@ -208,7 +208,7 @@ describe("pinTask", () => {
       await run(tx, "pinTask", { serviceId, owner, firstStepId: w.steps.S1, start: wednesday18 });
       const stored = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(optimistic).toEqual(stored);
-      expect(optimistic.days[0]!.date).toBe("2026-10-28");
+      expect(optimistic.days[0].date).toBe("2026-10-28");
 
       // And the V3 pin, which moves D4.
       const v3 = taskKey({ kind: "dish", dishId: w.dishes.veloute }, w.steps.V3);
@@ -230,7 +230,7 @@ const tableWrites = async (tx: Tx, table: string) =>
   Number(
     (
       (await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
-      from pg_stat_xact_user_tables where relname = ${table}`)) as unknown as { n: string }[]
+      from pg_stat_xact_user_tables where relname = ${table}`)) as { n: string }[]
     )[0]?.n ?? 0,
   );
 
@@ -255,7 +255,7 @@ describe("unpinTask", () => {
         start: fri1915,
       });
       const blocked = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
-      expect(blocked.unplaced.map((u) => [u.steps[0]!.id, u.kind])).toEqual([
+      expect(blocked.unplaced.map((u) => [u.steps[0].id, u.kind])).toEqual([
         [w.steps.T1, "BlockedByPin"],
       ]);
       expect((await placements(tx, serviceId)).has(w.steps.T1)).toBe(false);

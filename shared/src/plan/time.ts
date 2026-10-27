@@ -51,7 +51,7 @@ const offsetAt = (minute: Minute, timeZone: string) => wallClock(minute, timeZon
 
 function dayNumber(date: LocalDate): number {
   const [y, m, d] = date.split("-").map(Number);
-  return Date.UTC(y!, m! - 1, d!) / 60_000 / DAY;
+  return Date.UTC(y, m - 1, d) / 60_000 / DAY;
 }
 
 function fromDayNumber(day: number): LocalDate {
@@ -104,7 +104,7 @@ export function toTimeColumn(minuteOfDay: number): string {
 /** A Postgres `time` ("HH:MM[:SS]") as a minute of day; seconds are dropped. */
 export function fromTimeColumn(time: string): number {
   const [hours, minutes] = time.split(":").map(Number);
-  return hours! * 60 + minutes!;
+  return hours * 60 + minutes;
 }
 
 /** "19:30". */

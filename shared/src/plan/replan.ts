@@ -357,7 +357,7 @@ async function replanWith(
         serviceId,
         dishId: task.dishId,
         batchId: task.batchId,
-        firstStepId: task.stepIds[0]!,
+        firstStepId: task.stepIds[0],
         startMinute: p.start,
         cookId: p.cookId,
         pinned: p.pinned,
@@ -621,7 +621,7 @@ export async function readPlan(
 
   const labelOf = (key: TaskKey) => {
     const task = tasks.get(key);
-    return task ? (stepText.get(task.stepIds[0]!) ?? key) : key;
+    return task ? (stepText.get(task.stepIds[0]) ?? key) : key;
   };
   // "Strain the stock (Chicken stock ×1.5)", "Blend and season (Velouté)".
   const batchNames = new Map(
@@ -679,7 +679,7 @@ export async function readPlan(
         kind: u.reason.kind,
         sentence: describeUnplaced(u.reason, task, timeZone, labelOf),
         blockingPin: pin
-          ? { owner: pin.owner, firstStepId: pin.stepIds[0]!, label: taskLabel(pin.key) }
+          ? { owner: pin.owner, firstStepId: pin.stepIds[0], label: taskLabel(pin.key) }
           : null,
         dishes: dishesOf(task),
         moreTime: u.reason.kind !== "WindowTooTight",

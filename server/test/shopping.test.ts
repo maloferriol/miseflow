@@ -65,7 +65,7 @@ afterAll(async () => {
   await db
     .update(recipes)
     .set({ deletedAt: sql`now()` })
-    .where(inArray(recipes.id, Object.values(w.recipes) as string[]));
+    .where(inArray(recipes.id, Object.values<string>(w.recipes)));
 });
 
 beforeAll(async () => {

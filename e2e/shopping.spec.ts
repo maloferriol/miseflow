@@ -7,6 +7,7 @@ import {
   SERVICE_TIME,
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The walkthrough with its Ingredient lines and Pastry (#91), and its Service, built through
 // POST /mutate with the seed's Ingredients.
@@ -14,12 +15,12 @@ const s = String(Date.now());
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
+let user: TestUser;
 
 test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], {
-    encoding: "utf8",
-  }).trim();
+  user = await createTestUser("shopping");
+  const { token } = user;
   const run = async (name: string, args: Record<string, unknown>) => {
     const res = await request.post("http://localhost:8787/mutate", {
       headers: { Authorization: `Bearer ${token}` },
@@ -56,13 +57,14 @@ test.afterAll(async () => {
     await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
     await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes) as string[])}`;
   }
+  if (user) await deleteTestUser(user);
   await sql.end();
 });
 
 async function openShoppingList(page: Page) {
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
   await page.goto(`/?menu=${w.menuId}`);

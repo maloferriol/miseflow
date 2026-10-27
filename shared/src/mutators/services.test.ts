@@ -1,6 +1,8 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { describe, expect, it } from "vitest";
-import { inRollback } from "../../test/db.ts";
+import { db, inRollback, underUncommittedChild } from "../../test/db.ts";
 import {
   buildWalkthrough,
   SERVICE_DATE,
@@ -11,7 +13,7 @@ import {
 import { toPlanningModel } from "../plan/model.ts";
 import { smallestOverride } from "../plan/more-time.ts";
 import { planTrouble } from "../plan/trouble.ts";
-import { ensureCook, loadAvailability, loadPlanRows, readPlan } from "../plan/replan.ts";
+import { ensureCook, loadAvailability, loadPlanRows, lockCook, readPlan } from "../plan/replan.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { taskKey } from "../scheduler/types.ts";
 import { localParts, zonedMinute } from "../plan/time.ts";
@@ -19,6 +21,7 @@ import {
   availabilityOverrides,
   availabilityWeekly,
   cooks,
+  courses,
   kitchenSettings,
   services,
   taskPlacements,
@@ -969,5 +972,120 @@ describe("Plan trouble and the Unplaced quick-fix fields", () => {
       expect(item(w.steps.B1!)).toMatchObject({ dish: null, dishes: [duck], moreTime: true });
       expect(planTrouble(plan)).toBe(plan.unplaced.length + plan.conflicts.length);
     });
+  });
+});
+
+// #113: the Cook and the Menu are locked FOR NO KEY UPDATE, so an uncommitted child row (which
+// holds FOR KEY SHARE on its parent) doesn't block the lock, but two locks of one row still queue.
+describe("Cook and Menu locks", () => {
+  const softDelete = async (owner: string) => {
+    for (const table of ["services", "menus", "recipes", "cooks"]) {
+      await db.execute(
+        sql`update ${sql.identifier(table)} set deleted_at = now() where owner_id = ${owner} and deleted_at is null`,
+      );
+    }
+  };
+
+  it("lockCook doesn't wait for an uncommitted Availability row of the Cook", async () => {
+    const owner = crypto.randomUUID();
+    try {
+      await db.transaction(async (tx) => void (await ensureCook(tx, owner)));
+      await underUncommittedChild(
+        (tx) =>
+          tx.insert(availabilityWeekly).values({
+            id: crypto.randomUUID(),
+            ownerId: owner,
+            cookId: owner,
+            weekday: 6,
+            startTime: "09:00",
+            endTime: "17:00",
+          }),
+        async (tx) => expect(await lockCook(tx, owner)).toBe(owner),
+      );
+    } finally {
+      await softDelete(owner);
+    }
+  });
+
+  it("createService doesn't wait for an uncommitted Course of the Menu", async () => {
+    const owner = crypto.randomUUID();
+    try {
+      let w!: Walkthrough;
+      await db.transaction(async (tx) => void (w = await walkthrough(tx, owner)));
+      await underUncommittedChild(
+        (tx) =>
+          tx.insert(courses).values({
+            id: crypto.randomUUID(),
+            ownerId: owner,
+            menuId: w.menuId,
+            name: "Cheese",
+            position: "z",
+          }),
+        async (tx) => {
+          const serviceId = await addService(tx, w, SERVICE_TIME, owner);
+          expect(
+            await tx
+              .select({ id: services.id })
+              .from(services)
+              .where(eq(services.menuId, w.menuId)),
+          ).toEqual([{ id: serviceId }]);
+        },
+      );
+    } finally {
+      await softDelete(owner);
+    }
+  });
+
+  // Two transactions on two connections, ordered with awaits: A creates the Service and stays open,
+  // B waits on the Menu's lock, then reads A's Service once A commits.
+  it("two concurrent createService calls for one Menu run one after another: the second gets 409", async () => {
+    const owner = crypto.randomUUID();
+    const clients = [0, 1].map(() =>
+      postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} }),
+    );
+    const [a, b] = clients.map((client) => drizzle({ client }));
+    try {
+      let w!: Walkthrough;
+      await db.transaction(async (tx) => void (w = await walkthrough(tx, owner)));
+      const [{ pid: pidOfB }] = (await clients[1]!`select pg_backend_pid() as pid`) as unknown as {
+        pid: number;
+      }[];
+
+      let created!: () => void;
+      const aCreated = new Promise<void>((resolve) => (created = resolve));
+      let goOn!: () => void;
+      const bWaitsOrIsDone = new Promise<void>((resolve) => (goOn = resolve));
+      const txA = a.transaction(async (tx) => {
+        await addService(tx, w, SERVICE_TIME, owner);
+        created();
+        await bWaitsOrIsDone;
+      });
+      await aCreated;
+      let settled = false;
+      const txB = b
+        .transaction(async (tx) => void (await addService(tx, w, SERVICE_TIME, owner)))
+        .finally(() => (settled = true));
+      let waited = false;
+      while (!settled) {
+        const [row] = (await db.execute(
+          sql`select wait_event_type from pg_stat_activity where pid = ${pidOfB}`,
+        )) as unknown as Record<string, unknown>[];
+        if (row?.wait_event_type === "Lock") {
+          waited = true;
+          break;
+        }
+      }
+      goOn();
+
+      const results = await Promise.allSettled([txA, txB]);
+      expect(waited).toBe(true);
+      expect(results.map((r) => (r.status === "rejected" ? r.reason : "ok"))).toEqual([
+        "ok",
+        new ConflictError("This Menu already has a Service"),
+      ]);
+    } finally {
+      await softDelete(owner);
+      await Promise.all(clients.map((c) => c.end()));
+    }
   });
 });

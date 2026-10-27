@@ -1,10 +1,18 @@
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The seed (idempotent) has "shallot" and "butter", which the Step's refs link to on their own.
-test.beforeAll(() => {
+let user: TestUser;
+
+test.beforeAll(async () => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
+  user = await createTestUser("recipe");
+});
+
+test.afterAll(async () => {
+  if (user) await deleteTestUser(user);
 });
 
 test("writes a Step with two linked Ingredient lines, keeps the chips after a reload, and stores a Revision", async ({
@@ -12,8 +20,8 @@ test("writes a Step with two linked Ingredient lines, keeps the chips after a re
 }) => {
   const name = `E2E sauce ${Date.now()}`;
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await page.getByRole("button", { name: "Recipes" }).click();
@@ -65,8 +73,8 @@ test("won't save an unmatched name until it is linked: a near match adds an alia
   const name = `E2E link ${Date.now()}`;
   const fresh = `zest${Date.now()}`;
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await page.getByRole("button", { name: "Recipes" }).click();
@@ -146,8 +154,8 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
 }) => {
   const name = `E2E retry ${Date.now()}`;
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("button", { name: "Recipes" }).click();
   await page.getByLabel("Recipe name").fill(name);

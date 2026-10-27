@@ -2,18 +2,19 @@ import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
 import { buildWalkthrough, type Walkthrough } from "../shared/test/walkthrough.ts";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The walkthrough Menu is built through POST /mutate; the Service and the Availability through the UI.
-// Overwrites the test user's Availability (D12).
+// Sets this spec's own user's Availability (D12).
 const s = String(Date.now());
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 let w: Walkthrough;
+let user: TestUser;
 
 test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], {
-    encoding: "utf8",
-  }).trim();
+  user = await createTestUser("plan");
+  const { token } = user;
   w = await buildWalkthrough(async (name, args) => {
     const res = await request.post("http://localhost:8787/mutate", {
       headers: { Authorization: `Bearer ${token}` },
@@ -30,6 +31,7 @@ test.afterAll(async () => {
     await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
     await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes))}`;
   }
+  if (user) await deleteTestUser(user);
   await sql.end();
 });
 
@@ -46,8 +48,8 @@ test("adds the Service and Availability, opens the Plan with Tasks Thursday to S
   page,
 }) => {
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
 

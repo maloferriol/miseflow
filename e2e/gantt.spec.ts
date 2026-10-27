@@ -9,9 +9,10 @@ import {
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The Plan's Gantt chart (#89) on the walkthrough with its Chicken stock and Beurre blanc, its
-// Service and Availability, built through POST /mutate. Overwrites the test user's Availability.
+// Service and Availability, built through POST /mutate. Sets this spec's own user's Availability.
 // The tests run in order on one Service: each drag pins Roast the bones somewhere new.
 test.describe.configure({ mode: "serial" });
 
@@ -22,12 +23,12 @@ const timeZone = "Europe/Paris";
 const at = (date: string, hours: number, minutes = 0) =>
   zonedMinute(date, hours * 60 + minutes, timeZone);
 let w: Walkthrough;
+let user: TestUser;
 
 test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], {
-    encoding: "utf8",
-  }).trim();
+  user = await createTestUser("gantt");
+  const { token } = user;
   const run = async (name: string, args: Record<string, unknown>) => {
     const res = await request.post("http://localhost:8787/mutate", {
       headers: { Authorization: `Bearer ${token}` },
@@ -53,13 +54,14 @@ test.afterAll(async () => {
     await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
     await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes) as string[])}`;
   }
+  if (user) await deleteTestUser(user);
   await sql.end();
 });
 
 async function openPlan(page: Page) {
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
   await page.goto(`/?view=plan&service=${serviceId}`);

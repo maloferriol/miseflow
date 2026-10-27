@@ -7,7 +7,7 @@ import { formatMinuteOfDay, type LocalDate, localParts } from "./time.ts";
 
 /** The scheduler's input with the Task `key` moved to `start` and pinned, as `pinTask` stores it. */
 export function withPin(model: PlanningModel, key: TaskKey, start: Minute): PlanningModel {
-  const cookId = model.previous.find((p) => p.key === key)?.cookId ?? model.cooks[0]!.id;
+  const cookId = model.previous.find((p) => p.key === key)?.cookId ?? model.cooks[0].id;
   return {
     ...model,
     previous: [

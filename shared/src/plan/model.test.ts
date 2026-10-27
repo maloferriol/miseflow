@@ -153,7 +153,7 @@ describe("toPlanningModel", () => {
       rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: null }]) }]),
       paris,
     );
-    expect(model.tasks[0]!.steps[0]).toEqual({
+    expect(model.tasks[0].steps[0]).toEqual({
       stepId: "s1",
       activeMinutes: null,
       passiveMinutes: null,
@@ -362,7 +362,7 @@ describe("toPlanningModel with Batches", () => {
       ),
       paris,
     );
-    const keeps = new Map(model.tasks.map((t) => [t.steps[0]!.stepId, t.keepsMinutes]));
+    const keeps = new Map(model.tasks.map((t) => [t.steps[0].stepId, t.keepsMinutes]));
     expect(keeps.get("k1")).toBe(2 * 1440);
     expect(keeps.get("k3")).toBe(4 * 1440);
     expect(keeps.get("k4")).toBeNull();
@@ -399,7 +399,7 @@ describe("toPlanningModel with Batches", () => {
       },
       paris,
     );
-    expect(model.cooks[0]!.free).toEqual([
+    expect(model.cooks[0].free).toEqual([
       { start: utc("2026-10-28T17:00Z"), end: utc("2026-10-28T21:00Z") },
     ]);
   });

@@ -97,10 +97,10 @@ const AMOUNT = new RegExp(
 function parseNumber(text: string): number {
   let total = 0;
   for (const part of text.match(/\d+\/\d+|\d+(?:[.,]\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
-    if (part in VULGAR) total += VULGAR[part]!;
+    if (part in VULGAR) total += VULGAR[part];
     else if (part.includes("/")) {
       const [n, d] = part.split("/").map(Number);
-      total += n! / d!;
+      total += n / d;
     } else total += Number(part.replace(",", "."));
   }
   return total;
@@ -134,8 +134,8 @@ export function parseQuantity(input: string): Quantity {
   if (match) {
     // A number only partly read ("1,000" stops at ","): NaN, which isValidQuantity refuses,
     // even when a "%" means the rest isn't the unit.
-    const partial = /^[.,]\d/.test(match[3]!);
-    value = partial ? NaN : parseNumber(match[1]!);
+    const partial = /^[.,]\d/.test(match[3]);
+    value = partial ? NaN : parseNumber(match[1]);
     max = match[2] ? parseNumber(match[2]) : null;
     rest = match[3]!;
   } else {

@@ -36,7 +36,7 @@ async function readPlan(serviceId: string) {
 
 type Task = { steps: { id: string }[]; start: string; approximate: boolean };
 const taskOf = (plan: { days: { tasks: Task[] }[] }, stepId: string) =>
-  plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0]!.id === stepId);
+  plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0].id === stepId);
 
 // What this file made, soft-deleted afterwards (D12). Overwrites the test user's Availability.
 const made = { menus: [] as string[], services: [] as string[], recipes: [] as string[] };

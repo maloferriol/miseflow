@@ -30,6 +30,9 @@ second checkout resets that user's password: copy the first checkout's `.env` in
   only checks). Markdown, the drizzle-kit migrations, `package-lock.json` and `supabase/` are left
   alone (`.prettierignore`). To have `git blame` skip the one-time reformat, run
   `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+- `npm run lint` runs ESLint (`eslint.config.js`) over `shared`, `server`, `web`, `e2e` and
+  `scripts`, with typescript-eslint's type-aware recommended rules and React's hooks rules in
+  `web`. Warnings fail it too. `npx eslint . --fix` fixes what it can.
 - `npm run e2e` runs the Playwright test (`npx playwright install chromium` once).
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
@@ -40,8 +43,8 @@ second checkout resets that user's password: copy the first checkout's `.env` in
 ## CI and the quality gate
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`: `npm ci`,
-`npm run format:check`, `npm run typecheck`, `npm run build`, then `npm run setup:local`,
-`npm run db:migrate` and `npm run test:coverage` against a local Supabase stack on the runner.
+`npm run format:check`, `npm run lint`, `npm run typecheck`, `npm run build`, then
+`npm run setup:local`, `npm run db:migrate` and `npm run test:coverage` against a local Supabase stack on the runner.
 Any failing step fails the check. The three `lcov.info` files are uploaded as the run's `coverage` artifact, and then the
 SonarQube analysis runs on them.
 
@@ -69,7 +72,7 @@ new security hotspot reviewed, coverage of at least 80%, and at most 3% duplicat
 scan waits for the gate (`sonar.qualitygate.wait`) and fails the CI check when the gate fails.
 The `main: require CI check` ruleset is active and requires the `check` job, so a failing
 check blocks the merge. GitHub withholds secrets from pull requests opened from forks, so on
-those the analysis is skipped and `check` covers formatting, typecheck, build and tests only.
+those the analysis is skipped and `check` covers formatting, lint, typecheck, build and tests only.
 
 **Running the analysis locally** uses the same properties file. Run `npm run test:coverage`
 first, then:

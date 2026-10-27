@@ -171,7 +171,7 @@ export function deriveBatches(input: ScaleInput): { dishes: DishScale[]; batches
     for (const id of reaches(d.dishId, d.recipeId)) {
       const b = sizes.get(id)!;
       if (b.fix !== null)
-        dishes[i]!.fixes.push({ subRecipeId: id, subRecipeName: b.name, text: b.fix });
+        dishes[i].fixes.push({ subRecipeId: id, subRecipeName: b.name, text: b.fix });
     }
   });
 

@@ -3,7 +3,7 @@ import {
   ConflictError,
   getMutator,
   InvalidArgsError,
-  type Mutator,
+  type AnyMutator,
   NotFoundError,
 } from "@miseflow/shared";
 import { eq } from "drizzle-orm";
@@ -27,7 +27,7 @@ type Outcome = "applied" | "replayed" | "conflict";
 // mutator that throws also releases its claim and a retry can apply it.
 export function mutateRoute(
   db: Db,
-  registry: Record<string, Mutator<any>>,
+  registry: Record<string, AnyMutator>,
   timeZone: string,
   now: () => Date,
 ) {

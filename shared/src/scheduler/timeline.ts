@@ -44,12 +44,12 @@ export function fits(timeline: Timeline, start: Minute, end: Minute): boolean {
   let found = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
-    if (timeline[mid]!.start <= start) {
+    if (timeline[mid].start <= start) {
       found = mid;
       lo = mid + 1;
     } else {
       hi = mid - 1;
     }
   }
-  return found >= 0 && timeline[found]!.end >= end;
+  return found >= 0 && timeline[found].end >= end;
 }

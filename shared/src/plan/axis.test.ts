@@ -91,9 +91,9 @@ describe("the Gantt time axis", () => {
     const night = at("2026-10-29", 3);
     const x = toAxis(axis, night);
     const [wed, thu] = axis.segments;
-    expect(x).toBeGreaterThan(toAxis(axis, wed!.end));
-    expect(x).toBeLessThan(toAxis(axis, thu!.start));
-    expect(toAxis(axis, thu!.start) - toAxis(axis, wed!.end)).toBe(axis.seam);
+    expect(x).toBeGreaterThan(toAxis(axis, wed.end));
+    expect(x).toBeLessThan(toAxis(axis, thu.start));
+    expect(toAxis(axis, thu.start) - toAxis(axis, wed.end)).toBe(axis.seam);
     expect(fromAxis(axis, x)).toBeCloseTo(night, 6);
     expect(snap5(fromAxis(axis, x))).toBe(night);
   });
@@ -111,7 +111,7 @@ describe("the Gantt time axis", () => {
       { start: at("2026-10-28", 7), end: at("2026-10-28", 7, 20) },
       { start: at("2026-10-31", 19), end: at("2026-10-31", 19, 30) },
     ]);
-    expect(axis.segments[0]!.start).toBe(at("2026-10-28", 7));
+    expect(axis.segments[0].start).toBe(at("2026-10-28", 7));
     expect(axis.segments.at(-1)!.end).toBe(at("2026-10-31", 19, 30));
   });
 });

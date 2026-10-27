@@ -152,7 +152,7 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
                   onClick={() =>
                     moveStep.mutate({
                       stepId: step.id,
-                      afterStepId: steps[index + 1]!.id,
+                      afterStepId: steps[index + 1].id,
                     })
                   }
                 >

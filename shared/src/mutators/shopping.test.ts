@@ -122,7 +122,7 @@ describe("markGot and unmarkGot", () => {
       });
       await run(tx, "unmarkGot", { serviceId, ingredientId: ids.butter });
       const [row] = await marks(tx, serviceId);
-      expect(row!.deletedAt).not.toBeNull();
+      expect(row.deletedAt).not.toBeNull();
       const list = await readShoppingList(tx, ownerId, serviceId);
       expect(
         list.categories.flatMap((c) => c.rows).find((r) => r.ingredientId === ids.butter)!.got,

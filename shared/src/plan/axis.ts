@@ -109,10 +109,10 @@ export function buildAxis({
 /** Where `minute` falls on the axis. Before the first and after the last segment it runs on 1:1. */
 export function toAxis(axis: Axis, minute: Minute): number {
   const { segments, seam } = axis;
-  const first = segments[0]!;
+  const first = segments[0];
   if (minute < first.start) return first.offset - (first.start - minute);
   for (let i = 0; i < segments.length; i++) {
-    const s = segments[i]!;
+    const s = segments[i];
     if (minute <= s.end) return s.offset + (minute - s.start);
     const next = segments[i + 1];
     if (next && minute < next.start)
@@ -125,10 +125,10 @@ export function toAxis(axis: Axis, minute: Minute): number {
 /** The instant at axis position `x`: the inverse of `toAxis`. Not snapped. */
 export function fromAxis(axis: Axis, x: number): Minute {
   const { segments, seam } = axis;
-  const first = segments[0]!;
+  const first = segments[0];
   if (x < first.offset) return first.start - (first.offset - x);
   for (let i = 0; i < segments.length; i++) {
-    const s = segments[i]!;
+    const s = segments[i];
     const length = s.end - s.start;
     if (x <= s.offset + length) return s.start + (x - s.offset);
     const next = segments[i + 1];

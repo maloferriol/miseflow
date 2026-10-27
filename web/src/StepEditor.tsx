@@ -185,7 +185,7 @@ function StepForm({
         const exactRecipes = recipeHits.filter((h) => h.exact);
         if (exact && !exactRecipes.length) found.set(key, { ingredientId: exact.id });
         else if (!exact && exactRecipes.length === 1)
-          found.set(key, { subRecipeId: exactRecipes[0]!.entry.id });
+          found.set(key, { subRecipeId: exactRecipes[0].entry.id });
         else
           missing.push({
             name: ref.name,

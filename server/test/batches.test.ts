@@ -53,7 +53,7 @@ afterAll(async () => {
   await db
     .update(recipes)
     .set({ deletedAt: sql`now()` })
-    .where(inArray(recipes.id, Object.values(w.recipes) as string[]));
+    .where(inArray(recipes.id, Object.values<string>(w.recipes)));
 });
 
 beforeAll(async () => {
@@ -98,7 +98,7 @@ describe("Batches in the reads", () => {
     const stockTasks = thursday.tasks.filter(
       (t: { batch: { label: string } | null }) => t.batch?.label === label(),
     );
-    expect(stockTasks.map((t: { steps: { text: string }[] }) => t.steps[0]!.text)).toEqual([
+    expect(stockTasks.map((t: { steps: { text: string }[] }) => t.steps[0].text)).toEqual([
       "Roast the bones",
       "Simmer the stock",
       "Strain the stock",

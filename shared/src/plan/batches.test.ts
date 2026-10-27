@@ -104,7 +104,7 @@ describe("deriveBatches", () => {
         region: "metric",
         recipes,
         dishes: [dish("d1", "veloute", scaleFactor)],
-      }).batches[0]!.factor;
+      }).batches[0].factor;
     expect(factorWith(6, null)).toBe(0.5);
     expect(factorWith(18, null)).toBe(0.5);
     expect(factorWith(6, 10)).toBe(0.5);
@@ -123,7 +123,7 @@ describe("deriveBatches", () => {
       recipes,
       dishes: [dish("d1", "dish")],
     });
-    expect(dishes[0]!.factor).toBe(2);
+    expect(dishes[0].factor).toBe(2);
     expect(batches.map((b) => [b.subRecipeId, b.factor])).toEqual([
       ["a", 2],
       ["b", 3],
@@ -156,7 +156,7 @@ describe("deriveBatches", () => {
       dishes: [dish("d1", "veloute"), dish("d2", "duck")],
     });
     expect(batches.map((b) => b.subRecipeId)).toEqual(["stock", "beurre"]);
-    const stockBatch = batches[0]!;
+    const stockBatch = batches[0];
     expect(stockBatch).toMatchObject({
       factor: 1.5,
       parents: [
@@ -232,7 +232,7 @@ describe("deriveBatches", () => {
       dishes: [dish("d1", "veloute")],
     });
     expect(batches[0]).toMatchObject({ factor: 1, scalable: false, fix: "add a yield in g" });
-    expect(dishes[0]!.fixes).toEqual([
+    expect(dishes[0].fixes).toEqual([
       { subRecipeId: "stock", subRecipeName: "Chicken stock", text: "add a yield in g" },
     ]);
   });
@@ -251,7 +251,7 @@ describe("deriveBatches", () => {
       dishes: [dish("d1", "veloute")],
     });
     expect(batches).toEqual([]);
-    expect(dishes[0]!.fixes).toEqual([]);
+    expect(dishes[0].fixes).toEqual([]);
   });
 
   it("counts a range at its upper end", () => {
@@ -261,7 +261,7 @@ describe("deriveBatches", () => {
     ]);
     expect(
       deriveBatches({ guestCount: 6, region: "metric", recipes, dishes: [dish("d1", "veloute")] })
-        .batches[0]!.factor,
+        .batches[0].factor,
     ).toBe(1.5);
   });
 
@@ -272,7 +272,7 @@ describe("deriveBatches", () => {
     ]);
     expect(
       deriveBatches({ guestCount: 12, region: "metric", recipes, dishes: [dish("d1", "veloute")] })
-        .batches[0]!.factor,
+        .batches[0].factor,
     ).toBe(1.5);
   });
 

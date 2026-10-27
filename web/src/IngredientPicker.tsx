@@ -85,7 +85,7 @@ export function IngredientPicker({
     "aria-selected": index === active,
     // Keep focus on the input while picking with the mouse.
     onMouseDown: (event: { preventDefault(): void }) => event.preventDefault(),
-    onClick: () => pick(options[index]!),
+    onClick: () => pick(options[index]),
   });
   const ingredientCount = results.data?.length ?? 0;
 

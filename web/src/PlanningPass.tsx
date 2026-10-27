@@ -208,7 +208,7 @@ function PlanningRow({
   const [ownWindow, setOwnWindow] = useState(step.makeAhead !== null);
   const label = (id: string) => {
     const at = recipe.steps.findIndex((s) => s.id === id);
-    return stepLabel(recipe.steps[at]!, at);
+    return stepLabel(recipe.steps[at], at);
   };
   const waitsFor = recipe.dependencies.filter((d) => d.afterStepId === step.id);
   const others = recipe.steps.filter((s) => s.id !== step.id);

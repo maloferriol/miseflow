@@ -30,8 +30,9 @@ fresh clone `npx supabase start` fails until `npm run setup:local` has run once;
 It also writes the git-ignored `.env` from `npx supabase status`, with a random password for the
 test user (`.env.example` lists the names). An existing `.env` is kept; delete it to write a fresh
 one. Every checkout on this machine shares one local stack and one test user, so running it in a
-second checkout resets that user's password: rerun `npm run setup:local` in the first checkout to
-reset it back. Don't copy another checkout's `.env`.
+second checkout resets that user's password: only the checkout that ran it last
+logs in. When another checkout's tests fail with `Invalid login credentials`, rerun
+`npm run setup:local` there. Don't copy another checkout's `.env`.
 
 - `npm test` runs every workspace's tests against the local stack. `npm run test:coverage` does
   the same and writes `<workspace>/coverage/lcov.info` for `shared`, `server` and `web`.

@@ -50,7 +50,7 @@ describe("preflight", () => {
 
       expect(portProblem(api, [listener], here)).toBe(
         "Port 8787 (API) is held by node (pid 52), started in /Users/cook/miseflow/server, " +
-          "which is another checkout. Stop it there, or run `kill 52`.",
+          "not this checkout. Stop it there, or run `kill 52`.",
       );
     });
 

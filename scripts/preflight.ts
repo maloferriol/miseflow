@@ -1,6 +1,7 @@
 // `npm run preflight`: gets a new local checkout ready to run the app and the tests, or stops at
 // the first problem and names the fix. Run by hand from the checkout's root; running it again
-// changes nothing. Node runs this file directly (type stripping), so it works before `npm ci`.
+// changes nothing. Node runs this file directly (type stripping), so it works before `npm ci`;
+// package.json passes --experimental-strip-types so Node 22 gets the version message too.
 // The decisions live in preflight-checks.ts, which has the tests.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -131,7 +132,9 @@ const sql = postgres(databaseUrl, { max: 1, connect_timeout: 3, onnotice: () => 
 try {
   await sql`select 1`;
 } catch (error) {
-  fail(`The database in .env refuses connections (${(error as Error).message}). ${stackDown}`);
+  fail(
+    `The database at DATABASE_URL refuses connections (${(error as Error).message}). ${stackDown}`,
+  );
 } finally {
   await sql.end();
 }

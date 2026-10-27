@@ -2,7 +2,7 @@
 // the facts (versions, file times, port listeners) and these decide, so the tests need no machine.
 
 /** package.json "engines". */
-export const minimumNodeMajor = 24;
+const minimumNodeMajor = 24;
 
 /** A message naming the problem and its fix, or undefined when `version` (as in `process.version`) is new enough. */
 export function nodeVersionProblem(version: string): string | undefined {
@@ -64,6 +64,6 @@ export function portProblem(
   const where = other.cwd ?? "an unknown directory";
   return (
     `Port ${port.port} (${port.name}) is held by ${other.command} (pid ${other.pid}), ` +
-    `started in ${where}, which is another checkout. Stop it there, or run \`kill ${other.pid}\`.`
+    `started in ${where}, not this checkout. Stop it there, or run \`kill ${other.pid}\`.`
   );
 }

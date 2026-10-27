@@ -10,12 +10,7 @@ import {
   stepDependencies,
   steps,
 } from "../schema.ts";
-import {
-  getMutator,
-  InvalidArgsError,
-  NotFoundError,
-  type Tx,
-} from "./registry.ts";
+import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 
 // A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
 const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
@@ -24,20 +19,17 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
+  await mutator.run(tx, mutator.args.parse(args), {
+    ownerId: owner,
+    timeZone: "Europe/Paris",
+    now: () => FIXED_NOW,
+  });
 }
 
 // Runs a mutation that should be refused in a savepoint, so the checks after it can still run.
-async function refused(
-  tx: Tx,
-  name: string,
-  args: unknown,
-  error: new (...a: any[]) => Error,
-) {
+async function refused(tx: Tx, name: string, args: unknown, error: new (...a: any[]) => Error) {
   let thrown: unknown;
-  await tx
-    .transaction(async (sp) => run(sp, name, args))
-    .catch((e) => (thrown = e));
+  await tx.transaction(async (sp) => run(sp, name, args)).catch((e) => (thrown = e));
   expect(thrown).toBeInstanceOf(error);
   return thrown as Error;
 }
@@ -110,7 +102,11 @@ describe("createSubRecipe", () => {
 
       const created = await revisions(tx, stock);
       expect(created).toMatchObject({ latest: 1, count: 1 });
-      expect(created.rows[0]!.snapshot).toMatchObject({ name: "Chicken stock", yield: null, steps: [] });
+      expect(created.rows[0]!.snapshot).toMatchObject({
+        name: "Chicken stock",
+        yield: null,
+        steps: [],
+      });
       const [line] = await tx.select().from(ingredientLines).where(eq(ingredientLines.id, lineId));
       expect(line).toMatchObject({
         subRecipeId: stock,
@@ -132,7 +128,10 @@ describe("createSubRecipe", () => {
         name: "Chicken stock",
         yield: "2 L",
       });
-      expect((await loadRecipeSnapshot(tx, ownerId, stock)).yield).toEqual({ quantity: 2, unit: "L" });
+      expect((await loadRecipeSnapshot(tx, ownerId, stock)).yield).toEqual({
+        quantity: 2,
+        unit: "L",
+      });
     });
   });
 
@@ -223,7 +222,11 @@ describe("setYield", () => {
   it("stores 1.5 L and appends one Revision whose snapshot has the yield; null clears it", async () => {
     await inRollback(async (tx) => {
       const stock = await createRecipe(tx, "Chicken stock");
-      await run(tx, "setYield", { recipeId: stock, revisionId: crypto.randomUUID(), yield: "1.5 L" });
+      await run(tx, "setYield", {
+        recipeId: stock,
+        revisionId: crypto.randomUUID(),
+        yield: "1.5 L",
+      });
       const [row] = await tx.select().from(recipes).where(eq(recipes.id, stock));
       expect(row).toMatchObject({ yieldQuantity: "1.5", yieldUnit: "L" });
       const after = await revisions(tx, stock);
@@ -240,7 +243,12 @@ describe("setYield", () => {
   it("refuses a pinch, and appends nothing", async () => {
     await inRollback(async (tx) => {
       const stock = await createRecipe(tx, "Chicken stock");
-      await refused(tx, "setYield", { recipeId: stock, revisionId: crypto.randomUUID(), yield: "a pinch" }, InvalidArgsError);
+      await refused(
+        tx,
+        "setYield",
+        { recipeId: stock, revisionId: crypto.randomUUID(), yield: "a pinch" },
+        InvalidArgsError,
+      );
       expect(await revisions(tx, stock)).toMatchObject({ latest: 1, count: 1 });
     });
   });
@@ -272,7 +280,10 @@ async function tarteTatin(tx: Tx) {
       stepId,
       revisionId: crypto.randomUUID(),
       body: ingredientId
-        ? [{ type: "text", text }, { type: "line", lineId }]
+        ? [
+            { type: "text", text },
+            { type: "line", lineId },
+          ]
         : [{ type: "text", text }],
       lines: ingredientId ? [{ lineId, ingredientId, amount: "100%g", wording: "x" }] : [],
     });
@@ -312,7 +323,14 @@ describe("extractToSubRecipe", () => {
       expect(tarte.steps.map((s) => s.id)).toEqual([s1, args.stepId, s4]);
       expect(tarte.steps[1]!.body).toEqual([{ type: "line", lineId: args.lineId }]);
       expect(tarte.steps[1]!.lines).toEqual([
-        expect.objectContaining({ id: args.lineId, subRecipeId: args.subRecipeId, ingredientId: null, quantity: 1, unit: null, wording: "Pastry" }),
+        expect.objectContaining({
+          id: args.lineId,
+          subRecipeId: args.subRecipeId,
+          ingredientId: null,
+          quantity: 1,
+          unit: null,
+          wording: "Pastry",
+        }),
       ]);
 
       const pastryRevisions = await revisions(tx, args.subRecipeId);
@@ -340,7 +358,12 @@ describe("extractToSubRecipe", () => {
     await inRollback(async (tx) => {
       const { recipeId } = await tarteTatin(tx);
       const other = await tarteTatin(tx);
-      await refused(tx, "extractToSubRecipe", extract(recipeId, [other.stepIds[1]!]), NotFoundError);
+      await refused(
+        tx,
+        "extractToSubRecipe",
+        extract(recipeId, [other.stepIds[1]!]),
+        NotFoundError,
+      );
       expect(await revisions(tx, recipeId)).toMatchObject({ latest: 5, count: 5 });
     });
   });
@@ -349,7 +372,12 @@ describe("extractToSubRecipe", () => {
     await inRollback(async (tx) => {
       const { recipeId, stepIds } = await tarteTatin(tx);
       const dependencyId = crypto.randomUUID();
-      await run(tx, "addStepDependency", { dependencyId, revisionId: crypto.randomUUID(), beforeStepId: stepIds[1], afterStepId: stepIds[2] });
+      await run(tx, "addStepDependency", {
+        dependencyId,
+        revisionId: crypto.randomUUID(),
+        beforeStepId: stepIds[1],
+        afterStepId: stepIds[2],
+      });
       const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
       await run(tx, "extractToSubRecipe", args);
       expect((await loadRecipeSnapshot(tx, ownerId, args.subRecipeId)).dependencies).toEqual([
@@ -363,10 +391,18 @@ describe("extractToSubRecipe", () => {
     await inRollback(async (tx) => {
       const { recipeId, stepIds } = await tarteTatin(tx);
       const dependencyId = crypto.randomUUID();
-      await run(tx, "addStepDependency", { dependencyId, revisionId: crypto.randomUUID(), beforeStepId: stepIds[0], afterStepId: stepIds[2] });
+      await run(tx, "addStepDependency", {
+        dependencyId,
+        revisionId: crypto.randomUUID(),
+        beforeStepId: stepIds[0],
+        afterStepId: stepIds[2],
+      });
       const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
       await run(tx, "extractToSubRecipe", args);
-      const [row] = await tx.select().from(stepDependencies).where(eq(stepDependencies.id, dependencyId));
+      const [row] = await tx
+        .select()
+        .from(stepDependencies)
+        .where(eq(stepDependencies.id, dependencyId));
       expect(row!.deletedAt).not.toBeNull();
       expect((await loadRecipeSnapshot(tx, ownerId, args.subRecipeId)).dependencies).toEqual([]);
     });
@@ -377,10 +413,17 @@ describe("extractToSubRecipe", () => {
       const { recipeId, stepIds } = await tarteTatin(tx);
       // Groups: [s1, s2] and [s3, s4]; extracting [s2, s3] splits both.
       for (const stepId of [stepIds[1], stepIds[3]])
-        await run(tx, "setGroupWithPrevious", { stepId, revisionId: crypto.randomUUID(), value: true });
+        await run(tx, "setGroupWithPrevious", {
+          stepId,
+          revisionId: crypto.randomUUID(),
+          value: true,
+        });
       const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
       await run(tx, "extractToSubRecipe", args);
-      const grouped = await tx.select({ id: steps.id, groupWithPrevious: steps.groupWithPrevious }).from(steps).where(eq(steps.groupWithPrevious, true));
+      const grouped = await tx
+        .select({ id: steps.id, groupWithPrevious: steps.groupWithPrevious })
+        .from(steps)
+        .where(eq(steps.groupWithPrevious, true));
       expect(grouped.filter((s) => stepIds.includes(s.id))).toEqual([]);
     });
   });

@@ -31,7 +31,12 @@ test.beforeAll(async ({ request }) => {
   };
   w = await buildWalkthrough(run, s, { stock: true });
   await setWalkthroughAvailability(run);
-  await run("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+  await run("createService", {
+    serviceId,
+    menuId: w.menuId,
+    date: SERVICE_DATE,
+    time: SERVICE_TIME,
+  });
 });
 
 // Soft-deletes the Service, its Batches, the Menu and the Recipes this run made. Local stack only.
@@ -46,7 +51,9 @@ test.afterAll(async () => {
   await sql.end();
 });
 
-test("shows the stock Batch's label on the Menu and its Tasks on Thursday in the Plan", async ({ page }) => {
+test("shows the stock Batch's label on the Menu and its Tasks on Thursday in the Plan", async ({
+  page,
+}) => {
   await page.goto("/");
   await page.getByLabel("Email").fill(user.email);
   await page.getByLabel("Password").fill(user.password);
@@ -60,5 +67,6 @@ test("shows the stock Batch's label on the Menu and its Tasks on Thursday in the
   await page.getByRole("link", { name: "Open Plan" }).click();
   const thursday = page.getByRole("list", { name: "Thursday 29 October" });
   await expect(thursday).toContainText(label);
-  for (const step of ["Roast the bones", "Simmer the stock", "Strain the stock"]) await expect(thursday).toContainText(step);
+  for (const step of ["Roast the bones", "Simmer the stock", "Strain the stock"])
+    await expect(thursday).toContainText(step);
 });

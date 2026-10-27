@@ -49,8 +49,7 @@ export type RecipeSnapshot = {
   dependencies: SnapshotDependency[];
 };
 
-const toNumber = (value: string | null) =>
-  value === null ? null : Number(value);
+const toNumber = (value: string | null) => (value === null ? null : Number(value));
 
 // A window is both columns set; anything else reads as no window.
 const toMakeAhead = (row: {
@@ -77,13 +76,7 @@ export async function loadRecipeSnapshot(
       shelfLifeDays: recipes.shelfLifeDays,
     })
     .from(recipes)
-    .where(
-      and(
-        eq(recipes.id, recipeId),
-        eq(recipes.ownerId, ownerId),
-        isNull(recipes.deletedAt),
-      ),
-    );
+    .where(and(eq(recipes.id, recipeId), eq(recipes.ownerId, ownerId), isNull(recipes.deletedAt)));
   if (!recipe) throw new Error(`Recipe ${recipeId} not found`);
 
   const stepRows = await tx
@@ -98,13 +91,7 @@ export async function loadRecipeSnapshot(
       groupWithPrevious: steps.groupWithPrevious,
     })
     .from(steps)
-    .where(
-      and(
-        eq(steps.recipeId, recipeId),
-        eq(steps.ownerId, ownerId),
-        isNull(steps.deletedAt),
-      ),
-    )
+    .where(and(eq(steps.recipeId, recipeId), eq(steps.ownerId, ownerId), isNull(steps.deletedAt)))
     .orderBy(asc(sql`${steps.position} collate "C"`), asc(steps.id));
   const lineRows = stepRows.length
     ? await tx
@@ -120,10 +107,7 @@ export async function loadRecipeSnapshot(
             isNull(ingredientLines.deletedAt),
           ),
         )
-        .orderBy(
-          asc(sql`${ingredientLines.position} collate "C"`),
-          asc(ingredientLines.id),
-        )
+        .orderBy(asc(sql`${ingredientLines.position} collate "C"`), asc(ingredientLines.id))
     : [];
   // Live links between live Steps only, so a link to a removed Step never shows.
   const stepIds = new Set(stepRows.map((s) => s.id));

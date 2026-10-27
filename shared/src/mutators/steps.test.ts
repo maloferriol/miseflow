@@ -21,7 +21,11 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
+  await mutator.run(tx, mutator.args.parse(args), {
+    ownerId: owner,
+    timeZone: "Europe/Paris",
+    now: () => FIXED_NOW,
+  });
 }
 
 // A Recipe at Revision 1 and two seed Ingredients of the tests' own (see ingredients.test.ts).
@@ -86,10 +90,7 @@ function sweat(f: { shallot: string; butter: string }) {
 }
 
 async function latestRevision(tx: Tx, recipeId: string) {
-  const [recipe] = await tx
-    .select()
-    .from(recipes)
-    .where(eq(recipes.id, recipeId));
+  const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));
   const revisions = await tx
     .select()
     .from(recipeRevisions)
@@ -144,9 +145,7 @@ describe("addStep", () => {
       expect({ latest, count }).toEqual({ latest: 2, count: 2 });
       const revision2 = revisions.find((r) => r.number === 2)!;
       expect(revision2.id).toBe(revisionId);
-      expect(revision2.snapshot).toEqual(
-        await loadRecipeSnapshot(tx, ownerId, f.recipeId),
-      );
+      expect(revision2.snapshot).toEqual(await loadRecipeSnapshot(tx, ownerId, f.recipeId));
     });
   });
 
@@ -168,10 +167,7 @@ describe("addStep", () => {
           },
         ],
       });
-      const [line] = await tx
-        .select()
-        .from(ingredientLines)
-        .where(eq(ingredientLines.id, lineId));
+      const [line] = await tx.select().from(ingredientLines).where(eq(ingredientLines.id, lineId));
       expect(line).toMatchObject({
         quantity: "2",
         quantityMax: "3",
@@ -208,10 +204,9 @@ describe("addStep", () => {
         lines: [line],
       }).success,
     ).toBe(false);
-    expect(
-      args.safeParse({ ...ids, body: [{ type: "line", lineId }], lines: [] })
-        .success,
-    ).toBe(false);
+    expect(args.safeParse({ ...ids, body: [{ type: "line", lineId }], lines: [] }).success).toBe(
+      false,
+    );
     expect(
       args.safeParse({
         ...ids,
@@ -277,9 +272,7 @@ describe("addStep", () => {
             stepId,
             revisionId: crypto.randomUUID(),
             body: [{ type: "line", lineId }],
-            lines: [
-              { lineId, ingredientId: hidden, amount: "1", wording: "thing" },
-            ],
+            lines: [{ lineId, ingredientId: hidden, amount: "1", wording: "thing" }],
           }),
         ),
       ).rejects.toThrow(NotFoundError);
@@ -288,9 +281,7 @@ describe("addStep", () => {
         latest: 1,
         count: 1,
       });
-      expect(await tx.select().from(steps).where(eq(steps.id, stepId))).toEqual(
-        [],
-      );
+      expect(await tx.select().from(steps).where(eq(steps.id, stepId))).toEqual([]);
     });
   });
 
@@ -366,9 +357,7 @@ describe("editStep", () => {
 
       const snapshot = await loadRecipeSnapshot(tx, ownerId, f.recipeId);
       expect(snapshot.steps.map((s) => s.id)).toEqual([stepId]);
-      expect(
-        snapshot.steps[0]!.lines.map((l) => [l.id, l.quantity, l.unit]),
-      ).toEqual([
+      expect(snapshot.steps[0]!.lines.map((l) => [l.id, l.quantity, l.unit])).toEqual([
         [first.shallotLine, 3, null],
         [newLine, 1, "tbsp"],
       ]);
@@ -501,11 +490,7 @@ describe("moveStep", () => {
   it("moves the last Step first: it keeps its id, sorts first and bumps the Revision once", async () => {
     await inRollback(async (tx) => {
       const f = await fixture(tx);
-      const ids = [
-        crypto.randomUUID(),
-        crypto.randomUUID(),
-        crypto.randomUUID(),
-      ];
+      const ids = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
       for (const stepId of ids) {
         await run(tx, "addStep", {
           recipeId: f.recipeId,
@@ -534,11 +519,11 @@ describe("moveStep", () => {
         revisionId: crypto.randomUUID(),
         afterStepId: ids[0],
       });
-      expect(
-        (await loadRecipeSnapshot(tx, ownerId, f.recipeId)).steps.map(
-          (s) => s.id,
-        ),
-      ).toEqual([ids[0], ids[2], ids[1]]);
+      expect((await loadRecipeSnapshot(tx, ownerId, f.recipeId)).steps.map((s) => s.id)).toEqual([
+        ids[0],
+        ids[2],
+        ids[1],
+      ]);
     });
   });
 });
@@ -564,16 +549,9 @@ describe("removeStep", () => {
       const live = await tx
         .select()
         .from(ingredientLines)
-        .where(
-          and(
-            eq(ingredientLines.stepId, stepId),
-            isNull(ingredientLines.deletedAt),
-          ),
-        );
+        .where(and(eq(ingredientLines.stepId, stepId), isNull(ingredientLines.deletedAt)));
       expect(live).toEqual([]);
-      expect((await loadRecipeSnapshot(tx, ownerId, f.recipeId)).steps).toEqual(
-        [],
-      );
+      expect((await loadRecipeSnapshot(tx, ownerId, f.recipeId)).steps).toEqual([]);
       expect(await latestRevision(tx, f.recipeId)).toMatchObject({
         latest: 3,
         count: 3,
@@ -596,12 +574,7 @@ describe("removeStep", () => {
         lines: [],
       });
       await expect(
-        run(
-          tx,
-          "removeStep",
-          { stepId, revisionId: crypto.randomUUID() },
-          crypto.randomUUID(),
-        ),
+        run(tx, "removeStep", { stepId, revisionId: crypto.randomUUID() }, crypto.randomUUID()),
       ).rejects.toThrow(NotFoundError);
       const [step] = await tx.select().from(steps).where(eq(steps.id, stepId));
       expect(step!.deletedAt).toBeNull();
@@ -661,9 +634,7 @@ describe("Step mutations and their Revision", () => {
           count: expected,
         });
         expect(newest.id).toBe(revisionId);
-        expect(newest.snapshot).toEqual(
-          await loadRecipeSnapshot(tx, ownerId, f.recipeId),
-        );
+        expect(newest.snapshot).toEqual(await loadRecipeSnapshot(tx, ownerId, f.recipeId));
       }
     });
   });
@@ -724,8 +695,18 @@ describe("Step moves, removals, groups and dependencies", () => {
   // Steps a, b, c, d with b grouped with a and d with c; links a → b and a → c.
   async function planned(tx: Tx) {
     const { recipeId } = await fixture(tx);
-    const [a, b, c, d] = [0, 1, 2, 3].map(() => crypto.randomUUID()) as [string, string, string, string];
-    for (const [stepId, text] of [[a, "a"], [b, "b"], [c, "c"], [d, "d"]] as const)
+    const [a, b, c, d] = [0, 1, 2, 3].map(() => crypto.randomUUID()) as [
+      string,
+      string,
+      string,
+      string,
+    ];
+    for (const [stepId, text] of [
+      [a, "a"],
+      [b, "b"],
+      [c, "c"],
+      [d, "d"],
+    ] as const)
       await run(tx, "addStep", {
         recipeId,
         stepId,
@@ -734,8 +715,15 @@ describe("Step moves, removals, groups and dependencies", () => {
         lines: [],
       });
     for (const stepId of [b, d])
-      await run(tx, "setGroupWithPrevious", { stepId, revisionId: crypto.randomUUID(), value: true });
-    for (const [beforeStepId, afterStepId] of [[a, b], [a, c]])
+      await run(tx, "setGroupWithPrevious", {
+        stepId,
+        revisionId: crypto.randomUUID(),
+        value: true,
+      });
+    for (const [beforeStepId, afterStepId] of [
+      [a, b],
+      [a, c],
+    ])
       await run(tx, "addStepDependency", {
         dependencyId: crypto.randomUUID(),
         revisionId: crypto.randomUUID(),
@@ -756,8 +744,16 @@ describe("Step moves, removals, groups and dependencies", () => {
         .from(stepDependencies)
         .where(and(eq(stepDependencies.recipeId, recipeId), isNull(stepDependencies.deletedAt)));
       expect(live).toEqual([]);
-      const all = await tx.select().from(stepDependencies).where(eq(stepDependencies.recipeId, recipeId));
-      expect(all.map((d) => [d.beforeStepId, d.afterStepId]).sort()).toEqual([[a, b], [a, c]].sort());
+      const all = await tx
+        .select()
+        .from(stepDependencies)
+        .where(eq(stepDependencies.recipeId, recipeId));
+      expect(all.map((d) => [d.beforeStepId, d.afterStepId]).sort()).toEqual(
+        [
+          [a, b],
+          [a, c],
+        ].sort(),
+      );
     });
   });
 
@@ -794,7 +790,11 @@ describe("Step moves, removals, groups and dependencies", () => {
               await run(sp, "moveStep", { stepId, revisionId: crypto.randomUUID(), afterStepId });
               const snapshot = await loadRecipeSnapshot(sp, ownerId, recipeId);
               for (const group of stepGroups(snapshot.steps))
-                expect({ stepId, afterStepId, groups: new Set(group.stepIds.map((id) => groupOf.get(id))).size }).toEqual({
+                expect({
+                  stepId,
+                  afterStepId,
+                  groups: new Set(group.stepIds.map((id) => groupOf.get(id))).size,
+                }).toEqual({
                   stepId,
                   afterStepId,
                   groups: 1,

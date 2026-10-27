@@ -3,11 +3,7 @@ import type { FormEvent } from "react";
 import { fetchRecipes, mutate } from "./api.ts";
 
 // The kitchen's Recipes, by name, and a "New Recipe" form (#83 Decision 8).
-export function RecipesScreen({
-  onOpen,
-}: {
-  onOpen: (recipeId: string) => void;
-}) {
+export function RecipesScreen({ onOpen }: { onOpen: (recipeId: string) => void }) {
   const queryClient = useQueryClient();
   const recipes = useQuery({ queryKey: ["recipes"], queryFn: fetchRecipes });
   const createRecipe = useMutation({
@@ -28,9 +24,7 @@ export function RecipesScreen({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const name = String(
-      new FormData(event.currentTarget).get("name") ?? "",
-    ).trim();
+    const name = String(new FormData(event.currentTarget).get("name") ?? "").trim();
     if (name) createRecipe.mutate(name);
   }
 

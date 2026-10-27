@@ -15,7 +15,11 @@ export type ShoppingListRead = ShoppingList & { service: { id: string; menuId: s
  * the Plan scales them, the caller's catalog with overrides, the visible Conversions, categories
  * in position order, and the Service's live Got marks. Reads only.
  */
-export async function readShoppingList(tx: Tx, ownerId: string, serviceId: string): Promise<ShoppingListRead> {
+export async function readShoppingList(
+  tx: Tx,
+  ownerId: string,
+  serviceId: string,
+): Promise<ShoppingListRead> {
   const service = await findLiveService(tx, ownerId, serviceId);
   const rows = await loadScaleRows(tx, ownerId, service.menuId);
   const recipes = new Map<string, RecipeSnapshot>(rows.subRecipes);
@@ -31,7 +35,11 @@ export async function readShoppingList(tx: Tx, ownerId: string, serviceId: strin
       .where(visible(shoppingCategories))
       .orderBy(asc(sql`${shoppingCategories.position} collate "C"`), asc(shoppingCategories.id)),
     tx
-      .select({ mass: kitchenSettings.massUnit, volume: kitchenSettings.volumeUnit, count: kitchenSettings.countUnit })
+      .select({
+        mass: kitchenSettings.massUnit,
+        volume: kitchenSettings.volumeUnit,
+        count: kitchenSettings.countUnit,
+      })
       .from(kitchenSettings)
       .where(and(eq(kitchenSettings.ownerId, ownerId), isNull(kitchenSettings.deletedAt)))
       .orderBy(asc(kitchenSettings.id))
@@ -62,7 +70,10 @@ export async function readShoppingList(tx: Tx, ownerId: string, serviceId: strin
 
   const byIngredient = new Map<string, ConversionRow[]>();
   for (const { ingredientId, factor, ...row } of conversionRows)
-    byIngredient.set(ingredientId, [...(byIngredient.get(ingredientId) ?? []), { ...row, factor: Number(factor) }]);
+    byIngredient.set(ingredientId, [
+      ...(byIngredient.get(ingredientId) ?? []),
+      { ...row, factor: Number(factor) },
+    ]);
 
   const list = deriveShoppingList({
     region: rows.region,

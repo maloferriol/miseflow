@@ -12,7 +12,11 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
+  await mutator.run(tx, mutator.args.parse(args), {
+    ownerId: owner,
+    timeZone: "Europe/Paris",
+    now: () => FIXED_NOW,
+  });
 }
 
 async function revisionsOf(tx: Tx, recipeId: string) {
@@ -25,11 +29,15 @@ describe("createRecipe", () => {
     const revisionId = crypto.randomUUID();
     await inRollback(async (tx) => {
       const mutator = getMutator("createRecipe")!;
-      await mutator.run(tx, mutator.args.parse({ recipeId, revisionId, name: "Velouté", servings: 4 }), {
-        ownerId,
-        timeZone: "Europe/Paris",
-        now: () => FIXED_NOW,
-      });
+      await mutator.run(
+        tx,
+        mutator.args.parse({ recipeId, revisionId, name: "Velouté", servings: 4 }),
+        {
+          ownerId,
+          timeZone: "Europe/Paris",
+          now: () => FIXED_NOW,
+        },
+      );
 
       const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));
       expect(recipe).toMatchObject({ name: "Velouté", latestRevision: 1, ownerId });
@@ -42,7 +50,14 @@ describe("createRecipe", () => {
           id: revisionId,
           number: 1,
           ownerId,
-          snapshot: { name: "Velouté", servings: 4, yield: null, makeAhead: null, steps: [], dependencies: [] },
+          snapshot: {
+            name: "Velouté",
+            servings: 4,
+            yield: null,
+            makeAhead: null,
+            steps: [],
+            dependencies: [],
+          },
         }),
       ]);
     });
@@ -66,16 +81,32 @@ describe("editRecipe", () => {
       await run(tx, "createRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Velouté" });
       const revisionId = crypto.randomUUID();
 
-      await run(tx, "editRecipe", { recipeId, revisionId, name: "Velouté de champignons", servings: 6 });
+      await run(tx, "editRecipe", {
+        recipeId,
+        revisionId,
+        name: "Velouté de champignons",
+        servings: 6,
+      });
 
       const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));
-      expect(recipe).toMatchObject({ name: "Velouté de champignons", servings: "6", latestRevision: 2 });
+      expect(recipe).toMatchObject({
+        name: "Velouté de champignons",
+        servings: "6",
+        latestRevision: 2,
+      });
       const revisions = await revisionsOf(tx, recipeId);
       expect(revisions).toHaveLength(2);
       const revision2 = revisions.find((r) => r.number === 2)!;
       expect(revision2.id).toBe(revisionId);
       expect(revision2.snapshot).toEqual(await loadRecipeSnapshot(tx, ownerId, recipeId));
-      expect(revision2.snapshot).toEqual({ name: "Velouté de champignons", servings: 6, yield: null, makeAhead: null, steps: [], dependencies: [] });
+      expect(revision2.snapshot).toEqual({
+        name: "Velouté de champignons",
+        servings: 6,
+        yield: null,
+        makeAhead: null,
+        steps: [],
+        dependencies: [],
+      });
     });
   });
 
@@ -85,7 +116,12 @@ describe("editRecipe", () => {
       await run(tx, "createRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Velouté" });
 
       await expect(
-        run(tx, "editRecipe", { recipeId, revisionId: crypto.randomUUID(), name: "Mine now" }, crypto.randomUUID()),
+        run(
+          tx,
+          "editRecipe",
+          { recipeId, revisionId: crypto.randomUUID(), name: "Mine now" },
+          crypto.randomUUID(),
+        ),
       ).rejects.toThrow(NotFoundError);
 
       expect(await revisionsOf(tx, recipeId)).toHaveLength(1);

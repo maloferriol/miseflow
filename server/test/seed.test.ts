@@ -94,9 +94,7 @@ describe("loadSeed", () => {
       "apples",
       "water",
     ];
-    const missing = walkthrough.filter(
-      (name) => !findIngredient(catalog, name),
-    );
+    const missing = walkthrough.filter((name) => !findIngredient(catalog, name));
     expect(missing).toEqual([]);
     expect(rows.every((row) => row.source === "seed")).toBe(true);
   });
@@ -113,18 +111,29 @@ describe("loadSeed", () => {
 
   it("refuses to take over a user's row that holds a seed id, and rolls back", async () => {
     const id = crypto.randomUUID();
-    await db.insert(ingredients).values({ id, ownerId: crypto.randomUUID(), name: "Theirs", source: "own" });
+    await db
+      .insert(ingredients)
+      .values({ id, ownerId: crypto.randomUUID(), name: "Theirs", source: "own" });
     const [before] = await db.select().from(ingredients).where(eq(ingredients.id, id));
     const seed = readSeed();
-    const extra = { ...seed.ingredients[0]!, id, name: "seeded over theirs", aliases: [], conversions: [] };
+    const extra = {
+      ...seed.ingredients[0]!,
+      id,
+      name: "seeded over theirs",
+      aliases: [],
+      conversions: [],
+    };
 
     try {
-      await expect(loadSeed(db, { ...seed, ingredients: [...seed.ingredients, extra] })).rejects.toThrow(
-        /not a seed row/,
-      );
+      await expect(
+        loadSeed(db, { ...seed, ingredients: [...seed.ingredients, extra] }),
+      ).rejects.toThrow(/not a seed row/);
       expect(await db.select().from(ingredients).where(eq(ingredients.id, id))).toEqual([before]);
     } finally {
-      await db.update(ingredients).set({ deletedAt: sql`now()` }).where(eq(ingredients.id, id));
+      await db
+        .update(ingredients)
+        .set({ deletedAt: sql`now()` })
+        .where(eq(ingredients.id, id));
     }
   });
 });

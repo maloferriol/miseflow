@@ -44,13 +44,8 @@ function singular(word: string): string {
 }
 
 // Lower ranks first: the kitchen's own names and aliases, then seed names, then seed aliases.
-function tier(
-  entry: CatalogEntry,
-  matchedBy: "name" | "alias",
-  source: CatalogSource,
-): number {
-  if (source === "own" || (matchedBy === "name" && entry.source === "own"))
-    return 0;
+function tier(entry: CatalogEntry, matchedBy: "name" | "alias", source: CatalogSource): number {
+  if (source === "own" || (matchedBy === "name" && entry.source === "own")) return 0;
   return matchedBy === "name" ? 1 : 2;
 }
 
@@ -60,10 +55,7 @@ type Ranked<E extends CatalogEntry> = SearchResult<E> & {
 };
 
 // The best way `entry` matches `query` (already normalised): 0 exact, 1 prefix, 2 substring.
-function rank<E extends CatalogEntry>(
-  entry: E,
-  query: string,
-): Ranked<E> | undefined {
+function rank<E extends CatalogEntry>(entry: E, query: string): Ranked<E> | undefined {
   const names = [
     { name: entry.name, matchedBy: "name" as const, source: entry.source },
     ...entry.aliases.map((a) => ({
@@ -97,18 +89,11 @@ function rank<E extends CatalogEntry>(
 }
 
 function byRank(a: Ranked<CatalogEntry>, b: Ranked<CatalogEntry>): number {
-  return (
-    a.kind - b.kind ||
-    a.tier - b.tier ||
-    a.entry.name.localeCompare(b.entry.name)
-  );
+  return a.kind - b.kind || a.tier - b.tier || a.entry.name.localeCompare(b.entry.name);
 }
 
 /** The Ingredient `name` names exactly, if any. A kitchen's own name or alias wins. */
-export function findIngredient<E extends CatalogEntry>(
-  catalog: E[],
-  name: string,
-): E | undefined {
+export function findIngredient<E extends CatalogEntry>(catalog: E[], name: string): E | undefined {
   const query = normaliseName(name);
   if (!query) return undefined;
   const exact = catalog
@@ -126,9 +111,7 @@ export function searchCatalog<E extends CatalogEntry>(
 ): SearchResult<E>[] {
   const normalised = normaliseName(query);
   const ranked = normalised
-    ? catalog
-        .map((entry) => rank(entry, normalised))
-        .filter((r): r is Ranked<E> => !!r)
+    ? catalog.map((entry) => rank(entry, normalised)).filter((r): r is Ranked<E> => !!r)
     : catalog.map((entry) => ({
         entry,
         matchedBy: "name" as const,

@@ -12,13 +12,7 @@ export async function lockRecipe(tx: Tx, ownerId: string, recipeId: string) {
   const [row] = await tx
     .select({ id: recipes.id })
     .from(recipes)
-    .where(
-      and(
-        eq(recipes.id, recipeId),
-        eq(recipes.ownerId, ownerId),
-        isNull(recipes.deletedAt),
-      ),
-    )
+    .where(and(eq(recipes.id, recipeId), eq(recipes.ownerId, ownerId), isNull(recipes.deletedAt)))
     .for("no key update");
   if (!row) throw new NotFoundError("Recipe");
 }
@@ -29,13 +23,7 @@ export async function lockStep(tx: Tx, ownerId: string, stepId: string) {
     tx
       .select({ id: steps.id, recipeId: steps.recipeId })
       .from(steps)
-      .where(
-        and(
-          eq(steps.id, stepId),
-          eq(steps.ownerId, ownerId),
-          isNull(steps.deletedAt),
-        ),
-      );
+      .where(and(eq(steps.id, stepId), eq(steps.ownerId, ownerId), isNull(steps.deletedAt)));
   const [step] = await find();
   if (!step) throw new NotFoundError("Step");
   await lockRecipe(tx, ownerId, step.recipeId);

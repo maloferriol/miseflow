@@ -19,14 +19,10 @@ import {
 // every row has an owner, and rows are soft-deleted where they can change.
 const id = uuid("id").primaryKey();
 const ownerId = uuid("owner_id");
-const updatedAt = timestamp("updated_at", { withTimezone: true })
-  .notNull()
-  .defaultNow();
+const updatedAt = timestamp("updated_at", { withTimezone: true }).notNull().defaultNow();
 const deletedAt = timestamp("deleted_at", { withTimezone: true });
 const position = text("position").notNull();
-const createdAt = timestamp("created_at", { withTimezone: true })
-  .notNull()
-  .defaultNow();
+const createdAt = timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
 export const kitchenSettings = pgTable("kitchen_settings", {
   id,
@@ -57,9 +53,7 @@ export const ingredients = pgTable("ingredients", {
   source: text("source", { enum: ["seed", "own"] }).notNull(),
   preferredKind: text("preferred_kind"),
   mainUnit: text("main_unit"),
-  shoppingCategoryId: uuid("shopping_category_id").references(
-    () => shoppingCategories.id,
-  ),
+  shoppingCategoryId: uuid("shopping_category_id").references(() => shoppingCategories.id),
   updatedAt,
   deletedAt,
 });
@@ -91,9 +85,7 @@ export const ingredientOverrides = pgTable(
       .notNull()
       .references(() => ingredients.id),
     mainUnit: text("main_unit"),
-    shoppingCategoryId: uuid("shopping_category_id").references(
-      () => shoppingCategories.id,
-    ),
+    shoppingCategoryId: uuid("shopping_category_id").references(() => shoppingCategories.id),
     updatedAt,
     deletedAt,
   },
@@ -158,7 +150,9 @@ export const steps = pgTable(
       .references(() => recipes.id),
     position,
     // Tokens map one to one onto Cooklang: text, or a reference to one of this Step's lines.
-    body: jsonb("body").notNull().default(sql`'[]'::jsonb`),
+    body: jsonb("body")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     activeMinutes: integer("active_minutes"),
     passiveMinutes: integer("passive_minutes"),
     makeAheadBeforeDays: integer("make_ahead_before_days"),
@@ -349,10 +343,7 @@ export const taskPlacements = pgTable(
     deletedAt,
   },
   (t) => [
-    check(
-      "task_placements_one_owner",
-      sql`(${t.dishId} is null) <> (${t.batchId} is null)`,
-    ),
+    check("task_placements_one_owner", sql`(${t.dishId} is null) <> (${t.batchId} is null)`),
     unique("task_placements_task")
       .on(t.serviceId, t.dishId, t.batchId, t.firstStepId)
       .nullsNotDistinct(),
@@ -378,10 +369,7 @@ export const stepEvents = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull(),
   },
   (t) => [
-    check(
-      "step_events_one_owner",
-      sql`(${t.dishId} is null) <> (${t.batchId} is null)`,
-    ),
+    check("step_events_one_owner", sql`(${t.dishId} is null) <> (${t.batchId} is null)`),
     index("step_events_service_idx").on(t.serviceId),
   ],
 );
@@ -412,7 +400,5 @@ export const appliedMutations = pgTable("applied_mutations", {
   id,
   ownerId: uuid("owner_id").notNull(),
   name: text("name").notNull(),
-  appliedAt: timestamp("applied_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
 });

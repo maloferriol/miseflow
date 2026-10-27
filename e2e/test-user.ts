@@ -17,15 +17,26 @@ function requireEnv(env: NodeJS.ProcessEnv, name: string): string {
 }
 
 /** Creates a confirmed user e2e-<specName>-<random>@miseflow.test and signs it in. */
-export async function createTestUser(specName: string, env: NodeJS.ProcessEnv = process.env): Promise<TestUser> {
+export async function createTestUser(
+  specName: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<TestUser> {
   assertLocalEnv("createTestUser", env);
   const email = `e2e-${specName}-${randomBytes(6).toString("hex")}@miseflow.test`;
   const password = randomBytes(18).toString("base64url");
 
-  const created = await adminClient(env).auth.admin.createUser({ email, password, email_confirm: true });
+  const created = await adminClient(env).auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
   if (created.error) throw created.error;
 
-  const client = createClient(requireEnv(env, "SUPABASE_URL"), requireEnv(env, "SUPABASE_PUBLISHABLE_KEY"), options);
+  const client = createClient(
+    requireEnv(env, "SUPABASE_URL"),
+    requireEnv(env, "SUPABASE_PUBLISHABLE_KEY"),
+    options,
+  );
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return { id: created.data.user.id, email, password, token: data.session.access_token };

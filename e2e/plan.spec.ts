@@ -37,7 +37,9 @@ test.afterAll(async () => {
 
 // Clicks a save button and waits for its mutation to be applied.
 async function save(page: Page, name: string) {
-  const applied = page.waitForResponse((r) => r.url().endsWith("/api/mutate") && r.request().method() === "POST");
+  const applied = page.waitForResponse(
+    (r) => r.url().endsWith("/api/mutate") && r.request().method() === "POST",
+  );
   await page.getByRole("button", { name, exact: true }).click();
   expect((await applied).status()).toBe(200);
 }
@@ -80,7 +82,9 @@ test("adds the Service and Availability, opens the Plan with Tasks Thursday to S
   await page.getByLabel("From").last().fill("19:00");
   await page.getByLabel("To").last().fill("21:00");
   await save(page, "Save override");
-  await expect(page.getByRole("list", { name: "Date overrides" })).toContainText("2026-10-30: 19:00–21:00");
+  await expect(page.getByRole("list", { name: "Date overrides" })).toContainText(
+    "2026-10-30: 19:00–21:00",
+  );
 
   await page.goto(`/?menu=${w.menuId}`);
   await page.getByRole("link", { name: "Open Plan" }).click();
@@ -89,7 +93,9 @@ test("adds the Service and Availability, opens the Plan with Tasks Thursday to S
     await expect(plan.getByRole("heading", { name: day })).toBeVisible();
     await expect(plan.getByRole("list", { name: day }).getByRole("listitem")).not.toHaveCount(0);
   }
-  await expect(plan.getByRole("list", { name: "Thursday 29 October" })).toContainText("Dry-brine the duck");
+  await expect(plan.getByRole("list", { name: "Thursday 29 October" })).toContainText(
+    "Dry-brine the duck",
+  );
   await expect(plan.getByRole("listitem").filter({ hasText: "≈" })).toHaveCount(1);
 
   const before = await plan.innerText();

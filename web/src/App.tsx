@@ -11,8 +11,18 @@ import { SignIn } from "./SignIn.tsx";
 import { TodayScreen } from "./TodayScreen.tsx";
 import { supabase } from "./supabase.ts";
 
-type View = "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan" | "today" | "shopping";
-const VIEWS: View[] = ["menu", "catalog", "recipes", "recipe", "availability", "plan", "today", "shopping"];
+type View =
+  "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan" | "today" | "shopping";
+const VIEWS: View[] = [
+  "menu",
+  "catalog",
+  "recipes",
+  "recipe",
+  "availability",
+  "plan",
+  "today",
+  "shopping",
+];
 
 // The open view lives in the URL (?view=catalog, ?view=recipe&recipe=<id>,
 // ?view=plan&service=<id>, ?view=today&service=<id>&day=<date>,
@@ -21,7 +31,8 @@ function viewFromUrl(): View {
   const params = new URLSearchParams(window.location.search);
   const view = VIEWS.find((v) => v === params.get("view")) ?? "menu";
   if (view === "recipe" && !params.get("recipe")) return "recipes";
-  if ((view === "plan" || view === "today" || view === "shopping") && !params.get("service")) return "menu";
+  if ((view === "plan" || view === "today" || view === "shopping") && !params.get("service"))
+    return "menu";
   return view;
 }
 
@@ -35,7 +46,9 @@ export function App() {
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const [recipeId, setRecipeId] = useState(() => new URLSearchParams(window.location.search).get("recipe"));
+  const [recipeId, setRecipeId] = useState(() =>
+    new URLSearchParams(window.location.search).get("recipe"),
+  );
   const serviceId = new URLSearchParams(window.location.search).get("service");
 
   function open(next: View, nextRecipeId?: string) {
@@ -65,13 +78,25 @@ export function App() {
               <button type="button" aria-pressed={view === "menu"} onClick={() => open("menu")}>
                 Menu
               </button>
-              <button type="button" aria-pressed={view === "recipes" || view === "recipe"} onClick={() => open("recipes")}>
+              <button
+                type="button"
+                aria-pressed={view === "recipes" || view === "recipe"}
+                onClick={() => open("recipes")}
+              >
                 Recipes
               </button>
-              <button type="button" aria-pressed={view === "catalog"} onClick={() => open("catalog")}>
+              <button
+                type="button"
+                aria-pressed={view === "catalog"}
+                onClick={() => open("catalog")}
+              >
                 Catalog
               </button>
-              <button type="button" aria-pressed={view === "availability"} onClick={() => open("availability")}>
+              <button
+                type="button"
+                aria-pressed={view === "availability"}
+                onClick={() => open("availability")}
+              >
                 Availability
               </button>
             </nav>

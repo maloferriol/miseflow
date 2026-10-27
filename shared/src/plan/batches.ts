@@ -17,7 +17,12 @@ export type ScaleInput = {
 /** What the cook can do so a scale can be worked out: "add a yield", "add a yield in g", "add servings". */
 export type Fix = { subRecipeId: string | null; subRecipeName: string | null; text: string };
 
-export type DishScale = { dishId: string; factor: number; source: "guests" | "set" | "assumed"; fixes: Fix[] };
+export type DishScale = {
+  dishId: string;
+  factor: number;
+  source: "guests" | "set" | "assumed";
+  fixes: Fix[];
+};
 
 export type BatchParent = { kind: "dish" | "batch"; id: string; name: string };
 
@@ -32,21 +37,33 @@ export type SizedBatch = {
   fix: string | null;
 };
 
-type Parent = { kind: "dish"; dishId: string; recipeId: string } | { kind: "batch"; recipeId: string };
+type Parent =
+  { kind: "dish"; dishId: string; recipeId: string } | { kind: "batch"; recipeId: string };
 
 function dishScale(input: ScaleInput, d: ScaleInput["dishes"][number]): DishScale {
-  if (d.scaleFactor !== null) return { dishId: d.dishId, factor: d.scaleFactor, source: "set", fixes: [] };
+  if (d.scaleFactor !== null)
+    return { dishId: d.dishId, factor: d.scaleFactor, source: "set", fixes: [] };
   const servings = input.recipes.get(d.recipeId)?.servings ?? null;
   if (servings && servings > 0 && input.guestCount !== null)
     return { dishId: d.dishId, factor: input.guestCount / servings, source: "guests", fixes: [] };
-  return { dishId: d.dishId, factor: 1, source: "assumed", fixes: [{ subRecipeId: null, subRecipeName: null, text: "add servings" }] };
+  return {
+    dishId: d.dishId,
+    factor: 1,
+    source: "assumed",
+    fixes: [{ subRecipeId: null, subRecipeName: null, text: "add servings" }],
+  };
 }
 
 const parentKey = (p: Parent) => (p.kind === "dish" ? `dish:${p.dishId}` : `batch:${p.recipeId}`);
 const linesOf = (recipe: RecipeSnapshot) => recipe.steps.flatMap((s) => s.lines);
 
 // How many batches of `child` one parent line asks for at `factor`, or the fix when it can't say.
-function batchesFor(line: SnapshotLine, factor: number, child: RecipeSnapshot, region: Region): number | string {
+function batchesFor(
+  line: SnapshotLine,
+  factor: number,
+  child: RecipeSnapshot,
+  region: Region,
+): number | string {
   // A range counts its upper end, as the Shopping list does (§6).
   const amount = line.quantityMax ?? line.quantity;
   const times = line.fixedQuantity ? 1 : factor;
@@ -88,25 +105,32 @@ export function deriveBatches(input: ScaleInput): { dishes: DishScale[]; batches
       }
     }
   };
-  for (const d of input.dishes) if (recipes.has(d.recipeId)) visit({ kind: "dish", dishId: d.dishId, recipeId: d.recipeId });
+  for (const d of input.dishes)
+    if (recipes.has(d.recipeId)) visit({ kind: "dish", dishId: d.dishId, recipeId: d.recipeId });
 
   // Parents before children (Kahn), the earliest first use first among those ready.
-  const pending = new Map(order.map((id) => [id, parentsOf.get(id)!.filter((p) => p.kind === "batch").length]));
+  const pending = new Map(
+    order.map((id) => [id, parentsOf.get(id)!.filter((p) => p.kind === "batch").length]),
+  );
   const childrenOf = new Map<string, string[]>();
   for (const id of order)
-    for (const p of parentsOf.get(id)!) if (p.kind === "batch") childrenOf.set(p.recipeId, [...(childrenOf.get(p.recipeId) ?? []), id]);
+    for (const p of parentsOf.get(id)!)
+      if (p.kind === "batch")
+        childrenOf.set(p.recipeId, [...(childrenOf.get(p.recipeId) ?? []), id]);
   const sizes = new Map<string, SizedBatch>();
   const factorOfDish = new Map(dishes.map((d) => [d.dishId, d.factor]));
   while (pending.size) {
     const id = order.find((o) => pending.get(o) === 0);
     // #84 refuses cycles when a line is linked; this only guards against bad input.
-    if (id === undefined) throw new Error(`Sub-recipe cycle through ${[...pending.keys()].join(", ")}`);
+    if (id === undefined)
+      throw new Error(`Sub-recipe cycle through ${[...pending.keys()].join(", ")}`);
     pending.delete(id);
     const child = recipes.get(id)!;
     let total = 0;
     let fix: string | null = null;
     for (const p of parentsOf.get(id)!) {
-      const factor = p.kind === "dish" ? factorOfDish.get(p.dishId)! : sizes.get(p.recipeId)!.factor;
+      const factor =
+        p.kind === "dish" ? factorOfDish.get(p.dishId)! : sizes.get(p.recipeId)!.factor;
       for (const line of linesOf(recipes.get(p.recipeId)!)) {
         if (line.subRecipeId !== id) continue;
         const n = batchesFor(line, factor, child, region);
@@ -119,11 +143,13 @@ export function deriveBatches(input: ScaleInput): { dishes: DishScale[]; batches
       name: child.name,
       factor: fix === null ? total : 1,
       scalable: fix === null,
-      parents: parentsOf.get(id)!.map((p) =>
-        p.kind === "dish"
-          ? { kind: "dish", id: p.dishId, name: recipes.get(p.recipeId)!.name }
-          : { kind: "batch", id: p.recipeId, name: recipes.get(p.recipeId)!.name },
-      ),
+      parents: parentsOf
+        .get(id)!
+        .map((p) =>
+          p.kind === "dish"
+            ? { kind: "dish", id: p.dishId, name: recipes.get(p.recipeId)!.name }
+            : { kind: "batch", id: p.recipeId, name: recipes.get(p.recipeId)!.name },
+        ),
       fix,
     });
     for (const c of childrenOf.get(id) ?? []) pending.set(c, pending.get(c)! - 1);
@@ -144,7 +170,8 @@ export function deriveBatches(input: ScaleInput): { dishes: DishScale[]; batches
     if (!recipes.has(d.recipeId)) return;
     for (const id of reaches(d.dishId, d.recipeId)) {
       const b = sizes.get(id)!;
-      if (b.fix !== null) dishes[i]!.fixes.push({ subRecipeId: id, subRecipeName: b.name, text: b.fix });
+      if (b.fix !== null)
+        dishes[i]!.fixes.push({ subRecipeId: id, subRecipeName: b.name, text: b.fix });
     }
   });
 
@@ -176,5 +203,13 @@ export type BatchRead = {
 };
 
 export function toBatchRead(b: SizedBatch, id: string | null): BatchRead {
-  return { id, subRecipe: { id: b.subRecipeId, name: b.name }, factor: b.factor, scalable: b.scalable, for: b.parents, label: batchLabel(b), fix: b.fix };
+  return {
+    id,
+    subRecipe: { id: b.subRecipeId, name: b.name },
+    factor: b.factor,
+    scalable: b.scalable,
+    for: b.parents,
+    label: batchLabel(b),
+    fix: b.fix,
+  };
 }

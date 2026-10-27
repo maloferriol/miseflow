@@ -11,7 +11,9 @@ test.afterAll(async () => {
   if (user) await deleteTestUser(user);
 });
 
-test("signs in, builds a Menu, keeps it after a reload, and opens it again from the list", async ({ page }) => {
+test("signs in, builds a Menu, keeps it after a reload, and opens it again from the list", async ({
+  page,
+}) => {
   const menuName = "Saturday dinner";
   await page.goto("/");
   await page.getByLabel("Email").fill(user.email);
@@ -40,7 +42,10 @@ test("signs in, builds a Menu, keeps it after a reload, and opens it again from 
 
   // A fresh visit to the start screen lists the Menu; opening it shows what was saved.
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Your Menus" }).getByRole("link", { name: menuName }).click();
+  await page
+    .getByRole("navigation", { name: "Your Menus" })
+    .getByRole("link", { name: menuName })
+    .click();
   await expect(page.getByRole("heading", { name: menuName })).toBeVisible();
   await expect(page.getByRole("listitem").filter({ hasText: "Velouté" })).toBeVisible();
 });

@@ -26,6 +26,10 @@ second checkout resets that user's password: copy the first checkout's `.env` in
 
 - `npm test` runs every workspace's tests against the local stack. `npm run test:coverage` does
   the same and writes `<workspace>/coverage/lcov.info` for `shared`, `server` and `web`.
+- `npm run format` formats the code and config files with Prettier (`npm run format:check`
+  only checks). Markdown, the drizzle-kit migrations, `package-lock.json` and `supabase/` are left
+  alone (`.prettierignore`). To have `git blame` skip the one-time reformat, run
+  `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 - `npm run e2e` runs the Playwright test (`npx playwright install chromium` once).
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
@@ -36,9 +40,9 @@ second checkout resets that user's password: copy the first checkout's `.env` in
 ## CI and the quality gate
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`: `npm ci`,
-`npm run typecheck`, `npm run build`, then `npm run setup:local`, `npm run db:migrate` and
-`npm run test:coverage` against a local Supabase stack on the runner. Any failing step fails the
-check. The three `lcov.info` files are uploaded as the run's `coverage` artifact, and then the
+`npm run format:check`, `npm run typecheck`, `npm run build`, then `npm run setup:local`,
+`npm run db:migrate` and `npm run test:coverage` against a local Supabase stack on the runner.
+Any failing step fails the check. The three `lcov.info` files are uploaded as the run's `coverage` artifact, and then the
 SonarQube analysis runs on them.
 
 **Connecting the analysis** (once, by the repo owner). The workflow skips the analysis until
@@ -63,10 +67,9 @@ SonarQube analysis runs on them.
 code only (the pull request's changes, or the new-code period on `main`): no new issues, every
 new security hotspot reviewed, coverage of at least 80%, and at most 3% duplicated lines. The
 scan waits for the gate (`sonar.qualitygate.wait`) and fails the CI check when the gate fails.
-To make a failing check block merges, add the `check` job as a required status check in a
-branch ruleset for `main` (Settings → Rules → Rulesets). GitHub withholds secrets from pull
-requests opened from forks, so on those the analysis is skipped and `check` covers typecheck,
-build and tests only.
+The `main: require CI check` ruleset is active and requires the `check` job, so a failing
+check blocks the merge. GitHub withholds secrets from pull requests opened from forks, so on
+those the analysis is skipped and `check` covers formatting, typecheck, build and tests only.
 
 **Running the analysis locally** uses the same properties file. Run `npm run test:coverage`
 first, then:

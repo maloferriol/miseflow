@@ -1,7 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, type Walkthrough } from "../shared/test/walkthrough.ts";
+import {
+  buildWalkthrough,
+  SERVICE_DATE,
+  SERVICE_TIME,
+  type Walkthrough,
+} from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The walkthrough with its Ingredient lines and Pastry (#91), and its Service, built through
@@ -23,7 +28,9 @@ test.beforeAll(async ({ request }) => {
     });
     expect(res.status(), await res.text()).toBe(200);
   };
-  const seed = async (name: string) => (await sql`select id from ingredients where owner_id is null and name = ${name}`)[0]!.id as string;
+  const seed = async (name: string) =>
+    (await sql`select id from ingredients where owner_id is null and name = ${name}`)[0]!
+      .id as string;
   const shopping = {
     shallot: await seed("shallot"),
     butter: await seed("butter"),
@@ -33,7 +40,12 @@ test.beforeAll(async ({ request }) => {
     sugar: await seed("sugar"),
   };
   w = await buildWalkthrough(run, s, { shopping });
-  await run("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+  await run("createService", {
+    serviceId,
+    menuId: w.menuId,
+    date: SERVICE_DATE,
+    time: SERVICE_TIME,
+  });
 });
 
 // Soft-deletes the marks, the Service, its Batches, the Menu and the Recipes this run made. Local stack only.
@@ -60,11 +72,15 @@ async function openShoppingList(page: Page) {
   await expect(page.getByRole("heading", { name: "Shopping list" })).toBeVisible();
 }
 
-test("ticks two rows Got on the walkthrough's Shopping list and keeps them after a reload", async ({ page }) => {
+test("ticks two rows Got on the walkthrough's Shopping list and keeps them after a reload", async ({
+  page,
+}) => {
   await openShoppingList(page);
   // Each tick's POST /mutate has answered before the reload, so its mark is committed.
   for (const name of ["butter", "apple"]) {
-    const saved = page.waitForResponse((res) => res.url().endsWith("/api/mutate") && res.request().method() === "POST" && res.ok());
+    const saved = page.waitForResponse(
+      (res) => res.url().endsWith("/api/mutate") && res.request().method() === "POST" && res.ok(),
+    );
     await page.getByRole("checkbox", { name }).check();
     await saved;
     await expect(page.getByRole("checkbox", { name })).toBeChecked();
@@ -76,7 +92,9 @@ test("ticks two rows Got on the walkthrough's Shopping list and keeps them after
   await expect(page.getByRole("checkbox", { name: "sugar" })).not.toBeChecked();
 });
 
-test("prints the Shopping list's categories, rows, needs and tick boxes without the app chrome", async ({ page }) => {
+test("prints the Shopping list's categories, rows, needs and tick boxes without the app chrome", async ({
+  page,
+}) => {
   await openShoppingList(page);
   await page.emulateMedia({ media: "print" });
 
@@ -84,8 +102,13 @@ test("prints the Shopping list's categories, rows, needs and tick boxes without 
     await expect(page.getByRole("heading", { name: category })).toBeVisible();
   const dairy = page.getByRole("list", { name: "Dairy & eggs" });
   await expect(dairy.getByRole("listitem")).toHaveText(["butter 300 g"]);
-  await expect(page.getByRole("list", { name: "Spices" }).getByRole("listitem")).toHaveText(["salt a pinch"]);
-  await expect(page.getByRole("list", { name: "Produce" }).getByRole("listitem")).toHaveText(["apple 6", "shallot 150 g"]);
+  await expect(page.getByRole("list", { name: "Spices" }).getByRole("listitem")).toHaveText([
+    "salt a pinch",
+  ]);
+  await expect(page.getByRole("list", { name: "Produce" }).getByRole("listitem")).toHaveText([
+    "apple 6",
+    "shallot 150 g",
+  ]);
   for (const name of ["butter", "apple", "shallot", "all-purpose flour", "sugar", "salt"])
     await expect(page.getByRole("checkbox", { name })).toBeVisible();
 

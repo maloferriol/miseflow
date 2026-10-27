@@ -37,8 +37,13 @@ function wallClock(minute: Minute, timeZone: string): number {
       .map((p) => [p.type, p.value]),
   );
   return (
-    Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute)) /
-    60_000
+    Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+    ) / 60_000
   );
 }
 
@@ -80,7 +85,10 @@ export function zonedMinute(date: LocalDate, minuteOfDay: number, timeZone: stri
   return wall - before;
 }
 
-export function localParts(minute: Minute, timeZone: string): { date: LocalDate; minuteOfDay: number; weekday: number } {
+export function localParts(
+  minute: Minute,
+  timeZone: string,
+): { date: LocalDate; minuteOfDay: number; weekday: number } {
   const wall = wallClock(minute, timeZone);
   const day = Math.floor(wall / DAY);
   const date = fromDayNumber(day);
@@ -106,6 +114,7 @@ export function formatMinuteOfDay(minuteOfDay: number): string {
 
 /** "Thu 29 Oct 18:00": an instant in `timeZone`, for "Printed at" and the time behind is measured at. */
 export function formatInstant(date: Date, timeZone: string): string {
-  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone, ...options }).format(date);
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-GB", { timeZone, ...options }).format(date);
   return `${part({ weekday: "short" })} ${part({ day: "numeric", month: "short" })} ${part({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`;
 }

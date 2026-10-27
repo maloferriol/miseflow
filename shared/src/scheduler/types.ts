@@ -9,9 +9,7 @@
 export type Minute = number;
 
 /** Who a Task belongs to: a Dish or a Batch. */
-export type Owner =
-  | { kind: "dish"; dishId: string }
-  | { kind: "batch"; batchId: string };
+export type Owner = { kind: "dish"; dishId: string } | { kind: "batch"; batchId: string };
 
 /** ADR 0010 key: `${kind}:${ownerId}:${firstStepId}`. Build it with `taskKey`. */
 export type TaskKey = string;
@@ -83,7 +81,14 @@ export interface Plan {
  * `readyAt` its real ready time (#88 owner decision 2).
  */
 export type Conflict =
-  | { key: TaskKey; kind: "ShelfLifeExceeded"; readyAt: Minute; keepsUntil: Minute; use: TaskKey | null; useAt: Minute }
+  | {
+      key: TaskKey;
+      kind: "ShelfLifeExceeded";
+      readyAt: Minute;
+      keepsUntil: Minute;
+      use: TaskKey | null;
+      useAt: Minute;
+    }
   | { key: TaskKey; kind: "EarliestUseTooLate"; readyAt: Minute; use: TaskKey; useAt: Minute }
   | { key: TaskKey; kind: "Outrun"; by: TaskKey; readyAt: Minute; start: Minute };
 

@@ -4,6 +4,9 @@
  * The Unplaced Tasks plus the conflicts, one per row of the Conflicts list. Recipe changed notes
  * don't count: they are out of #90's scope (plan addendum 1, point B).
  */
-export function planTrouble(plan: { unplaced: readonly unknown[]; conflicts: readonly unknown[] }): number {
+export function planTrouble(plan: {
+  unplaced: readonly unknown[];
+  conflicts: readonly unknown[];
+}): number {
   return plan.unplaced.length + plan.conflicts.length;
 }

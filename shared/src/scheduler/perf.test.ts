@@ -8,7 +8,9 @@ describe("schedule performance", () => {
     const t0 = performance.now();
     const plan = schedule(input);
     const ms = performance.now() - t0;
-    console.log(`500 Tasks: ${ms.toFixed(1)} ms (${plan.placements.length} placed, ${plan.unplaced.length} unplaced)`);
+    console.log(
+      `500 Tasks: ${ms.toFixed(1)} ms (${plan.placements.length} placed, ${plan.unplaced.length} unplaced)`,
+    );
 
     expect(plan.placements.length + plan.unplaced.length).toBe(500);
     expect(ms).toBeLessThan(2000);

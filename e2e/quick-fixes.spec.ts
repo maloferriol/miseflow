@@ -32,7 +32,12 @@ test.beforeAll(async ({ request }) => {
   };
   w = await buildWalkthrough(run, s);
   await setWalkthroughAvailability(run);
-  await run("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+  await run("createService", {
+    serviceId,
+    menuId: w.menuId,
+    date: SERVICE_DATE,
+    time: SERVICE_TIME,
+  });
 });
 
 // Soft-deletes the Service, the Menu and the Recipes this run made, then the user. Local stack only.
@@ -47,20 +52,29 @@ test.afterAll(async () => {
 });
 
 const mutated = (page: Page) =>
-  page.waitForResponse((r) => r.url().endsWith("/api/mutate") && r.request().method() === "POST" && r.ok());
+  page.waitForResponse(
+    (r) => r.url().endsWith("/api/mutate") && r.request().method() === "POST" && r.ok(),
+  );
 
 // Every bar's start by Task key (copies of one Task must agree).
 async function starts(gantt: Locator) {
-  const bars = await gantt.locator("[data-key]").evaluateAll((els) => els.map((el) => [el.getAttribute("data-key")!, el.getAttribute("data-start")!]));
+  const bars = await gantt
+    .locator("[data-key]")
+    .evaluateAll((els) =>
+      els.map((el) => [el.getAttribute("data-key")!, el.getAttribute("data-start")!]),
+    );
   const out: Record<string, string> = {};
   for (const [key, start] of bars) {
-    if (key in out && out[key] !== start) throw new Error(`Copies of ${key} disagree: ${out[key]} and ${start}`);
+    if (key in out && out[key] !== start)
+      throw new Error(`Copies of ${key} disagree: ${out[key]} and ${start}`);
     out[key] = start!;
   }
   return out;
 }
 
-test("AC6: Friday shortened leaves the pastry Unplaced with Plan trouble 1; Give the Cook more time brings it back and moves nothing else", async ({ page }) => {
+test("AC6: Friday shortened leaves the pastry Unplaced with Plan trouble 1; Give the Cook more time brings it back and moves nothing else", async ({
+  page,
+}) => {
   await page.goto("/");
   await page.getByLabel("Email").fill(user.email);
   await page.getByLabel("Password").fill(user.password);
@@ -73,8 +87,13 @@ test("AC6: Friday shortened leaves the pastry Unplaced with Plan trouble 1; Give
   await page.getByLabel("Date", { exact: true }).fill(FRIDAY);
   await page.getByLabel("From").last().fill("19:35");
   await page.getByLabel("To").last().fill("21:00");
-  await Promise.all([mutated(page), page.getByRole("button", { name: "Save override", exact: true }).click()]);
-  await expect(page.getByRole("list", { name: "Date overrides" })).toContainText(`${FRIDAY}: 19:35–21:00`);
+  await Promise.all([
+    mutated(page),
+    page.getByRole("button", { name: "Save override", exact: true }).click(),
+  ]);
+  await expect(page.getByRole("list", { name: "Date overrides" })).toContainText(
+    `${FRIDAY}: 19:35–21:00`,
+  );
 
   await page.goto(`/?view=plan&service=${serviceId}`);
   const gantt = page.getByRole("region", { name: "Gantt chart" });
@@ -89,12 +108,17 @@ test("AC6: Friday shortened leaves the pastry Unplaced with Plan trouble 1; Give
   const before = await starts(gantt);
   expect(Object.keys(before)).toHaveLength(9);
 
-  await Promise.all([mutated(page), pastry.getByRole("button", { name: "Give the Cook more time" }).click()]);
+  await Promise.all([
+    mutated(page),
+    pastry.getByRole("button", { name: "Give the Cook more time" }).click(),
+  ]);
   await expect(pastryBar).toHaveCount(1);
   await expect(page.getByRole("status", { name: /Plan trouble/ })).toHaveCount(0);
   await expect(page.getByText("Every Task is planned")).toBeVisible();
   const after = await starts(gantt);
-  expect(Object.fromEntries(Object.entries(after).filter(([key]) => key !== pastryKey))).toEqual(before);
+  expect(Object.fromEntries(Object.entries(after).filter(([key]) => key !== pastryKey))).toEqual(
+    before,
+  );
 
   await page.reload();
   await expect(pastryBar).toHaveCount(1);

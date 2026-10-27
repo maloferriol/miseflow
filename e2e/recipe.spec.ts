@@ -30,22 +30,16 @@ test("writes a Step with two linked Ingredient lines, keeps the chips after a re
   await expect(page.getByRole("heading", { name })).toBeVisible();
 
   await page.getByRole("button", { name: "Add Step" }).click();
-  await page
-    .getByLabel("Step text")
-    .fill("Sweat @shallots{2}(brunoise) in @butter{30%g}");
+  await page.getByLabel("Step text").fill("Sweat @shallots{2}(brunoise) in @butter{30%g}");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("button", { name: /^shallots/ })).toBeVisible();
 
   await page.reload();
 
   await expect(page.getByRole("heading", { name })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "shallots 2 · brunoise" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "shallots 2 · brunoise" })).toBeVisible();
   await expect(page.getByRole("button", { name: "butter 30 g" })).toBeVisible();
-  const ingredients = page
-    .getByRole("list", { name: "Ingredients" })
-    .getByRole("listitem");
+  const ingredients = page.getByRole("list", { name: "Ingredients" }).getByRole("listitem");
   await expect(ingredients).toHaveCount(2);
   await expect(ingredients.nth(0)).toHaveText(/2 shallots, brunoise/);
   await expect(ingredients.nth(1)).toHaveText(/30 g butter/);
@@ -95,9 +89,7 @@ test("won't save an unmatched name until it is linked: a near match adds an alia
 
   // Neither name is exact, so the Step waits for both to be linked.
   await expect(page.getByRole("group", { name: "Link ‘butte’" })).toBeVisible();
-  await expect(
-    page.getByRole("group", { name: `Link ‘${fresh}’` }),
-  ).toBeVisible();
+  await expect(page.getByRole("group", { name: `Link ‘${fresh}’` })).toBeVisible();
   await expect(save).toBeDisabled();
 
   await page
@@ -115,9 +107,7 @@ test("won't save an unmatched name until it is linked: a near match adds an alia
   await save.click();
 
   await expect(page.getByRole("button", { name: /^butte 30 g/ })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: new RegExp(`^${fresh}`) }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: new RegExp(`^${fresh}`) })).toBeVisible();
 
   const recipeId = new URL(page.url()).searchParams.get("recipe")!;
   const sql = postgres(process.env.DATABASE_URL!, {
@@ -176,10 +166,7 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
   const dropped = new Set<string>();
   await page.route("**/api/mutate", async (route) => {
     const mutation = route.request().postDataJSON() as { name: string };
-    if (
-      ["addStep", "editStep"].includes(mutation.name) &&
-      !dropped.has(mutation.name)
-    ) {
+    if (["addStep", "editStep"].includes(mutation.name) && !dropped.has(mutation.name)) {
       dropped.add(mutation.name);
       await route.fetch();
       await route.abort("failed");

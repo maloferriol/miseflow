@@ -2,14 +2,14 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { db, inRollback } from "../../test/db.ts";
+import { db, inRollback, underUncommittedChild } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../../test/walkthrough.ts";
 import { batchId, readMenuScale } from "../plan/batch-rows.ts";
 import { toPlanningModel } from "../plan/model.ts";
 import { loadPlanRows, readPlan } from "../plan/replan.ts";
 import { localParts, zonedMinute } from "../plan/time.ts";
 import { schedule } from "../scheduler/schedule.ts";
-import { batches, dishes, services, taskPlacements } from "../schema.ts";
+import { batches, dishes, services, stepEvents, taskPlacements } from "../schema.ts";
 import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 import { lockRecipe } from "./revision.ts";
 
@@ -384,6 +384,33 @@ describe("Batch rows and Recipe locks", () => {
       await db.execute(sql`update menus set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
       await db.execute(sql`update recipes set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
       await Promise.all(clients.map((c) => c.end()));
+    }
+  });
+});
+
+// #113: the Dish's lock is FOR NO KEY UPDATE, so an uncommitted Step event of the Dish doesn't block it.
+describe("setDishScale locks", () => {
+  it("doesn't wait for an uncommitted Step event of the Dish", async () => {
+    const owner = crypto.randomUUID();
+    const as = (tx: Tx) => (name: string, args: Record<string, unknown>) => run(tx, name, args, owner);
+    const serviceId = crypto.randomUUID();
+    try {
+      let w!: Walkthrough;
+      await db.transaction(async (tx) => {
+        w = await buildWalkthrough(as(tx), owner.slice(0, 8));
+        await as(tx)("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+      });
+      await underUncommittedChild(
+        (tx) => tx.insert(stepEvents).values({ id: crypto.randomUUID(), ownerId: owner, serviceId, dishId: w.dishes.duck, stepId: w.steps.D1, kind: "done", at: FIXED_NOW }),
+        async (tx) => {
+          await as(tx)("setDishScale", { dishId: w.dishes.duck, scale: { kind: "factor", factor: 2 } });
+          expect(await scaleOf(tx, w.dishes.duck)).toBe("2");
+        },
+      );
+    } finally {
+      await db.execute(sql`update services set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await db.execute(sql`update menus set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
+      await db.execute(sql`update recipes set deleted_at = now() where owner_id = ${owner} and deleted_at is null`);
     }
   });
 });

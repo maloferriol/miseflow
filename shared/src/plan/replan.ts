@@ -45,7 +45,7 @@ export async function ensureCook(tx: Tx, ownerId: string): Promise<string> {
 /** The implicit Cook, row-locked, so Availability saves of one owner run one after another (D10). */
 export async function lockCook(tx: Tx, ownerId: string): Promise<string> {
   const cookId = await ensureCook(tx, ownerId);
-  await tx.select({ id: cooks.id }).from(cooks).where(and(eq(cooks.id, cookId), eq(cooks.ownerId, ownerId))).for("update");
+  await tx.select({ id: cooks.id }).from(cooks).where(and(eq(cooks.id, cookId), eq(cooks.ownerId, ownerId))).for("no key update");
   return cookId;
 }
 

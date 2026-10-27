@@ -13,7 +13,7 @@ import { schedule } from "../scheduler/schedule.ts";
 import { taskKey, type PreviousPlacement } from "../scheduler/types.ts";
 import { services } from "../schema.ts";
 import { type PlanRows, toPlanningModel } from "./model.ts";
-import { smallestOverride, type OverrideProposal } from "./more-time.ts";
+import { MAX_TRIALS, smallestOverride, type OverrideProposal } from "./more-time.ts";
 import { loadPlanRows } from "./replan.ts";
 import { zonedMinute } from "./time.ts";
 
@@ -39,6 +39,26 @@ const withOverride = (rows: PlanRows, p: OverrideProposal): PlanRows => ({
     { date: p.date, hours: { start: p.start, end: p.end } },
   ],
 });
+
+// The proposal the search found for `key`.
+function found(rows: PlanRows, key: string): OverrideProposal {
+  const result = smallestOverride(rows, timeZone, key);
+  if (result.kind !== "found") throw new Error(`expected a proposal, got ${result.kind}`);
+  return result.proposal;
+}
+
+// A refusal, proven or capped, within the cap's schedule() runs and a loose time backstop. The run
+// count is the real gate: under CI's coverage, 50 schedule() runs over a 30-day window take ~1.6 s.
+const TIME_BUDGET_MS = 3000;
+function expectBoundedRefusal(rows: PlanRows, key: string) {
+  const started = performance.now();
+  const result = smallestOverride(rows, timeZone, key);
+  const elapsed = performance.now() - started;
+  expect(result.kind).not.toBe("found");
+  expect(result.runs).toBeLessThanOrEqual(MAX_TRIALS);
+  expect(elapsed).toBeLessThan(TIME_BUDGET_MS);
+  return result;
+}
 
 // Whether a schedule() run over `rows` places `key`.
 const placesAlone = (rows: PlanRows, key: string) =>
@@ -86,10 +106,10 @@ describe("smallestOverride on the walkthrough", () => {
         key,
       ]);
 
-      const proposal = smallestOverride(rows, timeZone, key);
+      const proposal = found(rows, key);
       // Friday's override starts earlier; ending later can't help, the pastry must be done by T2 at Fri 19:50.
       expect(proposal).toEqual({ date: "2026-10-30", start: h(19, 30), end: h(21) });
-      expectSmallest(rows, key, proposal!, "start");
+      expectSmallest(rows, key, proposal, "start");
     });
   });
 });
@@ -124,11 +144,11 @@ describe("smallestOverride on a BlockedByPin Task", () => {
       const key = taskKey(tarte, w.steps.T1);
       expect(reasonOf(rows, key)).toBe("BlockedByPin");
 
-      const proposal = smallestOverride(rows, timeZone, key);
+      const proposal = found(rows, key);
       // Friday's 19:00 start moves 5 minutes earlier: the pastry's 20 minutes end at the pinned 19:15.
       expect(proposal).toEqual({ date: "2026-10-30", start: h(18, 55), end: h(21) });
-      expectSmallest(rows, key, proposal!, "start");
-      const after = schedule(toPlanningModel(withOverride(rows, proposal!), timeZone).model);
+      expectSmallest(rows, key, proposal, "start");
+      const after = schedule(toPlanningModel(withOverride(rows, proposal), timeZone).model);
       expect(after.placements.find((p) => p.key === taskKey(tarte, w.steps.T2))).toMatchObject({
         start: fri1915,
       });
@@ -212,9 +232,9 @@ describe("smallestOverride: the combinations grid", () => {
     });
     const key = dishKey("d", "s1");
     expect(reasonOf(r, key)).toBe("NoAvailability");
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(9, 30) });
-    expectSmallest(r, key, p!, "end");
+    expectSmallest(r, key, p, "end");
     // Starting 10 minutes earlier would place it too, at the same cost.
     expect(
       placesAlone(withOverride(r, { date: "2026-10-31", start: h(8, 50), end: h(9, 20) }), key),
@@ -227,9 +247,9 @@ describe("smallestOverride: the combinations grid", () => {
       overrides: [{ date: "2026-10-31", hours: { start: h(9), end: h(9, 20) } }],
     });
     const key = dishKey("d", "s1");
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(9, 30) });
-    expectSmallest(r, key, p!, "end");
+    expectSmallest(r, key, p, "end");
   });
 
   it("weekly hours, start earlier: when the Task must end by the hours' end, they start earlier", () => {
@@ -239,9 +259,9 @@ describe("smallestOverride: the combinations grid", () => {
       time: h(9, 20),
     });
     const key = dishKey("d", "s1");
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(8, 50), end: h(9, 20) });
-    expectSmallest(r, key, p!, "start");
+    expectSmallest(r, key, p, "start");
   });
 
   it("no hours that date: a new range of exactly the active minutes, on the later date of a tie", () => {
@@ -254,9 +274,9 @@ describe("smallestOverride: the combinations grid", () => {
     ]);
     const key = dishKey("d", "s1");
     expect(reasonOf(r, key)).toBe("NoAvailability");
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(19, 5), end: h(19, 30) });
-    expectSmallest(r, key, p!, "start");
+    expectSmallest(r, key, p, "start");
   });
 
   it("a date that is off (override with no hours) gets new hours", () => {
@@ -265,9 +285,9 @@ describe("smallestOverride: the combinations grid", () => {
       overrides: [{ date: "2026-10-31", hours: null }],
     });
     const key = dishKey("d", "s1");
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(19, 5), end: h(19, 30) });
-    expectSmallest(r, key, p!, "start");
+    expectSmallest(r, key, p, "start");
   });
 
   it("two weekly ranges: one range covering both, the gap counted as added time", () => {
@@ -278,11 +298,11 @@ describe("smallestOverride: the combinations grid", () => {
     ];
     const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], { weekly: two });
     const key = dishKey("d", "s1");
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     // Ending the later range 10 minutes later costs 10 minutes but drops the earlier range: one
     // override range holds both, so the 40-minute gap counts and the merge is the cheapest.
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(10, 20) });
-    expectSmallest(r, key, p!, "none");
+    expectSmallest(r, key, p, "none");
     // Either range widened by the 10 minutes it lacks, but kept apart, would place it: one override can't.
     expect(placesAlone({ ...r, weekly: [two[0], { ...two[1], end: h(10, 30) }] }, key)).toBe(true);
 
@@ -296,9 +316,9 @@ describe("smallestOverride: the combinations grid", () => {
       ],
       { weekly: two },
     );
-    const q = smallestOverride(ahead, timeZone, key);
+    const q = found(ahead, key);
     expect(q).toEqual({ date: "2026-10-30", start: h(23, 30), end: h(24) });
-    expectSmallest(ahead, key, q!, "start");
+    expectSmallest(ahead, key, q, "start");
   });
 
   it("active then passive past the hours' end: only the active time needs hours", () => {
@@ -307,27 +327,27 @@ describe("smallestOverride: the combinations grid", () => {
       weekly: [{ weekday: SAT, start: h(9), end: h(9, 15) }],
     });
     const key = dishKey("d", "s1");
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(9, 20) });
-    expectSmallest(r, key, p!, "end");
+    expectSmallest(r, key, p, "end");
   });
 
-  it("WindowTooTight: no Availability can help, so null", () => {
+  it("WindowTooTight: no Availability can help, so a proven refusal", () => {
     // 30 active minutes before a Service at 00:20.
     const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], {
       time: h(0, 20),
     });
     const key = dishKey("d", "s1");
     expect(reasonOf(r, key)).toBe("WindowTooTight");
-    expect(smallestOverride(r, timeZone, key)).toBeNull();
+    expect(smallestOverride(r, timeZone, key)).toEqual({ kind: "none", runs: 0 });
   });
 
-  it("a placed Task, or one that isn't there, gets null", () => {
+  it("a placed Task, or one that isn't there, gets a proven refusal", () => {
     const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], {
       weekly: [{ weekday: SAT, start: h(9), end: h(10) }],
     });
-    expect(smallestOverride(r, timeZone, dishKey("d", "s1"))).toBeNull();
-    expect(smallestOverride(r, timeZone, dishKey("d", "nope"))).toBeNull();
+    expect(smallestOverride(r, timeZone, dishKey("d", "s1"))).toEqual({ kind: "none", runs: 0 });
+    expect(smallestOverride(r, timeZone, dishKey("d", "nope"))).toEqual({ kind: "none", runs: 0 });
   });
 
   it("a candidate that would push a placed predecessor is rejected, and the next cheapest one is taken", () => {
@@ -371,12 +391,12 @@ describe("smallestOverride: the combinations grid", () => {
       zonedMinute("2026-10-31", h(9), timeZone),
     );
 
-    const p = smallestOverride(r, timeZone, key);
+    const p = found(r, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(10, 40) });
-    expectSmallest(r, key, p!, "end");
+    expectSmallest(r, key, p, "end");
   });
 
-  it("when every candidate would push a placed predecessor, null", () => {
+  it("when every candidate would push a placed predecessor: a refusal within the cap", () => {
     // As above with the Service on Fri 18:30 and Fri 18:00–18:30 holding P: K can only go before P.
     const r = rows(
       [
@@ -404,6 +424,76 @@ describe("smallestOverride: the combinations grid", () => {
     );
     const key = dishKey("d", "k");
     expect(reasonOf(r, key)).toBe("NoAvailability");
-    expect(smallestOverride(r, timeZone, key)).toBeNull();
+    expect(expectBoundedRefusal(r, key)).toEqual({ kind: "capped", runs: MAX_TRIALS });
+  });
+});
+
+describe("smallestOverride's refusal path stays bounded (#121)", () => {
+  // P (30) then K (40) in one Dish, P held at the last minute before the Service: K can only go
+  // after P, so every override that places K moves P earlier. Made up to 30 days ahead.
+  const pushed = (
+    fillers: number,
+    hours: { weekly: PlanRows["weekly"]; date: string; time: number; pAt: number },
+  ) =>
+    rows(
+      [
+        {
+          dishId: "d",
+          recipe: recipe(
+            [
+              { id: "p", active: 30 },
+              { id: "k", active: 40 },
+            ],
+            { beforeDays: 30, shelfLifeDays: 31 },
+          ),
+        },
+        ...Array.from({ length: fillers }, (_, i) => ({
+          dishId: `f${i}`,
+          recipe: recipe([{ id: `f${i}s`, active: 20 }], { beforeDays: 30, shelfLifeDays: 31 }),
+        })),
+      ],
+      {
+        weekly: hours.weekly,
+        date: hours.date,
+        time: hours.time,
+        previous: [
+          {
+            key: dishKey("d", "p"),
+            start: zonedMinute(hours.date, hours.pAt, timeZone),
+            cookId: "cook",
+            pinned: false,
+          },
+        ],
+      },
+    );
+
+  it("a 30-day make-ahead window, 10 Tasks, hours on Saturdays only", () => {
+    // P and K plus 8 twenty-minute Tasks; each Saturday 09:00–09:30 holds P or one of them.
+    const r = pushed(8, {
+      weekly: [{ weekday: SAT, start: h(9), end: h(9, 30) }],
+      date: "2026-10-31",
+      time: h(9, 30),
+      pAt: h(9),
+    });
+    const key = dishKey("d", "k");
+    expect(reasonOf(r, key)).toBe("NoAvailability");
+    expect(expectBoundedRefusal(r, key)).toEqual({ kind: "capped", runs: MAX_TRIALS });
+  });
+
+  it("a 30-day window with hours every day, where many candidates pass the pre-filter and each would push P", () => {
+    // Every date's 18:00–18:30 widened by 10 minutes holds K, so each candidate needs a schedule() run.
+    const r = pushed(0, {
+      weekly: Array.from({ length: 7 }, (_, weekday) => ({
+        weekday,
+        start: h(18),
+        end: h(18, 30),
+      })),
+      date: "2026-10-30",
+      time: h(18, 30),
+      pAt: h(18),
+    });
+    const key = dishKey("d", "k");
+    expect(reasonOf(r, key)).toBe("NoAvailability");
+    expect(expectBoundedRefusal(r, key)).toEqual({ kind: "capped", runs: MAX_TRIALS });
   });
 });

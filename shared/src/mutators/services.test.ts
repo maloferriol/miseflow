@@ -579,6 +579,8 @@ const liveOverrides = (tx: Tx, owner = ownerId) =>
     .where(and(eq(availabilityOverrides.ownerId, owner), isNull(availabilityOverrides.deletedAt)));
 
 const NO_FIT = "No extra time on one date fits this Task without moving others";
+const TOO_MANY =
+  "Too many options to check for this Task. Add hours on the Availability screen instead.";
 
 describe("giveCookMoreTime", () => {
   it("giveCookMoreTime adds the smallest override, the pastry comes back, and every other placement's start is unchanged", async () => {
@@ -596,11 +598,13 @@ describe("giveCookMoreTime", () => {
         (await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW)).unplaced.map((u) => u.key),
       ).toEqual([taskKey(tarte, w.steps.T1)]);
       const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
-      const expected = smallestOverride(
+      const search = smallestOverride(
         await loadPlanRows(tx, ownerId, service),
         timeZone,
         taskKey(tarte, w.steps.T1),
-      )!;
+      );
+      if (search.kind !== "found") throw new Error(`expected a proposal, got ${search.kind}`);
+      const expected = search.proposal;
       const rows = await versions(tx, serviceId);
       const starts = await placements(tx, serviceId);
 
@@ -713,7 +717,7 @@ describe("giveCookMoreTime", () => {
     });
   });
 
-  it("refuses when every override would push a placed predecessor (owner decision 2), writing no override", async () => {
+  it("gives up when every override would push a placed predecessor and the search reaches its cap (#121), writing no override", async () => {
     await inRollback(async (tx) => {
       // P (30 min) then K (40 min), a Service on Fri 30 Oct 18:30, and only Fri 18:00–18:30, which P holds.
       const recipeId = crypto.randomUUID();
@@ -764,7 +768,7 @@ describe("giveCookMoreTime", () => {
         firstStepId: k,
         overrideId: crypto.randomUUID(),
       });
-      expect(thrown).toEqual(new InvalidArgsError(NO_FIT));
+      expect(thrown).toEqual(new InvalidArgsError(TOO_MANY));
       expect([await tableWrites(tx, "availability_overrides"), await liveOverrides(tx)]).toEqual(
         before,
       );

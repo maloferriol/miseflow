@@ -2,21 +2,43 @@
  * Test-only builders. Not exported from the scheduler barrel.
  * Day 0 is the epoch; `at(1, 18, 0)` is day 1 at 18:00.
  */
-import type { Interval, Minute, PlanningModel, PreviousPlacement, StepSpec, TaskSpec } from "./types.ts";
+import type {
+  Interval,
+  Minute,
+  PlanningModel,
+  PreviousPlacement,
+  StepSpec,
+  TaskSpec,
+} from "./types.ts";
 
 export function at(day: number, hours: number, minutes: number): Minute {
   return day * 1440 + hours * 60 + minutes;
 }
 
-export function step(stepId: string, activeMinutes: number | null, passiveMinutes: number | null = 0, doneAt?: Minute): StepSpec {
-  return doneAt === undefined ? { stepId, activeMinutes, passiveMinutes } : { stepId, activeMinutes, passiveMinutes, doneAt };
+export function step(
+  stepId: string,
+  activeMinutes: number | null,
+  passiveMinutes: number | null = 0,
+  doneAt?: Minute,
+): StepSpec {
+  return doneAt === undefined
+    ? { stepId, activeMinutes, passiveMinutes }
+    : { stepId, activeMinutes, passiveMinutes, doneAt };
 }
 
-export function dishTask(dishId: string, steps: StepSpec[], earliestStart: Minute | null = null): TaskSpec {
+export function dishTask(
+  dishId: string,
+  steps: StepSpec[],
+  earliestStart: Minute | null = null,
+): TaskSpec {
   return { owner: { kind: "dish", dishId }, steps, earliestStart };
 }
 
-export function batchTask(batchId: string, steps: StepSpec[], earliestStart: Minute | null = null): TaskSpec {
+export function batchTask(
+  batchId: string,
+  steps: StepSpec[],
+  earliestStart: Minute | null = null,
+): TaskSpec {
   return { owner: { kind: "batch", batchId }, steps, earliestStart };
 }
 
@@ -52,7 +74,10 @@ function lcg(seed: number): () => number {
 export function generatedService(n: number, seed = 1, days = 7): PlanningModel {
   const random = lcg(seed);
   const pick = (max: number) => Math.floor(random() * max);
-  const free = Array.from({ length: days + 1 }, (_, day) => ({ start: at(day, 8, 0), end: at(day, 22, 0) }));
+  const free = Array.from({ length: days + 1 }, (_, day) => ({
+    start: at(day, 8, 0),
+    end: at(day, 22, 0),
+  }));
   const tasks: TaskSpec[] = [];
   const keys: string[] = [];
   for (let i = 0; i < n; i++) {
@@ -66,7 +91,8 @@ export function generatedService(n: number, seed = 1, days = 7): PlanningModel {
   }
   const links = [];
   for (let i = 0; i < n - 1; i++) {
-    if (random() < 0.5) links.push({ before: keys[i]!, after: keys[i + 1 + pick(Math.min(10, n - i - 1))]! });
+    if (random() < 0.5)
+      links.push({ before: keys[i]!, after: keys[i + 1 + pick(Math.min(10, n - i - 1))]! });
   }
   return model({ service: { dayStart: at(days, 0, 0), at: at(days, 19, 30) }, free, tasks, links });
 }

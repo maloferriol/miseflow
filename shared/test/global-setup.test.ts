@@ -6,12 +6,17 @@ describe("test global setup", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it("refuses a DATABASE_URL that is not on the local stack, without naming its password", async () => {
-    vi.stubEnv("DATABASE_URL", "postgresql://postgres.ref:hunter2@aws-0-eu-north-1.pooler.supabase.com:5432/postgres");
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres.ref:hunter2@aws-0-eu-north-1.pooler.supabase.com:5432/postgres",
+    );
 
     const error = await checkDatabase().catch((e: Error) => e);
 
     expect(error).toBeInstanceOf(Error);
-    expect((error as Error).message).toMatch(/only against the local Supabase stack.*aws-0-eu-north-1\.pooler\.supabase\.com/);
+    expect((error as Error).message).toMatch(
+      /only against the local Supabase stack.*aws-0-eu-north-1\.pooler\.supabase\.com/,
+    );
     expect((error as Error).message).not.toContain("hunter2");
   });
 

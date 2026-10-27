@@ -1,4 +1,10 @@
-import { getMutator, ingredientAliases, ingredients, recipeRevisions, recipes } from "@miseflow/shared";
+import {
+  getMutator,
+  ingredientAliases,
+  ingredients,
+  recipeRevisions,
+  recipes,
+} from "@miseflow/shared";
 import { eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -29,8 +35,7 @@ async function ok(name: string, args: Record<string, unknown>) {
 }
 
 const seed = readSeed();
-const seedId = (name: string) =>
-  seed.ingredients.find((i) => i.name === name)!.id;
+const seedId = (name: string) => seed.ingredients.find((i) => i.name === name)!.id;
 
 // Aliases taught here are soft-deleted afterwards, so the next run's near match is still near.
 const createdAliases: string[] = [];
@@ -78,10 +83,7 @@ async function newRecipe(name = `Sauce ${crypto.randomUUID().slice(0, 8)}`) {
 }
 
 async function revisionState(recipeId: string) {
-  const [recipe] = await db
-    .select()
-    .from(recipes)
-    .where(eq(recipes.id, recipeId));
+  const [recipe] = await db.select().from(recipes).where(eq(recipes.id, recipeId));
   const rows = await db
     .select()
     .from(recipeRevisions)
@@ -92,9 +94,8 @@ async function revisionState(recipeId: string) {
 describe("GET /recipes/:recipeId", () => {
   it("returns Steps in order, lines with Ingredient names, and the derived ingredient list", async () => {
     const recipeId = await newRecipe();
-    const [first, second, shallotLine, butterLine] = Array.from(
-      { length: 4 },
-      () => crypto.randomUUID(),
+    const [first, second, shallotLine, butterLine] = Array.from({ length: 4 }, () =>
+      crypto.randomUUID(),
     );
     await ok("addStep", {
       recipeId,
@@ -135,10 +136,7 @@ describe("GET /recipes/:recipeId", () => {
     expect(res.status).toBe(200);
     const { recipe } = await res.json();
     expect(recipe).toMatchObject({ id: recipeId, latestRevision: 3 });
-    expect(recipe.steps.map((s: { id: string }) => s.id)).toEqual([
-      first,
-      second,
-    ]);
+    expect(recipe.steps.map((s: { id: string }) => s.id)).toEqual([first, second]);
     expect(recipe.steps[0].lines).toEqual([
       expect.objectContaining({
         id: shallotLine,
@@ -156,18 +154,17 @@ describe("GET /recipes/:recipeId", () => {
         wording: "butter",
       }),
     ]);
-    expect(recipe.ingredients.map((i: { lineId: string }) => i.lineId)).toEqual(
-      [shallotLine, butterLine],
-    );
+    expect(recipe.ingredients.map((i: { lineId: string }) => i.lineId)).toEqual([
+      shallotLine,
+      butterLine,
+    ]);
   });
 
   it("reads another owner's Recipe, a missing one and a bad id as 404", async () => {
     const theirs = await theirRecipe();
 
     expect((await send("GET", `/recipes/${theirs}`)).status).toBe(404);
-    expect((await send("GET", `/recipes/${crypto.randomUUID()}`)).status).toBe(
-      404,
-    );
+    expect((await send("GET", `/recipes/${crypto.randomUUID()}`)).status).toBe(404);
     expect((await send("GET", "/recipes/not-a-uuid")).status).toBe(404);
   });
 
@@ -288,7 +285,10 @@ describe("GET /recipes/:recipeId in one read-only transaction (#128)", () => {
       recipeId,
       stepId: crypto.randomUUID(),
       revisionId: crypto.randomUUID(),
-      body: [{ type: "text", text: "Season with " }, { type: "line", lineId }],
+      body: [
+        { type: "text", text: "Season with " },
+        { type: "line", lineId },
+      ],
       lines: [{ lineId, ingredientId, amount: "1%g", wording: "a pinch of smoked salt" }],
     });
     await db
@@ -356,8 +356,7 @@ describe("Ingredient line links (Revision)", () => {
       lines: [],
     });
     const name = "shallo";
-    const near = (await (await send("GET", `/ingredients?q=${name}`)).json())
-      .ingredients;
+    const near = (await (await send("GET", `/ingredients?q=${name}`)).json()).ingredients;
     const hit = near.find((i: { name: string }) => i.name === "shallot");
     expect(hit).toMatchObject({ exact: false });
 
@@ -377,8 +376,7 @@ describe("Ingredient line links (Revision)", () => {
       id: lineId,
       ingredient: { id: hit.id, name: "shallot" },
     });
-    const found = (await (await send("GET", `/ingredients?q=${name}`)).json())
-      .ingredients[0];
+    const found = (await (await send("GET", `/ingredients?q=${name}`)).json()).ingredients[0];
     expect(found).toMatchObject({
       id: hit.id,
       exact: true,
@@ -397,8 +395,19 @@ describe("Planning pass (read and /mutate)", () => {
     await add(dice!, [{ type: "text", text: "Dice the shallots" }]);
     await add(
       sweat!,
-      [{ type: "text", text: "Sweat " }, { type: "line", lineId: line }],
-      [{ lineId: line, ingredientId: seedId("shallot"), amount: "2", wording: "shallots", preparation: "diced" }],
+      [
+        { type: "text", text: "Sweat " },
+        { type: "line", lineId: line },
+      ],
+      [
+        {
+          lineId: line,
+          ingredientId: seedId("shallot"),
+          amount: "2",
+          wording: "shallots",
+          preparation: "diced",
+        },
+      ],
     );
     await add(strain!, [{ type: "text", text: "Strain" }]);
     return { recipeId, dice: dice!, sweat: sweat!, strain: strain!, line: line! };
@@ -416,9 +425,23 @@ describe("Planning pass (read and /mutate)", () => {
       revisionId: crypto.randomUUID(),
       window: { beforeDays: 1, shelfLifeDays: 2 },
     });
-    await ok("setStepTimes", { stepId: r.dice, revisionId: crypto.randomUUID(), activeMinutes: 10, passiveMinutes: null });
-    await ok("setStepTimes", { stepId: r.strain, revisionId: crypto.randomUUID(), activeMinutes: 0, passiveMinutes: 30 });
-    await ok("setGroupWithPrevious", { stepId: r.strain, revisionId: crypto.randomUUID(), value: true });
+    await ok("setStepTimes", {
+      stepId: r.dice,
+      revisionId: crypto.randomUUID(),
+      activeMinutes: 10,
+      passiveMinutes: null,
+    });
+    await ok("setStepTimes", {
+      stepId: r.strain,
+      revisionId: crypto.randomUUID(),
+      activeMinutes: 0,
+      passiveMinutes: 30,
+    });
+    await ok("setGroupWithPrevious", {
+      stepId: r.strain,
+      revisionId: crypto.randomUUID(),
+      value: true,
+    });
     const dependencyId = crypto.randomUUID();
     await ok("addStepDependency", {
       dependencyId,
@@ -446,9 +469,16 @@ describe("Planning pass (read and /mutate)", () => {
         makeAhead: { beforeDays: 1, shelfLifeDays: 2 },
         effectiveMakeAhead: { beforeDays: 1, shelfLifeDays: 2, from: "step" },
       }),
-      expect.objectContaining({ id: r.strain, activeMinutes: 0, passiveMinutes: 30, groupWithPrevious: true }),
+      expect.objectContaining({
+        id: r.strain,
+        activeMinutes: 0,
+        passiveMinutes: 30,
+        groupWithPrevious: true,
+      }),
     ]);
-    expect(recipe.dependencies).toEqual([{ id: dependencyId, beforeStepId: r.dice, afterStepId: r.sweat }]);
+    expect(recipe.dependencies).toEqual([
+      { id: dependencyId, beforeStepId: r.dice, afterStepId: r.sweat },
+    ]);
     expect(recipe.readyToPlan).toEqual({
       missingDuration: [r.sweat],
       duplicates: [{ stepId: r.dice, lineId: r.line }],

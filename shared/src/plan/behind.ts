@@ -19,10 +19,14 @@ export function behindTasks(input: {
   now: Minute;
 }): Map<TaskKey, Behind> {
   const { tasks, states, now } = input;
-  const startOf = new Map(input.placements.filter((p) => tasks.has(p.key)).map((p) => [p.key, p.start]));
-  const isDone = (task: TaskInfo) => task.stepIds.every((id) => states.get(stepKey(task.owner, id))?.done);
+  const startOf = new Map(
+    input.placements.filter((p) => tasks.has(p.key)).map((p) => [p.key, p.start]),
+  );
+  const isDone = (task: TaskInfo) =>
+    task.stepIds.every((id) => states.get(stepKey(task.owner, id))?.done);
   const successors = new Map<TaskKey, TaskKey[]>();
-  for (const l of input.links) successors.set(l.before, [...(successors.get(l.before) ?? []), l.after]);
+  for (const l of input.links)
+    successors.set(l.before, [...(successors.get(l.before) ?? []), l.after]);
 
   const out = new Map<TaskKey, Behind>();
   for (const [key, start] of startOf) {

@@ -25,7 +25,12 @@ type Outcome = "applied" | "replayed" | "conflict";
 // POST /mutate: one named mutation {id, name, args}, applied in one transaction, once per id
 // (ADR 0007). The id is claimed in `applied_mutations` inside the same transaction, so a
 // mutator that throws also releases its claim and a retry can apply it.
-export function mutateRoute(db: Db, registry: Record<string, Mutator<any>>, timeZone: string, now: () => Date) {
+export function mutateRoute(
+  db: Db,
+  registry: Record<string, Mutator<any>>,
+  timeZone: string,
+  now: () => Date,
+) {
   return new Hono<AuthEnv>().post("/", bodyLimit({ maxSize: 64 * 1024 }), async (c) => {
     const body = mutationBody.safeParse(await c.req.json().catch(() => undefined));
     if (!body.success) {

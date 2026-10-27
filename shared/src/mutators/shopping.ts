@@ -22,7 +22,13 @@ export const markGot = defineMutator({
     await requireVisibleIngredient(tx, args.ingredientId, ownerId);
     await tx
       .insert(shoppingMarks)
-      .values({ id: args.markId, ownerId, serviceId: args.serviceId, ingredientId: args.ingredientId, status: "got" })
+      .values({
+        id: args.markId,
+        ownerId,
+        serviceId: args.serviceId,
+        ingredientId: args.ingredientId,
+        status: "got",
+      })
       .onConflictDoUpdate({
         target: [shoppingMarks.serviceId, shoppingMarks.ingredientId],
         set: { status: "got", deletedAt: null, updatedAt: sql`now()` },

@@ -1,13 +1,4 @@
-import {
-  and,
-  asc,
-  eq,
-  inArray,
-  isNull,
-  notInArray,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { replanAffected } from "../plan/replan.ts";
 import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
@@ -29,29 +20,29 @@ import { requireSubRecipeLinks } from "./subrecipes.ts";
 // parseQuantity reads.
 const lineInput = z
   .strictObject({
-  lineId: z.uuid(),
-  ingredientId: z.uuid().optional(),
-  subRecipeId: z.uuid().optional(),
-  amount: z
-    .string()
-    .max(100)
-    .refine((amount) => isValidQuantity(parseQuantity(amount)), {
-      message: "An amount can't divide by zero or have a range whose end is below its start",
-    }),
-  // The characters that delimit a ref in the shorthand can't be part of its name.
-  wording: z
-    .string()
-    .trim()
-    .min(1)
-    .max(200)
-    .regex(/^[^@{}()\n]+$/, "A name can't contain @ { } ( ) or a line break"),
-  preparation: z
-    .string()
-    .trim()
-    .max(200)
-    .regex(/^[^()\n]*$/, "A preparation can't contain ( ) or a line break")
-    .nullable()
-    .optional(),
+    lineId: z.uuid(),
+    ingredientId: z.uuid().optional(),
+    subRecipeId: z.uuid().optional(),
+    amount: z
+      .string()
+      .max(100)
+      .refine((amount) => isValidQuantity(parseQuantity(amount)), {
+        message: "An amount can't divide by zero or have a range whose end is below its start",
+      }),
+    // The characters that delimit a ref in the shorthand can't be part of its name.
+    wording: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .regex(/^[^@{}()\n]+$/, "A name can't contain @ { } ( ) or a line break"),
+    preparation: z
+      .string()
+      .trim()
+      .max(200)
+      .regex(/^[^()\n]*$/, "A preparation can't contain ( ) or a line break")
+      .nullable()
+      .optional(),
   })
   .refine((line) => (line.ingredientId === undefined) !== (line.subRecipeId === undefined), {
     message: "A line links to exactly one Ingredient or sub-recipe",
@@ -60,13 +51,7 @@ type LineInput = z.infer<typeof lineInput>;
 
 // Every line token has its line, every line has one token, and the Step isn't blank.
 const content = { body: stepBodySchema, lines: z.array(lineInput).max(200) };
-function contentFits({
-  body,
-  lines,
-}: {
-  body: StepToken[];
-  lines: LineInput[];
-}) {
+function contentFits({ body, lines }: { body: StepToken[]; lines: LineInput[] }) {
   const tokenIds = body.flatMap((t) => (t.type === "line" ? [t.lineId] : []));
   const lineIds = lines.map((l) => l.lineId);
   const sameIds =
@@ -78,8 +63,7 @@ function contentFits({
   return sameIds && !blank;
 }
 const contentMessage = {
-  message:
-    "Each line token needs exactly one line, each line one token, and a Step can't be blank",
+  message: "Each line token needs exactly one line, each line one token, and a Step can't be blank",
 };
 
 export const addStep = defineMutator({
@@ -193,12 +177,7 @@ export const removeStep = defineMutator({
     await tx
       .update(ingredientLines)
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
-      .where(
-        and(
-          eq(ingredientLines.stepId, args.stepId),
-          isNull(ingredientLines.deletedAt),
-        ),
-      );
+      .where(and(eq(ingredientLines.stepId, args.stepId), isNull(ingredientLines.deletedAt)));
     await tx
       .update(steps)
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
@@ -216,22 +195,13 @@ async function liveSteps(tx: Tx, ownerId: string, recipeId: string) {
       groupWithPrevious: steps.groupWithPrevious,
     })
     .from(steps)
-    .where(
-      and(
-        eq(steps.recipeId, recipeId),
-        eq(steps.ownerId, ownerId),
-        isNull(steps.deletedAt),
-      ),
-    )
+    .where(and(eq(steps.recipeId, recipeId), eq(steps.ownerId, ownerId), isNull(steps.deletedAt)))
     .orderBy(asc(sql`${steps.position} collate "C"`), asc(steps.id));
 }
 
 // The Step after `stepId`, if `stepId` is a group's key Step: without it, that Step would join the
 // previous group.
-function followerOfKeyStep(
-  ordered: { id: string; groupWithPrevious: boolean }[],
-  stepId: string,
-) {
+function followerOfKeyStep(ordered: { id: string; groupWithPrevious: boolean }[], stepId: string) {
   const index = ordered.findIndex((s) => s.id === stepId);
   const isKey = index === 0 || !ordered[index]!.groupWithPrevious;
   const follower = ordered[index + 1];
@@ -247,18 +217,11 @@ async function ungroup(tx: Tx, stepIds: string[]) {
 }
 
 // The position right after `afterStepId` (null: before the first), among `ordered` live Steps.
-function slotAfter(
-  ordered: { id: string; position: string }[],
-  afterStepId: string | null,
-) {
-  if (afterStepId === null)
-    return positionBetween(null, ordered[0]?.position ?? null);
+function slotAfter(ordered: { id: string; position: string }[], afterStepId: string | null) {
+  if (afterStepId === null) return positionBetween(null, ordered[0]?.position ?? null);
   const index = ordered.findIndex((s) => s.id === afterStepId);
   if (index < 0) throw new NotFoundError("Step");
-  return positionBetween(
-    ordered[index]!.position,
-    ordered[index + 1]?.position ?? null,
-  );
+  return positionBetween(ordered[index]!.position, ordered[index + 1]?.position ?? null);
 }
 
 // Inserts new lines, updates kept ones and soft-deletes the Step's lines that are gone.
@@ -325,16 +288,13 @@ async function writeLines(
         setWhere: and(eq(ingredientLines.stepId, stepId), eq(ingredientLines.ownerId, ownerId)),
       })
       .returning({ id: ingredientLines.id });
-    if (!written.length) throw new ConflictError("An Ingredient line already belongs to another Step");
+    if (!written.length)
+      throw new ConflictError("An Ingredient line already belongs to another Step");
   }
 }
 
 // Each Ingredient must be a seed one or the caller's own live one; anything else reads as missing.
-async function requireVisibleIngredients(
-  tx: Tx,
-  ownerId: string,
-  ids: string[],
-) {
+async function requireVisibleIngredients(tx: Tx, ownerId: string, ids: string[]) {
   const wanted = [...new Set(ids)];
   if (!wanted.length) return;
   const rows = await tx

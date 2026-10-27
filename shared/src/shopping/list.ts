@@ -7,7 +7,12 @@ import { unitTier } from "../recipe/quantity.ts";
 import type { RecipeSnapshot, SnapshotLine } from "../recipe/snapshot.ts";
 
 /** A `conversions` row for one Ingredient: `source: "seed"` is a reference value (≈). */
-export type ConversionRow = { fromUnit: string | null; toUnit: string | null; factor: number; source: "seed" | "own" };
+export type ConversionRow = {
+  fromUnit: string | null;
+  toUnit: string | null;
+  factor: number;
+  source: "seed" | "own";
+};
 
 /** What the list needs of a catalog entry, as loadCatalog gives it (overrides merged in). */
 export type ShoppingIngredient = {
@@ -63,7 +68,8 @@ export type ShoppingList = {
 const piece = (unit: string | null) => (unit === "each" ? null : unit);
 
 // The kitchen's own Conversions come before the seed's (CONTEXT "Conversion").
-const ownFirst = (rows: ConversionRow[]) => [...rows].sort((a, b) => (a.source === b.source ? 0 : a.source === "own" ? -1 : 1));
+const ownFirst = (rows: ConversionRow[]) =>
+  [...rows].sort((a, b) => (a.source === b.source ? 0 : a.source === "own" ? -1 : 1));
 
 /** A ConversionLookup over one Ingredient's rows, the kitchen's own before the seed's. */
 export function conversionLookup(rows: ConversionRow[]): ConversionLookup {
@@ -83,7 +89,11 @@ function toUnit(amount: Amount, to: string | null, region: Region, rows: Convers
   for (const row of ownFirst(rows)) {
     const before = convert(amount, piece(row.fromUnit), region);
     if (!before) continue;
-    const after = convert({ value: before.value * row.factor, unit: piece(row.toUnit) }, to, region);
+    const after = convert(
+      { value: before.value * row.factor, unit: piece(row.toUnit) },
+      to,
+      region,
+    );
     if (after) return { value: after.value, approximate: row.source === "seed" };
   }
   return null;
@@ -112,7 +122,9 @@ export function deriveShoppingList(input: ShoppingInput): ShoppingList {
   const mainUnit = (ingredient: ShoppingIngredient | undefined) => {
     if (ingredient?.mainUnit) return ingredient.mainUnit;
     const kind = ingredient?.preferredKind;
-    return kind === "mass" || kind === "volume" || kind === "count" ? input.kitchenUnits[kind] : null;
+    return kind === "mass" || kind === "volume" || kind === "count"
+      ? input.kitchenUnits[kind]
+      : null;
   };
 
   // One line at `factor`; `estimated` when its Batch's size was assumed.
@@ -120,7 +132,8 @@ export function deriveShoppingList(input: ShoppingInput): ShoppingList {
     if (line.ingredientId === null) {
       // A sub-recipe line comes through its Batch; one to a Recipe the list can't find is Missing.
       if (line.subRecipeId !== null && recipes.has(line.subRecipeId)) return;
-      if (!seenMissing.has(line.id)) missing.push({ lineId: line.id, recipeName: recipe.name, wording: line.wording });
+      if (!seenMissing.has(line.id))
+        missing.push({ lineId: line.id, recipeName: recipe.name, wording: line.wording });
       seenMissing.add(line.id);
       return;
     }
@@ -147,7 +160,15 @@ export function deriveShoppingList(input: ShoppingInput): ShoppingList {
       return;
     }
     const value = amount * (line.fixedQuantity ? 1 : factor);
-    const converted = unit === null ? null : toUnit({ value, unit: line.unit }, piece(unit), region, input.conversions(line.ingredientId));
+    const converted =
+      unit === null
+        ? null
+        : toUnit(
+            { value, unit: line.unit },
+            piece(unit),
+            region,
+            input.conversions(line.ingredientId),
+          );
     if (!converted) {
       const part = row.unconverted.find((p) => p.unit === line.unit);
       if (part) part.amount += value;
@@ -171,7 +192,10 @@ export function deriveShoppingList(input: ShoppingInput): ShoppingList {
   const isEstimated = (id: string): boolean => {
     if (!estimated.has(id)) {
       const b = batches.get(id)!;
-      estimated.set(id, !b.scalable || b.parents.some((p) => p.kind === "batch" && isEstimated(p.id)));
+      estimated.set(
+        id,
+        !b.scalable || b.parents.some((p) => p.kind === "batch" && isEstimated(p.id)),
+      );
     }
     return estimated.get(id)!;
   };
@@ -180,7 +204,8 @@ export function deriveShoppingList(input: ShoppingInput): ShoppingList {
     for (const line of linesOf(recipe)) add(recipe, line, b.factor, isEstimated(b.subRecipeId));
   }
 
-  const byName = (a: ShoppingRow, b: ShoppingRow) => a.name.localeCompare(b.name) || (a.ingredientId < b.ingredientId ? -1 : 1);
+  const byName = (a: ShoppingRow, b: ShoppingRow) =>
+    a.name.localeCompare(b.name) || (a.ingredientId < b.ingredientId ? -1 : 1);
   const all = [...rows.values()];
   const known = new Set(input.categories.map((c) => c.id));
   const categoryOf = (row: ShoppingRow) => {

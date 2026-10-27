@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { deriveIngredientList } from "./derive.ts";
 import type { RecipeSnapshot, SnapshotLine } from "./snapshot.ts";
 
-const line = (id: string, wording: string, quantity: number | null, unit: string | null): SnapshotLine => ({
+const line = (
+  id: string,
+  wording: string,
+  quantity: number | null,
+  unit: string | null,
+): SnapshotLine => ({
   id,
   ingredientId: `ingredient-${wording}`,
   subRecipeId: null,
@@ -24,11 +29,40 @@ describe("deriveIngredientList", () => {
       makeAhead: null,
       dependencies: [],
       steps: [
-        { id: "s1", position: "a0", body: [], lines: [line("l1", "shallots", 2, null), line("l2", "butter", 30, "g")], activeMinutes: null, passiveMinutes: null, makeAhead: null, groupWithPrevious: false },
-        { id: "s2", position: "a1", body: [], lines: [line("l3", "butter", 10, "g"), { ...line("l4", "chicken stock", 1.5, "L"), ingredientId: null, subRecipeId: "stock" }], activeMinutes: null, passiveMinutes: null, makeAhead: null, groupWithPrevious: false },
+        {
+          id: "s1",
+          position: "a0",
+          body: [],
+          lines: [line("l1", "shallots", 2, null), line("l2", "butter", 30, "g")],
+          activeMinutes: null,
+          passiveMinutes: null,
+          makeAhead: null,
+          groupWithPrevious: false,
+        },
+        {
+          id: "s2",
+          position: "a1",
+          body: [],
+          lines: [
+            line("l3", "butter", 10, "g"),
+            { ...line("l4", "chicken stock", 1.5, "L"), ingredientId: null, subRecipeId: "stock" },
+          ],
+          activeMinutes: null,
+          passiveMinutes: null,
+          makeAhead: null,
+          groupWithPrevious: false,
+        },
       ],
     };
-    expect(deriveIngredientList(snapshot).map((i) => [i.stepId, i.lineId, i.wording, i.quantity, i.subRecipeId])).toEqual([
+    expect(
+      deriveIngredientList(snapshot).map((i) => [
+        i.stepId,
+        i.lineId,
+        i.wording,
+        i.quantity,
+        i.subRecipeId,
+      ]),
+    ).toEqual([
       ["s1", "l1", "shallots", 2, null],
       ["s1", "l2", "butter", 30, null],
       ["s2", "l3", "butter", 10, null],

@@ -46,7 +46,8 @@ export function laneTree(input: {
     const id = t.owner.kind === "dish" ? `dish:${t.owner.dishId}` : `batch:${t.owner.batchId}`;
     keysOf.set(id, [...(keysOf.get(id) ?? []), t.key]);
   }
-  const childrenOf = (kind: "dish" | "batch", id: string) => input.batches.filter((b) => b.for.some((p) => p.kind === kind && p.id === id));
+  const childrenOf = (kind: "dish" | "batch", id: string) =>
+    input.batches.filter((b) => b.for.some((p) => p.kind === kind && p.id === id));
   const seen = new Set<string>();
   const batchLane = (b: LaneBatch, path: string, depth: number, ancestors: Set<string>): Lane => {
     const ghost = seen.has(b.subRecipe.id);
@@ -103,11 +104,18 @@ export type LaneRow =
 export function collapse(tree: CourseLanes[], dishIds: Iterable<string>): LaneRow[] {
   const closed = new Set(dishIds);
   const rows: LaneRow[] = [];
-  const descendants = (lane: Lane): TaskKey[] => lane.children.flatMap((c) => [...c.taskKeys, ...descendants(c)]);
+  const descendants = (lane: Lane): TaskKey[] =>
+    lane.children.flatMap((c) => [...c.taskKeys, ...descendants(c)]);
   const add = (lane: Lane) => {
     const collapsed = lane.kind === "dish" && closed.has(lane.id) && lane.children.length > 0;
     const folded = collapsed ? [...new Set(descendants(lane))] : [];
-    rows.push({ kind: "lane", lane, collapsible: lane.kind === "dish" && lane.children.length > 0, collapsed, folded });
+    rows.push({
+      kind: "lane",
+      lane,
+      collapsible: lane.kind === "dish" && lane.children.length > 0,
+      collapsed,
+      folded,
+    });
     if (!collapsed) for (const c of lane.children) add(c);
   };
   for (const course of tree) {

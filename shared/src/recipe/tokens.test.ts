@@ -42,8 +42,28 @@ describe("formatStepText", () => {
     const shallots = crypto.randomUUID();
     const butter = crypto.randomUUID();
     const lines = new Map([
-      [shallots, { wording: "shallots", quantity: 2, quantityMax: null, unit: null, fixedQuantity: false, preparation: "brunoise" }],
-      [butter, { wording: "butter", quantity: 30, quantityMax: null, unit: "g", fixedQuantity: true, preparation: null }],
+      [
+        shallots,
+        {
+          wording: "shallots",
+          quantity: 2,
+          quantityMax: null,
+          unit: null,
+          fixedQuantity: false,
+          preparation: "brunoise",
+        },
+      ],
+      [
+        butter,
+        {
+          wording: "butter",
+          quantity: 30,
+          quantityMax: null,
+          unit: "g",
+          fixedQuantity: true,
+          preparation: null,
+        },
+      ],
     ]);
     const body = [
       { type: "text" as const, text: "Sweat " },
@@ -58,10 +78,17 @@ describe("formatStepText", () => {
 
 describe("stepBodySchema", () => {
   it("accepts text and line tokens and rejects anything else", () => {
-    expect(stepBodySchema.safeParse([{ type: "text", text: "Stir" }, { type: "line", lineId: crypto.randomUUID() }]).success).toBe(true);
+    expect(
+      stepBodySchema.safeParse([
+        { type: "text", text: "Stir" },
+        { type: "line", lineId: crypto.randomUUID() },
+      ]).success,
+    ).toBe(true);
     expect(stepBodySchema.safeParse([{ type: "line", lineId: "nope" }]).success).toBe(false);
     expect(stepBodySchema.safeParse([{ type: "html", html: "<b>" }]).success).toBe(false);
-    expect(stepBodySchema.safeParse([{ type: "text", text: "x".repeat(2001) }]).success).toBe(false);
+    expect(stepBodySchema.safeParse([{ type: "text", text: "x".repeat(2001) }]).success).toBe(
+      false,
+    );
   });
 });
 

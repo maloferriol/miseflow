@@ -5,10 +5,7 @@ import { at, batchTask, dishTask, model, step } from "./fixtures.ts";
 import type { Plan, PlanningModel, TaskSpec } from "./index.ts";
 
 function keysOnce(plan: Plan): string[] {
-  return [
-    ...plan.placements.map((p) => p.key),
-    ...plan.unplaced.map((u) => u.key),
-  ].sort();
+  return [...plan.placements.map((p) => p.key), ...plan.unplaced.map((u) => u.key)].sort();
 }
 
 describe("schedule", () => {
@@ -18,11 +15,7 @@ describe("schedule", () => {
       model({
         service: { dayStart: at(0, 0, 0), at: service },
         free: [{ start: at(0, 9, 0), end: at(0, 19, 30) }],
-        tasks: [
-          dishTask("d1", [
-            { stepId: "s1", activeMinutes: 30, passiveMinutes: 0 },
-          ]),
-        ],
+        tasks: [dishTask("d1", [{ stepId: "s1", activeMinutes: 30, passiveMinutes: 0 }])],
       }),
     );
 
@@ -50,11 +43,7 @@ describe("schedule", () => {
         tasks: [
           dishTask("d1", [step("s1", 10)]),
           batchTask("b1", [step("s7", 10)]),
-          dishTask("d2", [
-            step("first", 10),
-            step("second", 10),
-            step("third", 10),
-          ]),
+          dishTask("d2", [step("first", 10), step("second", 10), step("third", 10)]),
         ],
       }),
     );
@@ -163,9 +152,7 @@ describe("schedule", () => {
     ]);
     // Each Task ends no later than its successor starts.
     for (let i = 1; i < chain.length; i++)
-      expect(byKey.get(chain[i - 1]!)!.end).toBeLessThanOrEqual(
-        byKey.get(chain[i]!)!.start,
-      );
+      expect(byKey.get(chain[i - 1]!)!.end).toBeLessThanOrEqual(byKey.get(chain[i]!)!.start);
     // Every active stretch lies inside one free interval.
     const active = [
       [start!.start, start!.start + 30],
@@ -177,9 +164,7 @@ describe("schedule", () => {
       expect(free.some((iv) => iv.start <= a! && b! <= iv.end)).toBe(true);
     // Cooling (skim end of active to Task end) runs outside Availability, overnight.
     const cooling = { start: skim!.start + 20, end: skim!.end };
-    expect(
-      free.some((iv) => iv.start < cooling.end && cooling.start < iv.end),
-    ).toBe(false);
+    expect(free.some((iv) => iv.start < cooling.end && cooling.start < iv.end)).toBe(false);
     expect(plate!.approximate).toBe(true);
   });
 
@@ -218,11 +203,7 @@ describe("schedule", () => {
       ["dish:garnish:s1", at(0, 19, 10)],
       ["dish:prep:s1", at(0, 18, 0)],
     ]);
-    expect(keysOnce(plan)).toEqual([
-      "dish:garnish:s1",
-      "dish:prep:s1",
-      "dish:roast:s1",
-    ]);
+    expect(keysOnce(plan)).toEqual(["dish:garnish:s1", "dish:prep:s1", "dish:roast:s1"]);
   });
 
   it("AC6: Unplaced BlockedByPin names the pin", () => {
@@ -231,10 +212,7 @@ describe("schedule", () => {
       model({
         service,
         free: [{ start: at(0, 18, 0), end: at(0, 19, 30) }],
-        tasks: [
-          dishTask("pinned", [step("s1", 90)]),
-          dishTask("late", [step("s1", 30)]),
-        ],
+        tasks: [dishTask("pinned", [step("s1", 90)]), dishTask("late", [step("s1", 30)])],
         previous: [
           {
             key: "dish:pinned:s1",
@@ -370,20 +348,15 @@ describe("schedule", () => {
       })),
     ];
     const links = [{ before: "batch:base:s1", after: "dish:jus:s1" }];
-    const unrelated = Array.from({ length: 9 }, (_, i) =>
-      dishTask(`u0${i + 1}`, [step("s1", 30)]),
-    );
+    const unrelated = Array.from({ length: 9 }, (_, i) => dishTask(`u0${i + 1}`, [step("s1", 30)]));
     const tasksWith = (jusActive: number) => [
       batchTask("base", [step("s1", 30)], at(0, 9, 0)),
       dishTask("jus", [step("s1", jusActive)], at(0, 9, 0)),
       ...unrelated,
     ];
-    const startsOf = (plan: Plan) =>
-      new Map(plan.placements.map((p) => [p.key, p.start]));
+    const startsOf = (plan: Plan) => new Map(plan.placements.map((p) => [p.key, p.start]));
 
-    const first = schedule(
-      model({ service, free, tasks: tasksWith(30), links }),
-    );
+    const first = schedule(model({ service, free, tasks: tasksWith(30), links }));
     expect(first.unplaced).toEqual([]);
     expect(startsOf(first).get("dish:jus:s1")).toBe(at(1, 19, 0));
     expect(startsOf(first).get("batch:base:s1")).toBe(at(1, 9, 0));
@@ -395,17 +368,13 @@ describe("schedule", () => {
     }));
 
     // Unchanged model: exactly the same starts.
-    const again = schedule(
-      model({ service, free, tasks: tasksWith(30), links, previous }),
-    );
+    const again = schedule(model({ service, free, tasks: tasksWith(30), links, previous }));
     expect(startsOf(again)).toEqual(startsOf(first));
 
     // The jus gains 20 minutes of active time. Worked by hand: 50 minutes fit no Saturday island, so
     // the nearest fit is Friday 21:10; that pushes its base to Friday 20:40. Every unrelated Task keeps
     // its start, though planning from scratch would slide each one into the island the jus left.
-    const edited = schedule(
-      model({ service, free, tasks: tasksWith(50), links, previous }),
-    );
+    const edited = schedule(model({ service, free, tasks: tasksWith(50), links, previous }));
     expect(edited.unplaced).toEqual([]);
     const before = startsOf(first);
     const after = startsOf(edited);
@@ -462,10 +431,7 @@ describe("schedule", () => {
       model({
         service: { dayStart: at(0, 0, 0), at: at(0, 19, 30) },
         free: [{ start: at(0, 18, 30), end: at(0, 19, 30) }],
-        tasks: [
-          dishTask("b", [step("s1", 30)]),
-          dishTask("a", [step("s1", 30)]),
-        ],
+        tasks: [dishTask("b", [step("s1", 30)]), dishTask("a", [step("s1", 30)])],
       }),
     );
 
@@ -478,20 +444,12 @@ describe("schedule", () => {
   it("AC7: scheduler source has no clock or random calls", () => {
     const dir = new URL(".", import.meta.url);
     const sources = readdirSync(dir).filter(
-      (f) =>
-        f.endsWith(".ts") && !f.endsWith(".test.ts") && f !== "fixtures.ts",
+      (f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && f !== "fixtures.ts",
     );
-    expect(sources.sort()).toEqual([
-      "index.ts",
-      "schedule.ts",
-      "timeline.ts",
-      "types.ts",
-    ]);
+    expect(sources.sort()).toEqual(["index.ts", "schedule.ts", "timeline.ts", "types.ts"]);
     for (const file of sources) {
       const text = readFileSync(new URL(file, dir), "utf8");
-      expect(text, file).not.toMatch(
-        /\bDate\b|Math\.random|\bperformance\b|process\.hrtime/,
-      );
+      expect(text, file).not.toMatch(/\bDate\b|Math\.random|\bperformance\b|process\.hrtime/);
     }
   });
 
@@ -576,9 +534,7 @@ describe("schedule", () => {
       }),
     );
 
-    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([
-      ["dish:d1:s1", at(0, 19, 0)],
-    ]);
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([["dish:d1:s1", at(0, 19, 0)]]);
   });
 
   it("AC4: a pin for a Task that no longer exists is ignored (decision 9)", () => {
@@ -598,9 +554,7 @@ describe("schedule", () => {
       }),
     );
 
-    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([
-      ["dish:d1:s1", at(0, 19, 0)],
-    ]);
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([["dish:d1:s1", at(0, 19, 0)]]);
     expect(plan.unplaced).toEqual([]);
   });
 
@@ -636,9 +590,7 @@ describe("schedule", () => {
       }),
     );
 
-    expect(plan.placements.map((p) => [p.start, p.end])).toEqual([
-      [service - 15, service],
-    ]);
+    expect(plan.placements.map((p) => [p.start, p.end])).toEqual([[service - 15, service]]);
   });
 
   it("AC4: a Task that depends on a pin starts only after the pin has finished, passive time included", () => {
@@ -646,10 +598,7 @@ describe("schedule", () => {
       model({
         service: { dayStart: at(0, 0, 0), at: at(0, 19, 30) },
         free: [{ start: at(0, 9, 0), end: at(0, 19, 30) }],
-        tasks: [
-          dishTask("p", [step("s1", 30, 60)]),
-          dishTask("a", [step("s1", 20)]),
-        ],
+        tasks: [dishTask("p", [step("s1", 30, 60)]), dishTask("a", [step("s1", 20)])],
         links: [{ before: "dish:p:s1", after: "dish:a:s1" }],
         previous: [
           { key: "dish:p:s1", start: at(0, 16, 0), cookId: "c1", pinned: true }, // ends 17:30
@@ -675,14 +624,9 @@ describe("schedule", () => {
       model({
         service: { dayStart: at(0, 0, 0), at: at(0, 19, 30) },
         free: [{ start: at(0, 9, 0), end: at(0, 19, 30) }],
-        tasks: [
-          dishTask("p", [step("s1", 30, 60)]),
-          dishTask("a", [step("s1", 20)]),
-        ],
+        tasks: [dishTask("p", [step("s1", 30, 60)]), dishTask("a", [step("s1", 20)])],
         links: [{ before: "dish:p:s1", after: "dish:a:s1" }],
-        previous: [
-          { key: "dish:p:s1", start: at(0, 18, 0), cookId: "c1", pinned: true },
-        ], // ends 19:30
+        previous: [{ key: "dish:p:s1", start: at(0, 18, 0), cookId: "c1", pinned: true }], // ends 19:30
       }),
     );
 
@@ -782,9 +726,7 @@ describe("schedule", () => {
           { before: "dish:P:s1", after: "dish:A:s1" },
           { before: "dish:A:s1", after: "dish:X:s1" },
         ],
-        previous: [
-          { key: "dish:P:s1", start: 1900, cookId: "c1", pinned: true },
-        ],
+        previous: [{ key: "dish:P:s1", start: 1900, cookId: "c1", pinned: true }],
       }),
     );
 
@@ -847,9 +789,7 @@ describe("schedule", () => {
       }),
     );
 
-    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([
-      ["dish:d1:s1", at(0, 18, 30)],
-    ]);
+    expect(plan.placements.map((p) => [p.key, p.start])).toEqual([["dish:d1:s1", at(0, 18, 30)]]);
   });
 
   describe("Decision 7: malformed input throws SchedulerInputError", () => {
@@ -857,10 +797,7 @@ describe("schedule", () => {
       model({
         service: { dayStart: at(0, 0, 0), at: at(0, 19, 30) },
         free: [{ start: at(0, 9, 0), end: at(0, 19, 30) }],
-        tasks: [
-          dishTask("a", [step("s1", 10)]),
-          dishTask("b", [step("s1", 10)]),
-        ],
+        tasks: [dishTask("a", [step("s1", 10)]), dishTask("b", [step("s1", 10)])],
       });
     const codeOf = (input: PlanningModel): string | undefined => {
       try {
@@ -918,9 +855,7 @@ describe("schedule", () => {
           { before: "dish:a:s1", after: "dish:b:s1" },
           { before: "dish:b:s1", after: "dish:a:s1" },
         ],
-        previous: [
-          { key: "dish:a:s1", start: at(0, 18, 0), cookId: "c1", pinned: true },
-        ],
+        previous: [{ key: "dish:a:s1", start: at(0, 18, 0), cookId: "c1", pinned: true }],
       };
       expect(codeOf(input)).toBe("Cycle");
     });
@@ -928,10 +863,7 @@ describe("schedule", () => {
     it("throws DuplicateTask for two Tasks with the same key", () => {
       const input = {
         ...base(),
-        tasks: [
-          dishTask("a", [step("s1", 10)]),
-          dishTask("a", [step("s1", 20)]),
-        ],
+        tasks: [dishTask("a", [step("s1", 10)]), dishTask("a", [step("s1", 20)])],
       };
       expect(codeOf(input)).toBe("DuplicateTask");
     });
@@ -942,15 +874,13 @@ describe("schedule", () => {
 
     it("throws CookCount for two Cooks", () => {
       const input = base();
-      expect(
-        codeOf({ ...input, cooks: [...input.cooks, { id: "c2", free: [] }] }),
-      ).toBe("CookCount");
+      expect(codeOf({ ...input, cooks: [...input.cooks, { id: "c2", free: [] }] })).toBe(
+        "CookCount",
+      );
     });
 
     it("throws EmptyTask for a Task with no Steps", () => {
-      expect(codeOf({ ...base(), tasks: [dishTask("a", [])] })).toBe(
-        "EmptyTask",
-      );
+      expect(codeOf({ ...base(), tasks: [dishTask("a", [])] })).toBe("EmptyTask");
     });
 
     it.each([
@@ -961,28 +891,18 @@ describe("schedule", () => {
       ["Infinity passive", step("s1", 10, Infinity)],
       ["-5 passive", step("s1", 10, -5)],
     ])("throws InvalidDuration for %s", (_, bad) => {
-      expect(codeOf({ ...base(), tasks: [dishTask("a", [bad])] })).toBe(
-        "InvalidDuration",
-      );
+      expect(codeOf({ ...base(), tasks: [dishTask("a", [bad])] })).toBe("InvalidDuration");
     });
 
     it.each<[string, (input: PlanningModel) => PlanningModel]>([
       ["service.at", (m) => ({ ...m, service: { ...m.service, at: NaN } })],
-      [
-        "service.dayStart",
-        (m) => ({ ...m, service: { ...m.service, dayStart: NaN } }),
-      ],
-      [
-        "earliestStart",
-        (m) => ({ ...m, tasks: [dishTask("a", [step("s1", 10)], NaN)] }),
-      ],
+      ["service.dayStart", (m) => ({ ...m, service: { ...m.service, dayStart: NaN } })],
+      ["earliestStart", (m) => ({ ...m, tasks: [dishTask("a", [step("s1", 10)], NaN)] })],
       [
         "previous[].start",
         (m) => ({
           ...m,
-          previous: [
-            { key: "dish:a:s1", start: NaN, cookId: "c1", pinned: false },
-          ],
+          previous: [{ key: "dish:a:s1", start: NaN, cookId: "c1", pinned: false }],
         }),
       ],
       [
@@ -1037,8 +957,14 @@ describe("schedule", () => {
       const plan = schedule(
         model({
           service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
-          free: [{ start: at(0, 18, 0), end: at(0, 22, 0) }, { start: at(2, 9, 0), end: at(2, 19, 30) }],
-          tasks: [keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440), dishTask("d1", [step("s1", 30)])],
+          free: [
+            { start: at(0, 18, 0), end: at(0, 22, 0) },
+            { start: at(2, 9, 0), end: at(2, 19, 30) },
+          ],
+          tasks: [
+            keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440),
+            dishTask("d1", [step("s1", 30)]),
+          ],
           links: [link],
           previous: [{ key: "batch:stock:s1", start: at(0, 18, 0), cookId: "c1", pinned: true }],
         }),
@@ -1046,7 +972,14 @@ describe("schedule", () => {
       expect(plan.unplaced).toEqual([]);
       expect(plan.placements.map((p) => p.key)).toEqual(["batch:stock:s1", "dish:d1:s1"]);
       expect(plan.conflicts).toEqual([
-        { key: "batch:stock:s1", kind: "ShelfLifeExceeded", readyAt: at(0, 18, 30), keepsUntil: at(1, 18, 30), use: "dish:d1:s1", useAt: at(2, 19, 0) },
+        {
+          key: "batch:stock:s1",
+          kind: "ShelfLifeExceeded",
+          readyAt: at(0, 18, 30),
+          keepsUntil: at(1, 18, 30),
+          use: "dish:d1:s1",
+          useAt: at(2, 19, 0),
+        },
       ]);
     });
 
@@ -1054,7 +987,10 @@ describe("schedule", () => {
     const forced = () =>
       model({
         service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
-        free: [{ start: at(0, 18, 0), end: at(0, 22, 0) }, { start: at(2, 18, 30), end: at(2, 19, 30) }],
+        free: [
+          { start: at(0, 18, 0), end: at(0, 22, 0) },
+          { start: at(2, 18, 30), end: at(2, 19, 30) },
+        ],
         tasks: [
           keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440),
           dishTask("d1", [step("s1", 60)]),
@@ -1074,7 +1010,14 @@ describe("schedule", () => {
         ]),
       );
       expect(plan.conflicts).toEqual([
-        { key: "batch:stock:s1", kind: "ShelfLifeExceeded", readyAt: at(0, 21, 30), keepsUntil: at(1, 21, 30), use: "dish:d1:s1", useAt: at(2, 18, 30) },
+        {
+          key: "batch:stock:s1",
+          kind: "ShelfLifeExceeded",
+          readyAt: at(0, 21, 30),
+          keepsUntil: at(1, 21, 30),
+          use: "dish:d1:s1",
+          useAt: at(2, 18, 30),
+        },
       ]);
     });
 
@@ -1094,7 +1037,14 @@ describe("schedule", () => {
         }),
       );
       expect(plan.conflicts).toEqual([
-        { key: "batch:stock:s1", kind: "ShelfLifeExceeded", readyAt: at(0, 18, 30), keepsUntil: at(1, 18, 30), use: null, useAt: at(2, 19, 30) },
+        {
+          key: "batch:stock:s1",
+          kind: "ShelfLifeExceeded",
+          readyAt: at(0, 18, 30),
+          keepsUntil: at(1, 18, 30),
+          use: null,
+          useAt: at(2, 19, 30),
+        },
       ]);
     });
 
@@ -1104,14 +1054,28 @@ describe("schedule", () => {
         model({
           service: { dayStart: at(2, 0, 0), at: at(2, 19, 30) },
           free: [{ start: at(2, 9, 0), end: at(2, 19, 30) }],
-          tasks: [batchTask("stock", [step("s1", 30)], at(0, 0, 0)), dishTask("d1", [step("s1", 30)]), dishTask("d2", [step("s1", 30)])],
+          tasks: [
+            batchTask("stock", [step("s1", 30)], at(0, 0, 0)),
+            dishTask("d1", [step("s1", 30)]),
+            dishTask("d2", [step("s1", 30)]),
+          ],
           links: [link, { before: "batch:stock:s1", after: "dish:d2:s1" }],
-          previous: [pin("batch:stock:s1", at(2, 19, 0)), pin("dish:d1:s1", at(2, 18, 30)), pin("dish:d2:s1", at(2, 18, 0))],
+          previous: [
+            pin("batch:stock:s1", at(2, 19, 0)),
+            pin("dish:d1:s1", at(2, 18, 30)),
+            pin("dish:d2:s1", at(2, 18, 0)),
+          ],
         }),
       );
       expect(plan.unplaced).toEqual([]);
       expect(plan.conflicts).toEqual([
-        { key: "batch:stock:s1", kind: "EarliestUseTooLate", readyAt: at(2, 19, 30), use: "dish:d2:s1", useAt: at(2, 18, 0) },
+        {
+          key: "batch:stock:s1",
+          kind: "EarliestUseTooLate",
+          readyAt: at(2, 19, 30),
+          use: "dish:d2:s1",
+          useAt: at(2, 18, 0),
+        },
       ]);
     });
 
@@ -1124,7 +1088,10 @@ describe("schedule", () => {
             { start: at(1, 18, 0), end: at(1, 22, 0) },
             { start: at(2, 9, 0), end: at(2, 19, 30) },
           ],
-          tasks: [keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440), dishTask("d1", [step("s1", 30)])],
+          tasks: [
+            keeps(batchTask("stock", [step("s1", 30)], at(0, 0, 0)), 1440),
+            dishTask("d1", [step("s1", 30)]),
+          ],
           links: [link],
           previous: [{ key: "batch:stock:s1", start: at(0, 18, 0), cookId: "c1", pinned: false }],
         }),
@@ -1143,7 +1110,8 @@ describe("#88 Step progress", () => {
   const service = { dayStart: at(0, 0, 0), at: at(0, 20, 0) };
   const placementOf = (plan: Plan, key: string) => plan.placements.find((p) => p.key === key)!;
   // A Plan's placements fed back as the previous Plan, as a re-plan reads them from the database.
-  const asPrevious = (plan: Plan) => plan.placements.map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned }));
+  const asPrevious = (plan: Plan) =>
+    plan.placements.map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned }));
   const chain = [
     { before: A, after: B },
     { before: B, after: C },
@@ -1161,11 +1129,27 @@ describe("#88 Step progress", () => {
 
   it("#88 AC2: a Task done 40 minutes late pushes its dependent Tasks later and leaves unrelated Tasks where they were", () => {
     const first = schedule(model({ service, free: morning, tasks: chainTasks(), links: chain }));
-    const kept = schedule(model({ service, free: evening, tasks: chainTasks(), links: chain, previous: asPrevious(first) }));
+    const kept = schedule(
+      model({
+        service,
+        free: evening,
+        tasks: chainTasks(),
+        links: chain,
+        previous: asPrevious(first),
+      }),
+    );
     expect(kept.placements).toEqual(first.placements);
 
     const readyAt = placementOf(first, A).end + 40;
-    const plan = schedule(model({ service, free: evening, tasks: chainTasks(readyAt), links: chain, previous: asPrevious(first) }));
+    const plan = schedule(
+      model({
+        service,
+        free: evening,
+        tasks: chainTasks(readyAt),
+        links: chain,
+        previous: asPrevious(first),
+      }),
+    );
     expect(plan.unplaced).toEqual([]);
     expect(plan.conflicts).toEqual([]);
     expect(placementOf(plan, A)).toEqual(placementOf(first, A));
@@ -1183,7 +1167,10 @@ describe("#88 Step progress", () => {
   });
 
   it("#88 AC2: a done Task never moves, even where a pinned successor and the Cook's time would move it", () => {
-    const tasks = (doneA?: number) => [dishTask("a", [step("s1", 20, 0, doneA)]), dishTask("b", [step("s1", 20)])];
+    const tasks = (doneA?: number) => [
+      dishTask("a", [step("s1", 20, 0, doneA)]),
+      dishTask("b", [step("s1", 20)]),
+    ];
     const links = [{ before: A, after: B }];
     const first = schedule(model({ service, free: evening, tasks: tasks(), links }));
     const a = placementOf(first, A);
@@ -1201,12 +1188,17 @@ describe("#88 Step progress", () => {
   });
 
   it("#88: a done Step with passive time is ready at its tick plus its passive time, and its successor waits for that", () => {
-    const tasks = (doneA?: number) => [dishTask("a", [step("s1", 10, 30, doneA)]), dishTask("b", [step("s1", 10)])];
+    const tasks = (doneA?: number) => [
+      dishTask("a", [step("s1", 10, 30, doneA)]),
+      dishTask("b", [step("s1", 10)]),
+    ];
     const links = [{ before: A, after: B }];
     const first = schedule(model({ service, free: morning, tasks: tasks(), links }));
     // Ticked 2 minutes after its active time ended: ready at 17:22 + 30, on the grid.
     const tick = placementOf(first, A).start + 12;
-    const plan = schedule(model({ service, free: evening, tasks: tasks(tick), links, previous: asPrevious(first) }));
+    const plan = schedule(
+      model({ service, free: evening, tasks: tasks(tick), links, previous: asPrevious(first) }),
+    );
     expect(placementOf(plan, A).start).toBe(placementOf(first, A).start);
     expect(placementOf(first, B).start).toBe(at(0, 17, 50));
     expect(placementOf(plan, B).start).toBe(at(0, 17, 55));
@@ -1221,7 +1213,14 @@ describe("#88 Step progress", () => {
         links: [{ before: A, after: B }],
       }),
     );
-    expect(placementOf(plan, A)).toEqual({ key: A, start: at(0, 16, 45), end: at(0, 17, 5), cookId: "c1", pinned: false, approximate: false });
+    expect(placementOf(plan, A)).toEqual({
+      key: A,
+      start: at(0, 16, 45),
+      end: at(0, 17, 5),
+      cookId: "c1",
+      pinned: false,
+      approximate: false,
+    });
   });
 
   it("#88: a Task in progress keeps its start, and a late tick on its first Step pushes its successor", () => {
@@ -1234,7 +1233,15 @@ describe("#88 Step progress", () => {
     const links = [{ before: G, after: B }];
     const first = schedule(model({ service, free: morning, tasks: tasks(), links }));
     const g = placementOf(first, G);
-    const plan = schedule(model({ service, free: evening, tasks: tasks(g.start + 10 + 40), links, previous: asPrevious(first) }));
+    const plan = schedule(
+      model({
+        service,
+        free: evening,
+        tasks: tasks(g.start + 10 + 40),
+        links,
+        previous: asPrevious(first),
+      }),
+    );
     expect(placementOf(plan, G)).toEqual(g);
     // Its finish: Step 1's tick plus Step 2's 10 minutes.
     expect(placementOf(plan, B).start).toBeGreaterThanOrEqual(g.start + 60);
@@ -1245,7 +1252,13 @@ describe("#88 Step progress", () => {
   it("#88 Outrun: a successor that no longer fits stays placed with an Outrun conflict naming the late Task, even two links up", () => {
     const first = schedule(model({ service, free: evening, tasks: chainTasks(), links: chain }));
     const readyAt = placementOf(first, A).end + 40;
-    const input = model({ service, free: evening, tasks: chainTasks(readyAt), links: chain, previous: asPrevious(first) });
+    const input = model({
+      service,
+      free: evening,
+      tasks: chainTasks(readyAt),
+      links: chain,
+      previous: asPrevious(first),
+    });
     const plan = schedule(input);
     expect(plan.unplaced).toEqual([]);
     expect(plan.placements).toEqual(first.placements);
@@ -1264,7 +1277,11 @@ describe("#88 Step progress", () => {
       model({
         service,
         free: evening,
-        tasks: [dishTask("p", [step("s1", 20)]), dishTask("d", [step("s1", 20, 0, dDoneAt)]), dishTask("t", [step("s1", 20)])],
+        tasks: [
+          dishTask("p", [step("s1", 20)]),
+          dishTask("d", [step("s1", 20, 0, dDoneAt)]),
+          dishTask("t", [step("s1", 20)]),
+        ],
         links: [
           { before: P, after: T },
           { before: D, after: T },
@@ -1278,21 +1295,44 @@ describe("#88 Step progress", () => {
     it("the done Task's ready time is later: the Task stays placed with Outrun", () => {
       const plan = schedule(input(at(0, 18, 0), at(0, 19, 50)));
       expect(plan.unplaced).toEqual([]);
-      expect(plan.conflicts).toEqual([{ key: T, kind: "Outrun", by: D, readyAt: at(0, 19, 50), start: placementOf(plan, T).start }]);
+      expect(plan.conflicts).toEqual([
+        {
+          key: T,
+          kind: "Outrun",
+          by: D,
+          readyAt: at(0, 19, 50),
+          start: placementOf(plan, T).start,
+        },
+      ]);
       expect(placementOf(plan, T).start).toBe(at(0, 19, 40));
     });
 
     it("the pin's end is later: the Task is Unplaced, BlockedByPin", () => {
       const plan = schedule(input(at(0, 19, 50), at(0, 18, 30)));
-      expect(plan.unplaced).toEqual([{ key: T, reason: { kind: "BlockedByPin", pin: P, searched: { start: at(0, 20, 10), end: service.at } } }]);
+      expect(plan.unplaced).toEqual([
+        {
+          key: T,
+          reason: {
+            kind: "BlockedByPin",
+            pin: P,
+            searched: { start: at(0, 20, 10), end: service.at },
+          },
+        },
+      ]);
       expect(plan.conflicts).toEqual([]);
     });
   });
 
   it("#88: a non-finite doneAt throws InvalidTime", () => {
     for (const doneAt of [Number.NaN, Number.POSITIVE_INFINITY]) {
-      const input = model({ service, free: evening, tasks: [dishTask("a", [step("s1", 20, 0, doneAt)])] });
-      expect(() => schedule(input)).toThrow(expect.objectContaining({ name: "SchedulerInputError", code: "InvalidTime" }));
+      const input = model({
+        service,
+        free: evening,
+        tasks: [dishTask("a", [step("s1", 20, 0, doneAt)])],
+      });
+      expect(() => schedule(input)).toThrow(
+        expect.objectContaining({ name: "SchedulerInputError", code: "InvalidTime" }),
+      );
     }
   });
 });

@@ -63,8 +63,6 @@ export function parseYield(text: string): Yield {
     !isValidQuantity(q) ||
     q.value <= 0
   )
-    throw new Error(
-      "A yield is one amount, like 1.5 L, 500 g or 24: not vague, a range, or fixed",
-    );
+    throw new Error("A yield is one amount, like 1.5 L, 500 g or 24: not vague, a range, or fixed");
   return { quantity: q.value, unit: q.unit };
 }

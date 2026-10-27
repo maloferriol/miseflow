@@ -14,7 +14,9 @@ describe("zonedMinute", () => {
   });
 
   it("reads minute 1440 as the next day's 00:00", () => {
-    expect(zonedMinute("2026-10-31", 1440, "Europe/Paris")).toBe(zonedMinute("2026-11-01", 0, "Europe/Paris"));
+    expect(zonedMinute("2026-10-31", 1440, "Europe/Paris")).toBe(
+      zonedMinute("2026-11-01", 0, "Europe/Paris"),
+    );
   });
 
   it("throws RangeError for an unknown time zone", () => {
@@ -25,7 +27,11 @@ describe("zonedMinute", () => {
 describe("localParts", () => {
   it("round-trips zonedMinute, with 0 = Sunday", () => {
     const at = zonedMinute("2026-10-31", h(19, 30), "Europe/Paris");
-    expect(localParts(at, "Europe/Paris")).toEqual({ date: "2026-10-31", minuteOfDay: h(19, 30), weekday: 6 });
+    expect(localParts(at, "Europe/Paris")).toEqual({
+      date: "2026-10-31",
+      minuteOfDay: h(19, 30),
+      weekday: 6,
+    });
     expect(weekdayOf("2026-10-25")).toBe(0);
     expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
   });
@@ -33,6 +39,8 @@ describe("localParts", () => {
 
 describe("formatInstant", () => {
   it("formats an instant in the kitchen's zone as weekday, date and 24-hour time", () => {
-    expect(formatInstant(new Date("2026-10-29T17:00:00Z"), "Europe/Paris")).toBe("Thu 29 Oct 18:00");
+    expect(formatInstant(new Date("2026-10-29T17:00:00Z"), "Europe/Paris")).toBe(
+      "Thu 29 Oct 18:00",
+    );
   });
 });

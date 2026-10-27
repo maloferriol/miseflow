@@ -1,4 +1,12 @@
-import { courses, dishes, fromTimeColumn, menus, readMenuScale, recipes, services } from "@miseflow/shared";
+import {
+  courses,
+  dishes,
+  fromTimeColumn,
+  menus,
+  readMenuScale,
+  recipes,
+  services,
+} from "@miseflow/shared";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -31,14 +39,18 @@ export function menusRoute(db: Db) {
         ? await db
             .select({ id: menus.id, name: menus.name, guestCount: menus.guestCount })
             .from(menus)
-            .where(and(eq(menus.id, menuId.data), eq(menus.ownerId, ownerId), isNull(menus.deletedAt)))
+            .where(
+              and(eq(menus.id, menuId.data), eq(menus.ownerId, ownerId), isNull(menus.deletedAt)),
+            )
         : [];
       if (!menu) return c.json(errorBody("NOT_FOUND", "Menu not found"), 404);
 
       const courseRows = await db
         .select({ id: courses.id, name: courses.name, position: courses.position })
         .from(courses)
-        .where(and(eq(courses.menuId, menu.id), eq(courses.ownerId, ownerId), isNull(courses.deletedAt)))
+        .where(
+          and(eq(courses.menuId, menu.id), eq(courses.ownerId, ownerId), isNull(courses.deletedAt)),
+        )
         .orderBy(asc(sql`${courses.position} collate "C"`));
 
       const dishRows = courseRows.length
@@ -69,7 +81,13 @@ export function menusRoute(db: Db) {
       const [service] = await db
         .select({ id: services.id, date: services.date, time: services.time })
         .from(services)
-        .where(and(eq(services.menuId, menu.id), eq(services.ownerId, ownerId), isNull(services.deletedAt)));
+        .where(
+          and(
+            eq(services.menuId, menu.id),
+            eq(services.ownerId, ownerId),
+            isNull(services.deletedAt),
+          ),
+        );
 
       const scale = await readMenuScale(db, ownerId, menu.id);
       const scaleOf = new Map(scale.dishes.map((d) => [d.dishId, d]));
@@ -79,7 +97,9 @@ export function menusRoute(db: Db) {
           menu: {
             ...menu,
             batches: scale.batches,
-            service: service ? { ...service, time: service.time === null ? null : fromTimeColumn(service.time) } : null,
+            service: service
+              ? { ...service, time: service.time === null ? null : fromTimeColumn(service.time) }
+              : null,
             courses: courseRows.map((course) => ({
               ...course,
               dishes: dishRows

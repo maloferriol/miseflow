@@ -17,7 +17,11 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
+  await mutator.run(tx, mutator.args.parse(args), {
+    ownerId: owner,
+    timeZone: "Europe/Paris",
+    now: () => FIXED_NOW,
+  });
 }
 
 // A seed Shopping category and Ingredient of the tests' own, so `shared` doesn't depend on the
@@ -26,14 +30,12 @@ async function seedFixture(tx: Tx) {
   const tag = crypto.randomUUID().slice(0, 8);
   const categoryId = crypto.randomUUID();
   const ingredientId = crypto.randomUUID();
-  await tx
-    .insert(shoppingCategories)
-    .values({
-      id: categoryId,
-      ownerId: null,
-      name: `aisle ${tag}`,
-      position: "a0",
-    });
+  await tx.insert(shoppingCategories).values({
+    id: categoryId,
+    ownerId: null,
+    name: `aisle ${tag}`,
+    position: "a0",
+  });
   await tx.insert(ingredients).values({
     id: ingredientId,
     ownerId: null,
@@ -65,10 +67,7 @@ describe("createIngredient", () => {
         shoppingCategoryId: categoryId,
       });
 
-      const rows = await tx
-        .select()
-        .from(ingredients)
-        .where(eq(ingredients.id, ingredientId));
+      const rows = await tx.select().from(ingredients).where(eq(ingredients.id, ingredientId));
       expect(rows).toMatchObject([
         {
           ownerId,
@@ -84,14 +83,12 @@ describe("createIngredient", () => {
   it("refuses another owner's Shopping category", async () => {
     await inRollback(async (tx) => {
       const categoryId = crypto.randomUUID();
-      await tx
-        .insert(shoppingCategories)
-        .values({
-          id: categoryId,
-          ownerId: crypto.randomUUID(),
-          name: "Theirs",
-          position: "a0",
-        });
+      await tx.insert(shoppingCategories).values({
+        id: categoryId,
+        ownerId: crypto.randomUUID(),
+        name: "Theirs",
+        position: "a0",
+      });
 
       await expect(
         run(tx, "createIngredient", {
@@ -145,9 +142,7 @@ describe("addAlias", () => {
         .select()
         .from(ingredientAliases)
         .where(eq(ingredientAliases.id, aliasId));
-      expect(rows).toMatchObject([
-        { ownerId, ingredientId, name: "Piment", source: "own" },
-      ]);
+      expect(rows).toMatchObject([{ ownerId, ingredientId, name: "Piment", source: "own" }]);
     });
   });
 
@@ -203,14 +198,12 @@ describe("addAlias", () => {
   it("refuses another owner's Ingredient", async () => {
     await inRollback(async (tx) => {
       const ingredientId = crypto.randomUUID();
-      await tx
-        .insert(ingredients)
-        .values({
-          id: ingredientId,
-          ownerId: crypto.randomUUID(),
-          name: "Theirs",
-          source: "own",
-        });
+      await tx.insert(ingredients).values({
+        id: ingredientId,
+        ownerId: crypto.randomUUID(),
+        name: "Theirs",
+        source: "own",
+      });
 
       await expect(
         run(tx, "addAlias", {
@@ -227,10 +220,7 @@ describe("overrideIngredient", () => {
   it("writes the override for a seed Ingredient and leaves the seed row untouched", async () => {
     await inRollback(async (tx) => {
       const { ingredientId } = await seedFixture(tx);
-      const [before] = await tx
-        .select()
-        .from(ingredients)
-        .where(eq(ingredients.id, ingredientId));
+      const [before] = await tx.select().from(ingredients).where(eq(ingredients.id, ingredientId));
 
       await run(tx, "overrideIngredient", {
         overrideId: crypto.randomUUID(),
@@ -243,12 +233,9 @@ describe("overrideIngredient", () => {
         mainUnit: "lb",
       });
 
-      expect(
-        await tx
-          .select()
-          .from(ingredients)
-          .where(eq(ingredients.id, ingredientId)),
-      ).toEqual([before]);
+      expect(await tx.select().from(ingredients).where(eq(ingredients.id, ingredientId))).toEqual([
+        before,
+      ]);
       const overrides = await tx
         .select()
         .from(ingredientOverrides)
@@ -266,7 +253,10 @@ describe("overrideIngredient", () => {
       const current = async () =>
         (
           await tx
-            .select({ mainUnit: ingredientOverrides.mainUnit, shoppingCategoryId: ingredientOverrides.shoppingCategoryId })
+            .select({
+              mainUnit: ingredientOverrides.mainUnit,
+              shoppingCategoryId: ingredientOverrides.shoppingCategoryId,
+            })
             .from(ingredientOverrides)
             .where(eq(ingredientOverrides.ingredientId, ingredientId))
         )[0];
@@ -300,10 +290,7 @@ describe("overrideIngredient", () => {
         mainUnit: "L",
       });
 
-      const [row] = await tx
-        .select()
-        .from(ingredients)
-        .where(eq(ingredients.id, ingredientId));
+      const [row] = await tx.select().from(ingredients).where(eq(ingredients.id, ingredientId));
       expect(row?.mainUnit).toBe("L");
       expect(
         await tx
@@ -330,15 +317,13 @@ describe("overrideIngredient", () => {
   it("refuses another owner's Ingredient", async () => {
     await inRollback(async (tx) => {
       const ingredientId = crypto.randomUUID();
-      await tx
-        .insert(ingredients)
-        .values({
-          id: ingredientId,
-          ownerId: crypto.randomUUID(),
-          name: "Theirs",
-          source: "own",
-          preferredKind: "mass",
-        });
+      await tx.insert(ingredients).values({
+        id: ingredientId,
+        ownerId: crypto.randomUUID(),
+        name: "Theirs",
+        source: "own",
+        preferredKind: "mass",
+      });
 
       await expect(
         run(tx, "overrideIngredient", {

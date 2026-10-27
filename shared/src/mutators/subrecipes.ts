@@ -1,14 +1,4 @@
-import {
-  and,
-  asc,
-  eq,
-  inArray,
-  isNotNull,
-  isNull,
-  notInArray,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { replanAffected } from "../plan/replan.ts";
 import { stepGroups } from "../recipe/planning.ts";
@@ -22,19 +12,8 @@ import {
   type Yield,
 } from "../recipe/subrecipes.ts";
 import { refName } from "../recipe/tokens.ts";
-import {
-  ingredientLines,
-  recipeRevisions,
-  recipes,
-  stepDependencies,
-  steps,
-} from "../schema.ts";
-import {
-  defineMutator,
-  InvalidArgsError,
-  NotFoundError,
-  type Tx,
-} from "./define.ts";
+import { ingredientLines, recipeRevisions, recipes, stepDependencies, steps } from "../schema.ts";
+import { defineMutator, InvalidArgsError, NotFoundError, type Tx } from "./define.ts";
 import { positionAfter } from "./position.ts";
 import { appendRevision, lockRecipe } from "./revision.ts";
 
@@ -147,17 +126,17 @@ export const extractToSubRecipe = defineMutator({
       })
       .from(steps)
       .where(
-        and(
-          eq(steps.recipeId, args.recipeId),
-          eq(steps.ownerId, ownerId),
-          isNull(steps.deletedAt),
-        ),
+        and(eq(steps.recipeId, args.recipeId), eq(steps.ownerId, ownerId), isNull(steps.deletedAt)),
       )
       .orderBy(asc(sql`${steps.position} collate "C"`), asc(steps.id));
     const moved = new Set(args.stepIds);
-    if (![...moved].every((id) => live.some((s) => s.id === id)))
-      throw new NotFoundError("Step");
-    if (!areConsecutive(live.map((s) => s.id), [...moved]))
+    if (![...moved].every((id) => live.some((s) => s.id === id))) throw new NotFoundError("Step");
+    if (
+      !areConsecutive(
+        live.map((s) => s.id),
+        [...moved],
+      )
+    )
       throw new InvalidArgsError("Only consecutive Steps can become a sub-recipe");
     const ids = [...moved];
     const first = live.find((s) => moved.has(s.id))!;
@@ -263,10 +242,7 @@ export async function lockSubRecipeGraph(tx: Tx, ownerId: string) {
 }
 
 /** The owner's live sub-recipe links: live Recipe → live Step → live line → Recipe. */
-export async function loadSubRecipeGraph(
-  tx: Tx,
-  ownerId: string,
-): Promise<SubRecipeEdges> {
+export async function loadSubRecipeGraph(tx: Tx, ownerId: string): Promise<SubRecipeEdges> {
   const rows = await tx
     .select({ parent: steps.recipeId, child: ingredientLines.subRecipeId })
     .from(ingredientLines)
@@ -306,11 +282,7 @@ export async function requireSubRecipeLinks(
     .select({ id: recipes.id })
     .from(recipes)
     .where(
-      and(
-        inArray(recipes.id, wanted),
-        eq(recipes.ownerId, ownerId),
-        isNull(recipes.deletedAt),
-      ),
+      and(inArray(recipes.id, wanted), eq(recipes.ownerId, ownerId), isNull(recipes.deletedAt)),
     );
   if (rows.length !== wanted.length) throw new NotFoundError("Recipe");
 

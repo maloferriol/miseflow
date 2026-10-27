@@ -5,8 +5,7 @@ import { useIntent } from "./intent.ts";
 import { ReadyToPlan, stepLabel } from "./ReadyToPlan.tsx";
 
 type Window = { beforeDays: number; shelfLifeDays: number };
-type Target =
-  { kind: "recipe"; recipeId: string } | { kind: "step"; stepId: string };
+type Target = { kind: "recipe"; recipeId: string } | { kind: "step"; stepId: string };
 
 // An empty field is "not set"; anything else goes to the server as typed, which validates it.
 const numberOrNull = (value: FormDataEntryValue | null) => {
@@ -14,8 +13,7 @@ const numberOrNull = (value: FormDataEntryValue | null) => {
   return text === "" ? null : Number(text);
 };
 
-const windowText = (w: Window) =>
-  `${w.beforeDays} days ahead · keeps ${w.shelfLifeDays} days`;
+const windowText = (w: Window) => `${w.beforeDays} days ahead · keeps ${w.shelfLifeDays} days`;
 
 // The Planning pass (spec §2): the times, make-ahead windows, groups and links the scheduler
 // needs. Every control is one named mutation that appends one Revision.
@@ -63,10 +61,7 @@ export function PlanningPass({ recipe }: { recipe: Recipe }) {
   });
   const addStepDependency = useMutation({
     mutationFn: async (args: { beforeStepId: string; afterStepId: string }) => {
-      const { mutationId, revisionId, dependencyId } = ids(
-        "addStepDependency",
-        args,
-      );
+      const { mutationId, revisionId, dependencyId } = ids("addStepDependency", args);
       await mutate(mutationId, "addStepDependency", {
         revisionId,
         dependencyId,
@@ -141,24 +136,18 @@ export function PlanningPass({ recipe }: { recipe: Recipe }) {
             recipe={recipe}
             step={step}
             index={index}
-            onTimes={(times) =>
-              setStepTimes.mutate({ stepId: step.id, ...times })
-            }
+            onTimes={(times) => setStepTimes.mutate({ stepId: step.id, ...times })}
             onWindow={(window) =>
               setMakeAhead.mutate({
                 target: { kind: "step", stepId: step.id },
                 window,
               })
             }
-            onGroup={(value) =>
-              setGroupWithPrevious.mutate({ stepId: step.id, value })
-            }
+            onGroup={(value) => setGroupWithPrevious.mutate({ stepId: step.id, value })}
             onAddLink={(beforeStepId) =>
               addStepDependency.mutate({ beforeStepId, afterStepId: step.id })
             }
-            onRemoveLink={(dependencyId) =>
-              removeStepDependency.mutate(dependencyId)
-            }
+            onRemoveLink={(dependencyId) => removeStepDependency.mutate(dependencyId)}
           />
         ))}
       </ol>
@@ -210,10 +199,7 @@ function PlanningRow({
   recipe: Recipe;
   step: RecipeStep;
   index: number;
-  onTimes: (times: {
-    activeMinutes: number | null;
-    passiveMinutes: number | null;
-  }) => void;
+  onTimes: (times: { activeMinutes: number | null; passiveMinutes: number | null }) => void;
   onWindow: (window: Window | null) => void;
   onGroup: (value: boolean) => void;
   onAddLink: (beforeStepId: string) => void;
@@ -245,9 +231,7 @@ function PlanningRow({
   }
   function onLinkSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const before = String(
-      new FormData(event.currentTarget).get("beforeStepId") ?? "",
-    );
+    const before = String(new FormData(event.currentTarget).get("beforeStepId") ?? "");
     if (before) onAddLink(before);
   }
 

@@ -42,10 +42,12 @@ interface Prepared {
 const roundUp = (minutes: number) => Math.ceil(minutes / GRID) * GRID;
 const floorGrid = (minute: Minute) => Math.floor(minute / GRID) * GRID;
 const ceilGrid = (minute: Minute) => Math.ceil(minute / GRID) * GRID;
-const byKey = <T extends { key: TaskKey }>(a: T, b: T) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+const byKey = <T extends { key: TaskKey }>(a: T, b: T) =>
+  a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
 
 function assertTime(minute: Minute, what: string, keys: TaskKey[] = []): void {
-  if (!Number.isFinite(minute)) throw new SchedulerInputError("InvalidTime", `${what} is ${minute}`, keys);
+  if (!Number.isFinite(minute))
+    throw new SchedulerInputError("InvalidTime", `${what} is ${minute}`, keys);
 }
 
 function prepare(model: PlanningModel): Prepared[] {
@@ -57,11 +59,14 @@ function prepare(model: PlanningModel): Prepared[] {
       assertTime(iv.end, `Free interval end of Cook ${cook.id}`);
     }
   }
-  for (const prev of model.previous) assertTime(prev.start, `Previous start of ${prev.key}`, [prev.key]);
+  for (const prev of model.previous)
+    assertTime(prev.start, `Previous start of ${prev.key}`, [prev.key]);
   return model.tasks.map((task) => {
-    if (task.steps.length === 0) throw new SchedulerInputError("EmptyTask", "A Task needs at least one Step");
+    if (task.steps.length === 0)
+      throw new SchedulerInputError("EmptyTask", "A Task needs at least one Step");
     const key = taskKey(task.owner, task.steps[0]!.stepId);
-    if (task.earliestStart !== null) assertTime(task.earliestStart, `Earliest start of ${key}`, [key]);
+    if (task.earliestStart !== null)
+      assertTime(task.earliestStart, `Earliest start of ${key}`, [key]);
     let offset = 0;
     let approximate = false;
     const stretches: Stretch[] = [];
@@ -71,12 +76,23 @@ function prepare(model: PlanningModel): Prepared[] {
     let allDone = true;
     for (const s of task.steps) {
       if (s.doneAt != null) assertTime(s.doneAt, `Done time of Step ${s.stepId} of ${key}`, [key]);
-      if (task.keepsMinutes != null && !(Number.isFinite(task.keepsMinutes) && task.keepsMinutes >= 0)) {
-        throw new SchedulerInputError("InvalidDuration", `${key} keeps ${task.keepsMinutes} minutes`, [key]);
+      if (
+        task.keepsMinutes != null &&
+        !(Number.isFinite(task.keepsMinutes) && task.keepsMinutes >= 0)
+      ) {
+        throw new SchedulerInputError(
+          "InvalidDuration",
+          `${key} keeps ${task.keepsMinutes} minutes`,
+          [key],
+        );
       }
       for (const minutes of [s.activeMinutes, s.passiveMinutes]) {
         if (minutes !== null && !(Number.isFinite(minutes) && minutes >= 0)) {
-          throw new SchedulerInputError("InvalidDuration", `Step ${s.stepId} of ${key} has duration ${minutes}`, [key]);
+          throw new SchedulerInputError(
+            "InvalidDuration",
+            `Step ${s.stepId} of ${key} has duration ${minutes}`,
+            [key],
+          );
         }
       }
       const passive = s.passiveMinutes === null ? 0 : roundUp(s.passiveMinutes);
@@ -101,8 +117,10 @@ function prepare(model: PlanningModel): Prepared[] {
       approximate,
       lower: task.earliestStart ?? model.service.dayStart,
       keeps: task.keepsMinutes ?? null,
-      owner: task.owner.kind === "dish" ? `dish:${task.owner.dishId}` : `batch:${task.owner.batchId}`,
-      progress: ready === null ? null : { done: allDone, ready: ceilGrid(allDone ? doneReady! : ready) },
+      owner:
+        task.owner.kind === "dish" ? `dish:${task.owner.dishId}` : `batch:${task.owner.batchId}`,
+      progress:
+        ready === null ? null : { done: allDone, ready: ceilGrid(allDone ? doneReady! : ready) },
     };
   });
 }
@@ -148,7 +166,8 @@ function progressBounds(
         const upstream = boundOf(before);
         if (upstream) from = { ...upstream, at: upstream.at + task.duration };
       }
-      if (from && (!best || from.at > best.at || (from.at === best.at && from.by < best.by))) best = from;
+      if (from && (!best || from.at > best.at || (from.at === best.at && from.by < best.by)))
+        best = from;
     }
     memo.set(key, best);
     return best;
@@ -160,7 +179,11 @@ function progressBounds(
  * The shelf life a Task must keep for, or null. Only an owner's finished result keeps: a Task with
  * a successor of its own Dish or Batch (Roast the bones before Strain the stock) feeds that one.
  */
-function keepsOf(task: Prepared, tasks: Map<TaskKey, Prepared>, successors: Map<TaskKey, TaskKey[]>): number | null {
+function keepsOf(
+  task: Prepared,
+  tasks: Map<TaskKey, Prepared>,
+  successors: Map<TaskKey, TaskKey[]>,
+): number | null {
   if (task.keeps === null) return null;
   const feedsOwn = (successors.get(task.key) ?? []).some((k) => tasks.get(k)?.owner === task.owner);
   return feedsOwn ? null : task.keeps;
@@ -178,7 +201,13 @@ function latestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute)
 }
 
 /** The previous start if it still fits, else the nearest start that does (the later one on a tie). */
-function nearestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute, previous: Minute): Minute | null {
+function nearestFit(
+  free: Timeline,
+  task: Prepared,
+  lower: Minute,
+  upper: Minute,
+  previous: Minute,
+): Minute | null {
   const lo = ceilGrid(lower);
   const hi = floorGrid(upper - task.duration);
   if (hi < lo) return null;
@@ -192,7 +221,8 @@ function nearestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute
 }
 
 function occupy(free: Timeline, task: Prepared, start: Minute): Timeline {
-  for (const s of task.stretches) free = subtract(free, start + s.offset, start + s.offset + s.minutes);
+  for (const s of task.stretches)
+    free = subtract(free, start + s.offset, start + s.offset + s.minutes);
   return free;
 }
 
@@ -211,7 +241,8 @@ interface Candidate {
 /** Placement order among eligible Tasks: true when `a` goes before `b`. */
 function before(a: Candidate, b: Candidate): boolean {
   if ((a.previous === undefined) !== (b.previous === undefined)) return a.previous !== undefined;
-  if (a.previous !== undefined && b.previous !== undefined && a.previous !== b.previous) return a.previous > b.previous;
+  if (a.previous !== undefined && b.previous !== undefined && a.previous !== b.previous)
+    return a.previous > b.previous;
   if (a.upper.at !== b.upper.at) return a.upper.at > b.upper.at;
   return a.key < b.key;
 }
@@ -224,24 +255,36 @@ function before(a: Candidate, b: Candidate): boolean {
  */
 export function schedule(model: PlanningModel): Plan {
   if (model.cooks.length !== 1) {
-    throw new SchedulerInputError("CookCount", `Expected exactly one Cook, got ${model.cooks.length}`);
+    throw new SchedulerInputError(
+      "CookCount",
+      `Expected exactly one Cook, got ${model.cooks.length}`,
+    );
   }
   const cook = model.cooks[0]!;
   const cookFree = normalize(cook.free);
   const tasks = new Map<TaskKey, Prepared>();
   for (const task of prepare(model)) {
-    if (tasks.has(task.key)) throw new SchedulerInputError("DuplicateTask", `Duplicate Task ${task.key}`, [task.key]);
+    if (tasks.has(task.key))
+      throw new SchedulerInputError("DuplicateTask", `Duplicate Task ${task.key}`, [task.key]);
     tasks.set(task.key, task);
   }
   const unknown = model.links.flatMap((l) => [l.before, l.after]).filter((k) => !tasks.has(k));
   if (unknown.length > 0) {
     const keys = [...new Set(unknown)].sort();
-    throw new SchedulerInputError("UnknownLinkTask", `Link to unknown Task ${keys.join(", ")}`, keys);
+    throw new SchedulerInputError(
+      "UnknownLinkTask",
+      `Link to unknown Task ${keys.join(", ")}`,
+      keys,
+    );
   }
   const seenPrevious = new Set<TaskKey>();
   for (const prev of model.previous) {
     if (seenPrevious.has(prev.key)) {
-      throw new SchedulerInputError("DuplicatePrevious", `Duplicate previous placement ${prev.key}`, [prev.key]);
+      throw new SchedulerInputError(
+        "DuplicatePrevious",
+        `Duplicate previous placement ${prev.key}`,
+        [prev.key],
+      );
     }
     seenPrevious.add(prev.key);
   }
@@ -271,12 +314,17 @@ export function schedule(model: PlanningModel): Plan {
   if (unfinished.size > 0) {
     // What is left: the Tasks on a cycle plus every Task upstream of one.
     const keys = [...unfinished.keys()].sort();
-    throw new SchedulerInputError("Cycle", `Dependency cycle reachable from ${keys.join(", ")}`, keys);
+    throw new SchedulerInputError(
+      "Cycle",
+      `Dependency cycle reachable from ${keys.join(", ")}`,
+      keys,
+    );
   }
 
   // Previous starts of Tasks that still exist and are not pinned.
   const previousStart = new Map<TaskKey, Minute>();
-  for (const prev of model.previous) if (!prev.pinned && tasks.has(prev.key)) previousStart.set(prev.key, prev.start);
+  for (const prev of model.previous)
+    if (!prev.pinned && tasks.has(prev.key)) previousStart.set(prev.key, prev.start);
 
   const bounds = new Map<TaskKey, Bound>();
   const placements: Placement[] = [];
@@ -292,7 +340,14 @@ export function schedule(model: PlanningModel): Plan {
   const place = (task: Prepared, start: Minute, pinned: boolean) => {
     free = occupy(free, task, start);
     bounds.set(task.key, { at: start, pin: pinned ? task.key : null });
-    placements.push({ key: task.key, start, end: start + task.duration, cookId: cook.id, pinned, approximate: task.approximate });
+    placements.push({
+      key: task.key,
+      start,
+      end: start + task.duration,
+      cookId: cook.id,
+      pinned,
+      approximate: task.approximate,
+    });
     placedStart.set(task.key, start);
   };
   // Binding upper bound: the earliest successor bound (ties by key), else Service.
@@ -348,7 +403,8 @@ export function schedule(model: PlanningModel): Plan {
       const from = pinned !== undefined ? { at: pinned, pin: before } : pinBound.get(before)!;
       if (!from) continue;
       const end = from.at + tasks.get(before)!.duration;
-      if (!best || end > best.at || (end === best.at && from.pin < best.pin)) best = { at: end, pin: from.pin };
+      if (!best || end > best.at || (end === best.at && from.pin < best.pin))
+        best = { at: end, pin: from.pin };
     }
     pinBound.set(key, best);
   }
@@ -357,22 +413,31 @@ export function schedule(model: PlanningModel): Plan {
     const bound = pinBound.get(task.key)!;
     return bound && bound.at > task.lower ? bound : { at: task.lower, pin: null };
   };
-  const progressBound = progressBounds(tasks, predecessors, (k) => fixedStart.get(k), (k) => pinStart.has(k));
+  const progressBound = progressBounds(
+    tasks,
+    predecessors,
+    (k) => fixedStart.get(k),
+    (k) => pinStart.has(k),
+  );
 
   const reasonFor = (task: Prepared, lowerBound: Bound, upper: Bound): UnplacedReason => {
     const lower = lowerBound.at;
     const window: Interval = { start: lower, end: upper.at };
     if (upper.pin !== null) return { kind: "BlockedByPin", pin: upper.pin, searched: window };
     // A pin-set lower bound is reported as BlockedByPin even when the real limit is Cook time after the pin (as decision 4).
-    if (lowerBound.pin !== null) return { kind: "BlockedByPin", pin: lowerBound.pin, searched: window };
-    if (upper.at - lower < task.duration) return { kind: "WindowTooTight", minutesNeeded: task.duration, window };
+    if (lowerBound.pin !== null)
+      return { kind: "BlockedByPin", pin: lowerBound.pin, searched: window };
+    if (upper.at - lower < task.duration)
+      return { kind: "WindowTooTight", minutesNeeded: task.duration, window };
     for (const pin of pins) {
       const pinStart = pin.start;
       if (pinStart >= upper.at || pinStart + pin.task.duration <= lower) continue;
       // Would the Task fit with this pin's active time given back?
       let without = cookFree;
-      for (const p of placements) if (p.key !== pin.task.key) without = occupy(without, tasks.get(p.key)!, p.start);
-      if (latestFit(without, task, lower, upper.at) !== null) return { kind: "BlockedByPin", pin: pin.task.key, searched: window };
+      for (const p of placements)
+        if (p.key !== pin.task.key) without = occupy(without, tasks.get(p.key)!, p.start);
+      if (latestFit(without, task, lower, upper.at) !== null)
+        return { kind: "BlockedByPin", pin: pin.task.key, searched: window };
     }
     return { kind: "NoAvailability", minutesNeeded: task.duration, searched: window };
   };
@@ -402,11 +467,14 @@ export function schedule(model: PlanningModel): Plan {
     const lower = lowerOf(task);
 
     const fit = (from: Minute) =>
-      previous === undefined ? latestFit(free, task, from, upper.at) : nearestFit(free, task, from, upper.at, previous);
+      previous === undefined
+        ? latestFit(free, task, from, upper.at)
+        : nearestFit(free, task, from, upper.at, previous);
     // Shelf life: first try to be ready no earlier than the latest use allows, then anywhere (a conflict).
     const keeps = keepsOf(task, tasks, successors);
     const floor = keeps === null ? null : shelfFloor(key, task, keeps);
-    const fitFrom = (from: Minute) => (floor !== null && floor > from ? fit(floor) : null) ?? fit(from);
+    const fitFrom = (from: Minute) =>
+      (floor !== null && floor > from ? fit(floor) : null) ?? fit(from);
     // Progress: first after the late Task it waits for; else where it fits without that bound, as
     // an Outrun conflict (#88 owner decision 2). Unplaced only when neither fits.
     const late = progressBound(key);
@@ -421,7 +489,11 @@ export function schedule(model: PlanningModel): Plan {
     done(key);
   }
   placements.sort(byKey);
-  return { placements, unplaced: unplaced.sort(byKey), conflicts: conflictsAmong(model, tasks, successors, placements) };
+  return {
+    placements,
+    unplaced: unplaced.sort(byKey),
+    conflicts: conflictsAmong(model, tasks, successors, placements),
+  };
 }
 
 /**
@@ -429,7 +501,10 @@ export function schedule(model: PlanningModel): Plan {
  * model and the placements only, so a read can derive them over the stored Plan (ADR 0010).
  * Unplaced Tasks are ignored. Throws `SchedulerInputError` for input `schedule` would refuse.
  */
-export function conflictsOf(model: PlanningModel, placements: { key: TaskKey; start: Minute; pinned?: boolean }[]): Conflict[] {
+export function conflictsOf(
+  model: PlanningModel,
+  placements: { key: TaskKey; start: Minute; pinned?: boolean }[],
+): Conflict[] {
   const tasks = new Map(prepare(model).map((t) => [t.key, t]));
   const successors = new Map<TaskKey, TaskKey[]>([...tasks.keys()].map((k) => [k, []]));
   for (const link of model.links) successors.get(link.before)?.push(link.after);
@@ -444,23 +519,31 @@ function conflictsAmong(
 ): Conflict[] {
   const startOf = new Map(placements.map((p) => [p.key, p.start]));
   const predecessors = new Map<TaskKey, TaskKey[]>();
-  for (const link of model.links) predecessors.set(link.after, [...(predecessors.get(link.after) ?? []), link.before]);
+  for (const link of model.links)
+    predecessors.set(link.after, [...(predecessors.get(link.after) ?? []), link.before]);
   const pins = new Set(placements.filter((p) => p.pinned).map((p) => p.key));
-  const progressBound = progressBounds(tasks, predecessors, (k) => startOf.get(k), (k) => pins.has(k));
+  const progressBound = progressBounds(
+    tasks,
+    predecessors,
+    (k) => startOf.get(k),
+    (k) => pins.has(k),
+  );
   const out: Conflict[] = [];
   for (const { key, start } of placements) {
     const task = tasks.get(key);
     if (!task) continue;
     // A Task that has started isn't outrun: it already began.
     const late = task.progress ? null : progressBound(key);
-    if (late && start < late.at) out.push({ key, kind: "Outrun", by: late.by, readyAt: late.readyAt, start });
+    if (late && start < late.at)
+      out.push({ key, kind: "Outrun", by: late.by, readyAt: late.readyAt, start });
     const readyAt = start + task.duration;
     const uses = (successors.get(key) ?? [])
       .filter((k) => startOf.has(k))
       .map((k) => ({ key: k, at: startOf.get(k)! }))
       .sort((a, b) => a.at - b.at || (a.key < b.key ? -1 : 1));
     const early = uses.find((u) => u.at < readyAt);
-    if (early) out.push({ key, kind: "EarliestUseTooLate", readyAt, use: early.key, useAt: early.at });
+    if (early)
+      out.push({ key, kind: "EarliestUseTooLate", readyAt, use: early.key, useAt: early.at });
     const keeps = keepsOf(task, tasks, successors);
     if (keeps === null) continue;
     // The latest use, ties to the lower key; Service when nothing uses it.
@@ -468,7 +551,17 @@ function conflictsAmong(
     if (!latest && (successors.get(key) ?? []).length) continue;
     const useAt = latest ? latest.at : model.service.at;
     const keepsUntil = readyAt + keeps;
-    if (keepsUntil < useAt) out.push({ key, kind: "ShelfLifeExceeded", readyAt, keepsUntil, use: latest?.key ?? null, useAt });
+    if (keepsUntil < useAt)
+      out.push({
+        key,
+        kind: "ShelfLifeExceeded",
+        readyAt,
+        keepsUntil,
+        use: latest?.key ?? null,
+        useAt,
+      });
   }
-  return out.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
+  return out.sort((a, b) =>
+    a.key < b.key ? -1 : a.key > b.key ? 1 : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0,
+  );
 }

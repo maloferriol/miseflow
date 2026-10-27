@@ -20,54 +20,37 @@ export type VisibleIngredient = CatalogEntry & {
 
 // Seed rows have no owner; everything else must be the caller's. Soft-deleted rows never show.
 const visible = (
-  table:
-    typeof ingredients | typeof ingredientAliases | typeof shoppingCategories,
+  table: typeof ingredients | typeof ingredientAliases | typeof shoppingCategories,
   ownerId: string,
-) =>
-  and(
-    or(isNull(table.ownerId), eq(table.ownerId, ownerId)),
-    isNull(table.deletedAt),
-  );
+) => and(or(isNull(table.ownerId), eq(table.ownerId, ownerId)), isNull(table.deletedAt));
 
 /** The Ingredient catalog the caller sees: the seed plus their own rows, overrides merged in. */
-export async function loadCatalog(
-  tx: Tx,
-  ownerId: string,
-): Promise<VisibleIngredient[]> {
-  const [ingredientRows, aliasRows, overrideRows, categoryRows] =
-    await Promise.all([
-      tx.select().from(ingredients).where(visible(ingredients, ownerId)),
-      tx
-        .select({
-          ingredientId: ingredientAliases.ingredientId,
-          name: ingredientAliases.name,
-          source: ingredientAliases.source,
-        })
-        .from(ingredientAliases)
-        .where(visible(ingredientAliases, ownerId)),
-      tx
-        .select()
-        .from(ingredientOverrides)
-        .where(
-          and(
-            eq(ingredientOverrides.ownerId, ownerId),
-            isNull(ingredientOverrides.deletedAt),
-          ),
-        ),
-      tx
-        .select({ id: shoppingCategories.id, name: shoppingCategories.name })
-        .from(shoppingCategories)
-        .where(visible(shoppingCategories, ownerId)),
-    ]);
+export async function loadCatalog(tx: Tx, ownerId: string): Promise<VisibleIngredient[]> {
+  const [ingredientRows, aliasRows, overrideRows, categoryRows] = await Promise.all([
+    tx.select().from(ingredients).where(visible(ingredients, ownerId)),
+    tx
+      .select({
+        ingredientId: ingredientAliases.ingredientId,
+        name: ingredientAliases.name,
+        source: ingredientAliases.source,
+      })
+      .from(ingredientAliases)
+      .where(visible(ingredientAliases, ownerId)),
+    tx
+      .select()
+      .from(ingredientOverrides)
+      .where(and(eq(ingredientOverrides.ownerId, ownerId), isNull(ingredientOverrides.deletedAt))),
+    tx
+      .select({ id: shoppingCategories.id, name: shoppingCategories.name })
+      .from(shoppingCategories)
+      .where(visible(shoppingCategories, ownerId)),
+  ]);
 
   const categories = new Map(categoryRows.map((c) => [c.id, c]));
   const overrides = new Map(overrideRows.map((o) => [o.ingredientId, o]));
   const aliases = new Map<string, typeof aliasRows>();
   for (const alias of aliasRows) {
-    aliases.set(alias.ingredientId, [
-      ...(aliases.get(alias.ingredientId) ?? []),
-      alias,
-    ]);
+    aliases.set(alias.ingredientId, [...(aliases.get(alias.ingredientId) ?? []), alias]);
   }
 
   return ingredientRows.map((row) => {
@@ -85,8 +68,7 @@ export async function loadCatalog(
       mainUnit: override?.mainUnit ?? row.mainUnit,
       shoppingCategory: (categoryId && categories.get(categoryId)) || null,
       overridden:
-        !!override &&
-        (override.mainUnit !== null || override.shoppingCategoryId !== null),
+        !!override && (override.mainUnit !== null || override.shoppingCategoryId !== null),
       overrideId: override?.id ?? null,
     };
   });

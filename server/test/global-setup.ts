@@ -5,7 +5,8 @@ import { assertLocalEnv } from "../../scripts/local-only.ts";
 export default async function checkDatabase() {
   assertLocalEnv("npm test");
   const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set. Run `npm run setup:local` to write a local .env.");
+  if (!url)
+    throw new Error("DATABASE_URL is not set. Run `npm run setup:local` to write a local .env.");
   const sql = postgres(url, { max: 1, connect_timeout: 3, onnotice: () => {} });
   try {
     await sql`select 1 from applied_mutations limit 1`;

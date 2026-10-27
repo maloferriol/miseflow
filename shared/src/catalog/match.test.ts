@@ -1,16 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  findIngredient,
-  normaliseName,
-  searchCatalog,
-  type CatalogEntry,
-} from "./match.ts";
+import { findIngredient, normaliseName, searchCatalog, type CatalogEntry } from "./match.ts";
 
 describe("findIngredient", () => {
   it("finds the seed Ingredient 'shallot' when searching 'Shallots'", () => {
-    const catalog: CatalogEntry[] = [
-      { id: "s1", name: "shallot", source: "seed", aliases: [] },
-    ];
+    const catalog: CatalogEntry[] = [{ id: "s1", name: "shallot", source: "seed", aliases: [] }];
     expect(findIngredient(catalog, "Shallots")?.id).toBe("s1");
   });
 
@@ -27,9 +20,7 @@ describe("findIngredient", () => {
   });
 
   it("returns undefined when nothing matches exactly", () => {
-    const catalog: CatalogEntry[] = [
-      { id: "s1", name: "shallot", source: "seed", aliases: [] },
-    ];
+    const catalog: CatalogEntry[] = [{ id: "s1", name: "shallot", source: "seed", aliases: [] }];
     expect(findIngredient(catalog, "shall")).toBeUndefined();
   });
 
@@ -85,9 +76,7 @@ describe("normaliseName", () => {
   });
 
   it("trims and collapses whitespace", () => {
-    expect(normaliseName("  white   wine\tvinegar ")).toBe(
-      "white wine vinegar",
-    );
+    expect(normaliseName("  white   wine\tvinegar ")).toBe("white wine vinegar");
   });
 
   it("makes the last word singular", () => {

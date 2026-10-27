@@ -22,7 +22,8 @@ export function servicesRoute(db: Db, timeZone: string, now: () => Date) {
         const plan = await readPlan(db, c.get("ownerId"), serviceId.data, timeZone, now());
         return c.json({ plan }, 200);
       } catch (error) {
-        if (error instanceof NotFoundError) return c.json(errorBody("NOT_FOUND", error.message), 404);
+        if (error instanceof NotFoundError)
+          return c.json(errorBody("NOT_FOUND", error.message), 404);
         throw error;
       }
     })
@@ -33,7 +34,8 @@ export function servicesRoute(db: Db, timeZone: string, now: () => Date) {
         const shoppingList = await readShoppingList(db, c.get("ownerId"), serviceId.data);
         return c.json({ shoppingList }, 200);
       } catch (error) {
-        if (error instanceof NotFoundError) return c.json(errorBody("NOT_FOUND", error.message), 404);
+        if (error instanceof NotFoundError)
+          return c.json(errorBody("NOT_FOUND", error.message), 404);
         throw error;
       }
     });

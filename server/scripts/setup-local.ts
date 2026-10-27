@@ -18,7 +18,8 @@ function supabase(...args: string[]) {
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set in .env. Delete .env and rerun to write a fresh one.`);
+  if (!value)
+    throw new Error(`${name} is not set in .env. Delete .env and rerun to write a fresh one.`);
   return value;
 }
 

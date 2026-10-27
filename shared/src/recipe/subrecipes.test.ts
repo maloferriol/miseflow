@@ -68,7 +68,8 @@ describe("areConsecutive", () => {
 describe("parseYield", () => {
   it("reads 1.5 L", () => expect(parseYield("1.5 L")).toEqual({ quantity: 1.5, unit: "L" }));
   it("reads 24 as pieces", () => expect(parseYield("24")).toEqual({ quantity: 24, unit: null }));
-  it("reads the shorthand 500%g", () => expect(parseYield("500%g")).toEqual({ quantity: 500, unit: "g" }));
+  it("reads the shorthand 500%g", () =>
+    expect(parseYield("500%g")).toEqual({ quantity: 500, unit: "g" }));
   it.each(["a pinch", "2-3", "=1 kg", "", "1/0", "0"])("refuses %j", (text) => {
     expect(() => parseYield(text)).toThrow();
   });

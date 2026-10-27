@@ -21,9 +21,7 @@ test("sets times on every Step but one, sees it in ready to plan, fills it in, a
   await page.getByRole("button", { name: "Create Recipe" }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
 
-  const steps = page
-    .getByRole("list", { name: "Steps" })
-    .locator(":scope > li");
+  const steps = page.getByRole("list", { name: "Steps" }).locator(":scope > li");
   const texts = ["Roast the bones", "Simmer for four hours", "Strain and cool"];
   for (const [index, text] of texts.entries()) {
     await page.getByRole("button", { name: "Add Step" }).click();
@@ -33,13 +31,9 @@ test("sets times on every Step but one, sees it in ready to plan, fills it in, a
   }
 
   await page.getByRole("button", { name: "Plan" }).click();
-  const rows = page
-    .getByRole("list", { name: "Planning" })
-    .locator(":scope > li");
+  const rows = page.getByRole("list", { name: "Planning" }).locator(":scope > li");
   await expect(rows).toHaveCount(3);
-  const ready = page
-    .getByRole("list", { name: "Ready to plan" })
-    .getByRole("listitem");
+  const ready = page.getByRole("list", { name: "Ready to plan" }).getByRole("listitem");
   await expect(ready).toHaveCount(3);
 
   async function saveTimes(index: number, active: string, passive: string) {
@@ -61,10 +55,7 @@ test("sets times on every Step but one, sees it in ready to plan, fills it in, a
 
   // A reload stays in the Planning pass, and the times are saved.
   await page.reload();
-  await expect(page.getByRole("button", { name: "Plan" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(page.getByRole("button", { name: "Plan" })).toHaveAttribute("aria-pressed", "true");
   await expect(rows).toHaveCount(3);
   await expect(ready).toHaveCount(0);
   await expect(rows.nth(1).getByLabel("Passive minutes")).toHaveValue("240");

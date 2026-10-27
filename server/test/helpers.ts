@@ -17,7 +17,13 @@ export const db = createDb(databaseUrlFromEnv());
 export const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
 
 export function testApp(options: Partial<AppOptions> = {}) {
-  return createApp({ auth: authConfigFromEnv(), db, timeZone: "Europe/Paris", now: () => FIXED_NOW, ...options });
+  return createApp({
+    auth: authConfigFromEnv(),
+    db,
+    timeZone: "Europe/Paris",
+    now: () => FIXED_NOW,
+    ...options,
+  });
 }
 
 let token: Promise<string> | undefined;
@@ -25,14 +31,19 @@ let token: Promise<string> | undefined;
 // The local test user's access token, signed in once per test file.
 export function getToken(): Promise<string> {
   token ??= (async () => {
-    const client = createClient(requireEnv("SUPABASE_URL"), requireEnv("SUPABASE_PUBLISHABLE_KEY"), {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const client = createClient(
+      requireEnv("SUPABASE_URL"),
+      requireEnv("SUPABASE_PUBLISHABLE_KEY"),
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+      },
+    );
     const { data, error } = await client.auth.signInWithPassword({
       email: requireEnv("TEST_USER_EMAIL"),
       password: requireEnv("TEST_USER_PASSWORD"),
     });
-    if (error) throw new Error(`Test user sign-in failed (run npm run setup:local): ${error.message}`);
+    if (error)
+      throw new Error(`Test user sign-in failed (run npm run setup:local): ${error.message}`);
     return data.session.access_token;
   })();
   return token;

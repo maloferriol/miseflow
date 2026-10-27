@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { deriveBatches } from "../plan/batches.ts";
 import type { RecipeSnapshot, SnapshotLine } from "../recipe/snapshot.ts";
-import { type ConversionRow, deriveShoppingList, type ShoppingIngredient, type ShoppingList } from "./list.ts";
+import {
+  type ConversionRow,
+  deriveShoppingList,
+  type ShoppingIngredient,
+  type ShoppingList,
+} from "./list.ts";
 
 // Recipes as snapshots, one Step each, so each test reads as the lines it adds up.
 let n = 0;
@@ -22,12 +27,27 @@ const line = (spec: LineSpec): SnapshotLine => ({
   ...spec,
 });
 
-const recipe = (name: string, lines: SnapshotLine[], extra: Partial<RecipeSnapshot> = {}): RecipeSnapshot => ({
+const recipe = (
+  name: string,
+  lines: SnapshotLine[],
+  extra: Partial<RecipeSnapshot> = {},
+): RecipeSnapshot => ({
   name,
   servings: null,
   yield: null,
   makeAhead: null,
-  steps: [{ id: nextId(), position: "a0", body: [], lines, activeMinutes: 10, passiveMinutes: null, makeAhead: null, groupWithPrevious: false }],
+  steps: [
+    {
+      id: nextId(),
+      position: "a0",
+      body: [],
+      lines,
+      activeMinutes: 10,
+      passiveMinutes: null,
+      makeAhead: null,
+      groupWithPrevious: false,
+    },
+  ],
   dependencies: [],
   ...extra,
 });
@@ -39,7 +59,12 @@ const SPICES = { id: "cat-spices", name: "Spices" };
 // Seed order: Produce before Dairy & eggs before Dry goods before Spices.
 const CATEGORIES = [PRODUCE, DAIRY, DRY, SPICES];
 
-const ingredient = (id: string, preferredKind: string, shoppingCategory: { id: string; name: string } | null, mainUnit: string | null = null): ShoppingIngredient => ({
+const ingredient = (
+  id: string,
+  preferredKind: string,
+  shoppingCategory: { id: string; name: string } | null,
+  mainUnit: string | null = null,
+): ShoppingIngredient => ({
   id,
   name: id,
   preferredKind,
@@ -56,9 +81,20 @@ const CATALOG = [
   ingredient("water", "volume", null),
 ];
 
-type Menu = { guestCount: number | null; dishes: { recipe: RecipeSnapshot; scaleFactor?: number }[]; subRecipes?: Record<string, RecipeSnapshot> };
+type Menu = {
+  guestCount: number | null;
+  dishes: { recipe: RecipeSnapshot; scaleFactor?: number }[];
+  subRecipes?: Record<string, RecipeSnapshot>;
+};
 
-function shoppingList(menu: Menu, options: { conversions?: Record<string, ConversionRow[]>; catalog?: ShoppingIngredient[]; got?: string[] } = {}): ShoppingList {
+function shoppingList(
+  menu: Menu,
+  options: {
+    conversions?: Record<string, ConversionRow[]>;
+    catalog?: ShoppingIngredient[];
+    got?: string[];
+  } = {},
+): ShoppingList {
   const recipes = new Map<string, RecipeSnapshot>(Object.entries(menu.subRecipes ?? {}));
   const dishes = menu.dishes.map((d, i) => {
     const recipeId = `recipe-${i}`;
@@ -80,46 +116,103 @@ function shoppingList(menu: Menu, options: { conversions?: Record<string, Conver
 }
 
 const rows = (list: ShoppingList) => list.categories.flatMap((c) => c.rows);
-const row = (list: ShoppingList, ingredientId: string) => rows(list).find((r) => r.ingredientId === ingredientId);
+const row = (list: ShoppingList, ingredientId: string) =>
+  rows(list).find((r) => r.ingredientId === ingredientId);
 
 describe("deriveShoppingList", () => {
   it("adds butter from the Beurre blanc and the Pastry on one row in grams", () => {
     // The duck (servings 6) at 12 guests is ×2 and uses 300 ml of Beurre blanc (yield 300 ml): ×2.
     // The tarte (servings 6) is ×2 and uses 1 Pastry (yield 1): ×2.
-    const beurre = recipe("Beurre blanc", [line({ ingredientId: "butter", quantity: 200, unit: "g", wording: "butter" })], {
-      yield: { quantity: 300, unit: "ml" },
-    });
-    const pastry = recipe("Pastry", [line({ ingredientId: "butter", quantity: 0.1, unit: "kg", wording: "butter" })], {
-      yield: { quantity: 1, unit: null },
-    });
+    const beurre = recipe(
+      "Beurre blanc",
+      [line({ ingredientId: "butter", quantity: 200, unit: "g", wording: "butter" })],
+      {
+        yield: { quantity: 300, unit: "ml" },
+      },
+    );
+    const pastry = recipe(
+      "Pastry",
+      [line({ ingredientId: "butter", quantity: 0.1, unit: "kg", wording: "butter" })],
+      {
+        yield: { quantity: 1, unit: null },
+      },
+    );
     const list = shoppingList({
       guestCount: 12,
       dishes: [
-        { recipe: recipe("Duck", [line({ subRecipeId: "beurre", quantity: 300, unit: "ml", wording: "beurre blanc" })], { servings: 6 }) },
-        { recipe: recipe("Tarte tatin", [line({ subRecipeId: "pastry", quantity: 1, wording: "pastry" })], { servings: 6 }) },
+        {
+          recipe: recipe(
+            "Duck",
+            [line({ subRecipeId: "beurre", quantity: 300, unit: "ml", wording: "beurre blanc" })],
+            { servings: 6 },
+          ),
+        },
+        {
+          recipe: recipe(
+            "Tarte tatin",
+            [line({ subRecipeId: "pastry", quantity: 1, wording: "pastry" })],
+            { servings: 6 },
+          ),
+        },
       ],
       subRecipes: { beurre, pastry },
     });
     expect(rows(list).filter((r) => r.ingredientId === "butter")).toEqual([
-      expect.objectContaining({ name: "butter", need: 600, unit: "g", approximate: false, vague: [], unconverted: [] }),
+      expect.objectContaining({
+        name: "butter",
+        need: 600,
+        unit: "g",
+        approximate: false,
+        vague: [],
+        unconverted: [],
+      }),
     ]);
   });
 
   it("turns 2 cups flour into grams through a reference Conversion, marked ≈", () => {
     // A reference cup of flour (USDA FDC 168894: 125 g), injected by the test (owner decision 2).
-    const conversions = { flour: [{ fromUnit: "cup", toUnit: "g", factor: 125, source: "seed" as const }] };
+    const conversions = {
+      flour: [{ fromUnit: "cup", toUnit: "g", factor: 125, source: "seed" as const }],
+    };
     const list = shoppingList(
-      { guestCount: null, dishes: [{ recipe: recipe("Bread", [line({ ingredientId: "flour", quantity: 2, unit: "cup", wording: "flour" })]) }] },
+      {
+        guestCount: null,
+        dishes: [
+          {
+            recipe: recipe("Bread", [
+              line({ ingredientId: "flour", quantity: 2, unit: "cup", wording: "flour" }),
+            ]),
+          },
+        ],
+      },
       { conversions },
     );
-    expect(row(list, "flour")).toMatchObject({ need: 250, unit: "g", approximate: true, unconverted: [] });
+    expect(row(list, "flour")).toMatchObject({
+      need: 250,
+      unit: "g",
+      approximate: true,
+      unconverted: [],
+    });
 
     // 4 tbsp is 60 ml, a quarter of a metric cup within its kind first, then 31.25 g.
     const tbsp = shoppingList(
-      { guestCount: null, dishes: [{ recipe: recipe("Roux", [line({ ingredientId: "flour", quantity: 4, unit: "tbsp", wording: "flour" })]) }] },
+      {
+        guestCount: null,
+        dishes: [
+          {
+            recipe: recipe("Roux", [
+              line({ ingredientId: "flour", quantity: 4, unit: "tbsp", wording: "flour" }),
+            ]),
+          },
+        ],
+      },
       { conversions },
     );
-    expect(row(tbsp, "flour")).toMatchObject({ need: 60 / 250 * 125, unit: "g", approximate: true });
+    expect(row(tbsp, "flour")).toMatchObject({
+      need: (60 / 250) * 125,
+      unit: "g",
+      approximate: true,
+    });
   });
 
   it("converts through a Conversion from the line's own unit, then within the Main unit's kind", () => {
@@ -132,12 +225,32 @@ describe("deriveShoppingList", () => {
     const list = shoppingList(
       {
         guestCount: null,
-        dishes: [{ recipe: recipe("Soup", [line({ ingredientId: "onion", quantity: 2, wording: "onions" }), line({ ingredientId: "flour", quantity: 2, unit: "cup" })]) }],
+        dishes: [
+          {
+            recipe: recipe("Soup", [
+              line({ ingredientId: "onion", quantity: 2, wording: "onions" }),
+              line({ ingredientId: "flour", quantity: 2, unit: "cup" }),
+            ]),
+          },
+        ],
       },
-      { catalog: catalog.map((i) => (i.id === "flour" ? { ...i, mainUnit: "kg" } : i)), conversions },
+      {
+        catalog: catalog.map((i) => (i.id === "flour" ? { ...i, mainUnit: "kg" } : i)),
+        conversions,
+      },
     );
-    expect(row(list, "onion")).toMatchObject({ need: 0.22, unit: "kg", approximate: true, unconverted: [] });
-    expect(row(list, "flour")).toMatchObject({ need: 0.25, unit: "kg", approximate: true, unconverted: [] });
+    expect(row(list, "onion")).toMatchObject({
+      need: 0.22,
+      unit: "kg",
+      approximate: true,
+      unconverted: [],
+    });
+    expect(row(list, "flour")).toMatchObject({
+      need: 0.25,
+      unit: "kg",
+      approximate: true,
+      unconverted: [],
+    });
   });
 
   it("lists a pinch of salt on its row without adding it to a total", () => {
@@ -157,7 +270,12 @@ describe("deriveShoppingList", () => {
       ],
     });
     // ×3: the 5 g scales, the pinch stays as written (owner decision 5).
-    expect(row(list, "salt")).toMatchObject({ need: 15, unit: "g", vague: ["a pinch"], approximate: false });
+    expect(row(list, "salt")).toMatchObject({
+      need: 15,
+      unit: "g",
+      vague: ["a pinch"],
+      approximate: false,
+    });
   });
 
   it("counts a Fixed quantity once per Dish", () => {
@@ -166,12 +284,29 @@ describe("deriveShoppingList", () => {
       dishes: [
         {
           recipe: recipe("Pasta", [
-            line({ ingredientId: "salt", quantity: 10, unit: "g", fixedQuantity: true, wording: "salt" }),
+            line({
+              ingredientId: "salt",
+              quantity: 10,
+              unit: "g",
+              fixedQuantity: true,
+              wording: "salt",
+            }),
             line({ ingredientId: "flour", quantity: 100, unit: "g", wording: "flour" }),
           ]),
           scaleFactor: 3,
         },
-        { recipe: recipe("Gnocchi", [line({ ingredientId: "salt", quantity: 10, unit: "g", fixedQuantity: true, wording: "salt" })]), scaleFactor: 2 },
+        {
+          recipe: recipe("Gnocchi", [
+            line({
+              ingredientId: "salt",
+              quantity: 10,
+              unit: "g",
+              fixedQuantity: true,
+              wording: "salt",
+            }),
+          ]),
+          scaleFactor: 2,
+        },
       ],
     });
     expect(row(list, "salt")).toMatchObject({ need: 20, unit: "g" });
@@ -183,14 +318,27 @@ describe("deriveShoppingList", () => {
     const stock = recipe(
       "Stock",
       [
-        line({ ingredientId: "salt", quantity: 10, unit: "g", fixedQuantity: true, wording: "salt" }),
+        line({
+          ingredientId: "salt",
+          quantity: 10,
+          unit: "g",
+          fixedQuantity: true,
+          wording: "salt",
+        }),
         line({ ingredientId: "water", quantity: 1, unit: "L", wording: "water" }),
       ],
       { yield: { quantity: 1, unit: "L" } },
     );
     const list = shoppingList({
       guestCount: null,
-      dishes: [{ recipe: recipe("Soup", [line({ subRecipeId: "stock", quantity: 1.5, unit: "L", wording: "stock" })]), scaleFactor: 2 }],
+      dishes: [
+        {
+          recipe: recipe("Soup", [
+            line({ subRecipeId: "stock", quantity: 1.5, unit: "L", wording: "stock" }),
+          ]),
+          scaleFactor: 2,
+        },
+      ],
       subRecipes: { stock },
     });
     expect(row(list, "salt")).toMatchObject({ need: 10, unit: "g" });
@@ -199,10 +347,21 @@ describe("deriveShoppingList", () => {
 
   it("scales a sub-recipe's Ingredients by its Batch's Scale factor, with no row for the sub-recipe", () => {
     // 750 g of Pastry at ×2 from a yield of 500 g: ×3.
-    const pastry = recipe("Pastry", [line({ ingredientId: "flour", quantity: 200, unit: "g", wording: "flour" })], { yield: { quantity: 500, unit: "g" } });
+    const pastry = recipe(
+      "Pastry",
+      [line({ ingredientId: "flour", quantity: 200, unit: "g", wording: "flour" })],
+      { yield: { quantity: 500, unit: "g" } },
+    );
     const list = shoppingList({
       guestCount: null,
-      dishes: [{ recipe: recipe("Tart", [line({ subRecipeId: "pastry", quantity: 750, unit: "g", wording: "pastry" })]), scaleFactor: 2 }],
+      dishes: [
+        {
+          recipe: recipe("Tart", [
+            line({ subRecipeId: "pastry", quantity: 750, unit: "g", wording: "pastry" }),
+          ]),
+          scaleFactor: 2,
+        },
+      ],
       subRecipes: { pastry },
     });
     expect(rows(list).map((r) => [r.ingredientId, r.need])).toEqual([["flour", 600]]);
@@ -212,10 +371,19 @@ describe("deriveShoppingList", () => {
 
   it("marks ≈ the Ingredients of a sub-recipe that couldn't be scaled", () => {
     // No yield: the Batch is assumed ×1, so its flour is an Approximate total.
-    const pastry = recipe("Pastry", [line({ ingredientId: "flour", quantity: 200, unit: "g", wording: "flour" })]);
+    const pastry = recipe("Pastry", [
+      line({ ingredientId: "flour", quantity: 200, unit: "g", wording: "flour" }),
+    ]);
     const list = shoppingList({
       guestCount: null,
-      dishes: [{ recipe: recipe("Tart", [line({ subRecipeId: "pastry", quantity: 750, unit: "g", wording: "pastry" })]), scaleFactor: 2 }],
+      dishes: [
+        {
+          recipe: recipe("Tart", [
+            line({ subRecipeId: "pastry", quantity: 750, unit: "g", wording: "pastry" }),
+          ]),
+          scaleFactor: 2,
+        },
+      ],
       subRecipes: { pastry },
     });
     expect(row(list, "flour")).toMatchObject({ need: 200, approximate: true });
@@ -248,21 +416,45 @@ describe("deriveShoppingList", () => {
 
   it("uses the Ingredient's override category and Main unit", () => {
     // As loadCatalog merges an override: cream in litres, bought with the Dry goods.
-    const catalog = CATALOG.map((i) => (i.id === "cream" ? { ...i, mainUnit: "L", shoppingCategory: DRY } : i));
+    const catalog = CATALOG.map((i) =>
+      i.id === "cream" ? { ...i, mainUnit: "L", shoppingCategory: DRY } : i,
+    );
     const list = shoppingList(
-      { guestCount: null, dishes: [{ recipe: recipe("Sauce", [line({ ingredientId: "cream", quantity: 250, unit: "ml" })]), scaleFactor: 3 }] },
+      {
+        guestCount: null,
+        dishes: [
+          {
+            recipe: recipe("Sauce", [line({ ingredientId: "cream", quantity: 250, unit: "ml" })]),
+            scaleFactor: 3,
+          },
+        ],
+      },
       { catalog },
     );
-    expect(list.categories.map((c) => [c.name, c.rows.map((r) => [r.name, r.need, r.unit])])).toEqual([["Dry goods", [["cream", 0.75, "L"]]]]);
+    expect(
+      list.categories.map((c) => [c.name, c.rows.map((r) => [r.name, r.need, r.unit])]),
+    ).toEqual([["Dry goods", [["cream", 0.75, "L"]]]]);
   });
 
   it("adds pieces up against the count Main unit each", () => {
     // parseQuantity's piece (no unit) is the seed's and kitchen's "each".
     const list = shoppingList({
       guestCount: null,
-      dishes: [{ recipe: recipe("Tarte tatin", [line({ ingredientId: "apple", quantity: 6, wording: "apples" })]), scaleFactor: 2 }],
+      dishes: [
+        {
+          recipe: recipe("Tarte tatin", [
+            line({ ingredientId: "apple", quantity: 6, wording: "apples" }),
+          ]),
+          scaleFactor: 2,
+        },
+      ],
     });
-    expect(row(list, "apple")).toMatchObject({ need: 12, unit: "each", approximate: false, unconverted: [] });
+    expect(row(list, "apple")).toMatchObject({
+      need: 12,
+      unit: "each",
+      approximate: false,
+      unconverted: [],
+    });
   });
 
   it("flags a line with a Missing sub-recipe and adds nothing for it", () => {
@@ -270,7 +462,16 @@ describe("deriveShoppingList", () => {
     const unlinked = line({ subRecipeId: null, quantity: 1, wording: "jus" });
     const list = shoppingList({
       guestCount: null,
-      dishes: [{ recipe: recipe("Tart", [missing, unlinked, line({ ingredientId: "flour", quantity: 100, unit: "g" })]), scaleFactor: 2 }],
+      dishes: [
+        {
+          recipe: recipe("Tart", [
+            missing,
+            unlinked,
+            line({ ingredientId: "flour", quantity: 100, unit: "g" }),
+          ]),
+          scaleFactor: 2,
+        },
+      ],
     });
     expect(list.missing).toEqual([
       { lineId: missing.id, recipeName: "Tart", wording: "puff pastry" },
@@ -282,7 +483,12 @@ describe("deriveShoppingList", () => {
   it("totals a range at its upper end", () => {
     const list = shoppingList({
       guestCount: null,
-      dishes: [{ recipe: recipe("Tatin", [line({ ingredientId: "apple", quantity: 2, quantityMax: 3 })]), scaleFactor: 2 }],
+      dishes: [
+        {
+          recipe: recipe("Tatin", [line({ ingredientId: "apple", quantity: 2, quantityMax: 3 })]),
+          scaleFactor: 2,
+        },
+      ],
     });
     expect(row(list, "apple")).toMatchObject({ need: 6 });
   });
@@ -315,7 +521,14 @@ describe("deriveShoppingList", () => {
     const list = shoppingList(
       {
         guestCount: null,
-        dishes: [{ recipe: recipe("Tart", [line({ ingredientId: "flour", quantity: 100, unit: "g" }), line({ ingredientId: "butter", quantity: 50, unit: "g" })]) }],
+        dishes: [
+          {
+            recipe: recipe("Tart", [
+              line({ ingredientId: "flour", quantity: 100, unit: "g" }),
+              line({ ingredientId: "butter", quantity: 50, unit: "g" }),
+            ]),
+          },
+        ],
       },
       { got: ["butter"] },
     );

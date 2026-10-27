@@ -10,7 +10,10 @@ export function withPin(model: PlanningModel, key: TaskKey, start: Minute): Plan
   const cookId = model.previous.find((p) => p.key === key)?.cookId ?? model.cooks[0]!.id;
   return {
     ...model,
-    previous: [...model.previous.filter((p) => p.key !== key), { key, start, cookId, pinned: true }],
+    previous: [
+      ...model.previous.filter((p) => p.key !== key),
+      { key, start, cookId, pinned: true },
+    ],
   };
 }
 
@@ -25,7 +28,11 @@ type PlacedTask = {
   pinned: boolean;
 };
 
-type Read<T extends PlacedTask> = { timeZone: string; model: PlanningModel; days: { date: LocalDate; tasks: T[] }[] };
+type Read<T extends PlacedTask> = {
+  timeZone: string;
+  model: PlanningModel;
+  days: { date: LocalDate; tasks: T[] }[];
+};
 
 /**
  * The read with `plan`'s placements in place of its own: each placed Task's times and pin, the days
@@ -45,14 +52,31 @@ export function applyPlacements<T extends PlacedTask, R extends Read<T>>(read: R
     if (!task) continue;
     const start = clock(p.start);
     const end = clock(p.start + task.activeMinutes + task.passiveMinutes);
-    placed.push({ task: { ...task, start: start.time, startMinute: p.start, end: end.time, endDate: end.date, pinned: p.pinned }, date: start.date });
+    placed.push({
+      task: {
+        ...task,
+        start: start.time,
+        startMinute: p.start,
+        end: end.time,
+        endDate: end.date,
+        pinned: p.pinned,
+      },
+      date: start.date,
+    });
   }
-  placed.sort((a, b) => a.task.startMinute - b.task.startMinute || (a.task.key < b.task.key ? -1 : 1));
+  placed.sort(
+    (a, b) => a.task.startMinute - b.task.startMinute || (a.task.key < b.task.key ? -1 : 1),
+  );
   const days: { date: LocalDate; tasks: T[] }[] = [];
   for (const { task, date } of placed) {
     if (days.at(-1)?.date !== date) days.push({ date, tasks: [] });
     days.at(-1)!.tasks.push(task);
   }
-  const previous = plan.placements.map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned }));
+  const previous = plan.placements.map(({ key, start, cookId, pinned }) => ({
+    key,
+    start,
+    cookId,
+    pinned,
+  }));
   return { ...read, days, model: { ...read.model, previous } };
 }

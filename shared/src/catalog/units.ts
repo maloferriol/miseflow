@@ -4,19 +4,7 @@ import { z } from "zod";
 // for counted Ingredients. Ingredient units (clove, bunch…) are not Main units.
 export const UNITS_BY_KIND = {
   mass: ["g", "kg", "mg", "oz", "lb"],
-  volume: [
-    "ml",
-    "cl",
-    "dl",
-    "L",
-    "tsp",
-    "tbsp",
-    "fl oz",
-    "cup",
-    "pint",
-    "quart",
-    "gallon",
-  ],
+  volume: ["ml", "cl", "dl", "L", "tsp", "tbsp", "fl oz", "cup", "pint", "quart", "gallon"],
   count: ["each"],
 } as const;
 

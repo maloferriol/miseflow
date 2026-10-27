@@ -36,10 +36,7 @@ export function CatalogScreen() {
       </ul>
       <NewIngredient onCreated={setQuery} />
       <p>
-        <small>
-          Ingredient seed: Open Food Facts contributors and USDA FoodData
-          Central, ODbL
-        </small>
+        <small>Ingredient seed: Open Food Facts contributors and USDA FoodData Central, ODbL</small>
       </p>
     </section>
   );
@@ -54,8 +51,7 @@ function IngredientItem({ ingredient }: { ingredient: CatalogIngredient }) {
         ingredientId: ingredient.id,
         name,
       }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["ingredients"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ingredients"] }),
   });
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -67,13 +63,10 @@ function IngredientItem({ ingredient }: { ingredient: CatalogIngredient }) {
 
   return (
     <li>
-      <strong>{ingredient.name}</strong> ·{" "}
-      {ingredient.shoppingCategory?.name ?? "No category"} ·{" "}
+      <strong>{ingredient.name}</strong> · {ingredient.shoppingCategory?.name ?? "No category"} ·{" "}
       {ingredient.mainUnit ?? `kitchen ${ingredient.preferredKind ?? ""} unit`}
       {ingredient.source === "own" && " · yours"}
-      {ingredient.aliases.length > 0 && (
-        <> · also: {ingredient.aliases.join(", ")}</>
-      )}
+      {ingredient.aliases.length > 0 && <> · also: {ingredient.aliases.join(", ")}</>}
       <form onSubmit={onSubmit}>
         <label>
           Alias <input name="alias" required />
@@ -94,11 +87,7 @@ function NewIngredient({ onCreated }: { onCreated: (name: string) => void }) {
     queryFn: fetchShoppingCategories,
   });
   const createIngredient = useMutation({
-    mutationFn: async (args: {
-      name: string;
-      preferredKind: string;
-      shoppingCategoryId: string;
-    }) =>
+    mutationFn: async (args: { name: string; preferredKind: string; shoppingCategoryId: string }) =>
       mutate(crypto.randomUUID(), "createIngredient", {
         ingredientId: crypto.randomUUID(),
         ...args,
@@ -149,16 +138,11 @@ function NewIngredient({ onCreated }: { onCreated: (name: string) => void }) {
           ))}
         </select>
       </label>
-      <button
-        type="submit"
-        disabled={createIngredient.isPending || !categories.data}
-      >
+      <button type="submit" disabled={createIngredient.isPending || !categories.data}>
         Create Ingredient
       </button>
       {categories.error && <p role="alert">{categories.error.message}</p>}
-      {createIngredient.error && (
-        <p role="alert">{createIngredient.error.message}</p>
-      )}
+      {createIngredient.error && <p role="alert">{createIngredient.error.message}</p>}
     </form>
   );
 }

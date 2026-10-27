@@ -23,8 +23,13 @@ export async function inRollback(fn: (tx: Tx) => Promise<void>) {
 // with a short lock_timeout. FOR KEY SHARE conflicts with FOR UPDATE but not FOR NO KEY UPDATE, so
 // B fails with "canceling statement due to lock timeout" only if it locks the parent FOR UPDATE.
 // Both roll back. Source: https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-ROWS
-export async function underUncommittedChild(child: (tx: Tx) => Promise<unknown>, parent: (tx: Tx) => Promise<void>) {
-  const clients = [0, 1].map(() => postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} }));
+export async function underUncommittedChild(
+  child: (tx: Tx) => Promise<unknown>,
+  parent: (tx: Tx) => Promise<void>,
+) {
+  const clients = [0, 1].map(() =>
+    postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} }),
+  );
   const [a, b] = clients.map((client) => drizzle({ client }));
   let inserted!: () => void;
   const childInserted = new Promise<void>((resolve) => (inserted = resolve));
@@ -53,7 +58,8 @@ export async function underUncommittedChild(child: (tx: Tx) => Promise<unknown>,
       .finally(finish);
     const [resultA, resultB] = await Promise.allSettled([txA, txB]);
     for (const result of [resultB, resultA]) {
-      if (result.status === "rejected") throw ((result.reason as Error).cause ?? result.reason) as Error;
+      if (result.status === "rejected")
+        throw ((result.reason as Error).cause ?? result.reason) as Error;
     }
   } finally {
     await Promise.all(clients.map((c) => c.end()));

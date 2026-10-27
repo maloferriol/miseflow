@@ -6,7 +6,8 @@ import type { ShoppingRow } from "./api.ts";
 // 12 significant digits. That isn't units spec §7 rounding.
 export function needText(row: ShoppingRow) {
   const number = (value: number) => String(Number(value.toPrecision(12)));
-  const amount = (value: number, unit: string | null) => (unit === null || unit === "each" ? number(value) : `${number(value)} ${unit}`);
+  const amount = (value: number, unit: string | null) =>
+    unit === null || unit === "each" ? number(value) : `${number(value)} ${unit}`;
   const parts = [
     ...(row.need === null ? [] : [`${row.approximate ? "≈ " : ""}${amount(row.need, row.unit)}`]),
     ...row.vague,

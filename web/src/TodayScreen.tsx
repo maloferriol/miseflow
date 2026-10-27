@@ -8,21 +8,25 @@ import { PrintedPlan } from "./PrintedPlan.tsx";
 // can't move it to another day.
 export function dayHeading(date: string) {
   const at = new Date(`${date}T00:00:00Z`);
-  const part = (options: Intl.DateTimeFormatOptions) => at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
   return `${part({ weekday: "long" })} ${part({ day: "numeric" })} ${part({ month: "long" })}`;
 }
 
-const shortDay = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
+const shortDay = (date: string) =>
+  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
 
 // A Dish's name, or a Batch's label ("Chicken stock ×1.5 · for: Velouté, Beurre blanc").
-export const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) => task.batch?.label ?? task.dish?.name;
+export const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) =>
+  task.batch?.label ?? task.dish?.name;
 
 /** "18:20–18:40", with the end's day when it's another day ("21:50–22:00 (Fri)"). */
 export const taskTimes = (task: PlanTask, date: string) =>
   `${task.start}–${task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`}`;
 
 // Today's date in the kitchen's zone ("2026-10-29"); en-CA formats as YYYY-MM-DD.
-const todayIn = (timeZone: string) => new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+const todayIn = (timeZone: string) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
 
 type Tick = { task: PlanTask; stepId: string; done: boolean };
 
@@ -31,8 +35,14 @@ type Tick = { task: PlanTask; stepId: string; done: boolean };
 // without a reload. Tabs: https://www.w3.org/WAI/ARIA/apg/patterns/tabs/
 export function TodayScreen({ serviceId }: { serviceId: string }) {
   const queryClient = useQueryClient();
-  const plan = useQuery({ queryKey: ["plan", serviceId], queryFn: () => fetchPlan(serviceId), refetchInterval: 60_000 });
-  const [chosen, setChosen] = useState(() => new URLSearchParams(window.location.search).get("day"));
+  const plan = useQuery({
+    queryKey: ["plan", serviceId],
+    queryFn: () => fetchPlan(serviceId),
+    refetchInterval: 60_000,
+  });
+  const [chosen, setChosen] = useState(() =>
+    new URLSearchParams(window.location.search).get("day"),
+  );
   const intent = useIntent();
   // A tick shows at once, until the re-read Plan (or a failed save) settles it.
   const [ticking, setTicking] = useState<{ key: string; done: boolean } | null>(null);
@@ -103,13 +113,18 @@ export function TodayScreen({ serviceId }: { serviceId: string }) {
                 const flags = conflicts.filter((c) => c.key === task.key);
                 return (
                   <li key={task.key} className={task.behind ? "behind" : undefined}>
-                    {taskTimes(task, day.date)} · {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}
+                    {taskTimes(task, day.date)} · {ownerOf(task)} ·{" "}
+                    {task.steps.map((s) => s.text).join(", ")}
                     {task.behind && (
                       <>
                         {" "}
                         · behind · was due{" "}
-                        {task.behind.dueDate === day.date ? task.behind.dueAt : `${shortDay(task.behind.dueDate)} ${task.behind.dueAt}`}
-                        {task.behind.holdsUp.length > 0 && <p>Holds up: {task.behind.holdsUp.map((h) => h.label).join("; ")}</p>}
+                        {task.behind.dueDate === day.date
+                          ? task.behind.dueAt
+                          : `${shortDay(task.behind.dueDate)} ${task.behind.dueAt}`}
+                        {task.behind.holdsUp.length > 0 && (
+                          <p>Holds up: {task.behind.holdsUp.map((h) => h.label).join("; ")}</p>
+                        )}
                       </>
                     )}
                     {flags.map((c) => (

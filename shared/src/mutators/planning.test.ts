@@ -13,7 +13,11 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId: owner, timeZone: "Europe/Paris", now: () => FIXED_NOW });
+  await mutator.run(tx, mutator.args.parse(args), {
+    ownerId: owner,
+    timeZone: "Europe/Paris",
+    now: () => FIXED_NOW,
+  });
 }
 
 // "Chicken stock <tag>" at Revision 4: three plain-text Steps.
@@ -25,11 +29,7 @@ async function chickenStock(tx: Tx) {
     name: `Chicken stock ${crypto.randomUUID().slice(0, 8)}`,
   });
   const stepIds: string[] = [];
-  for (const text of [
-    "Roast the bones",
-    "Simmer for four hours",
-    "Strain and cool",
-  ]) {
+  for (const text of ["Roast the bones", "Simmer for four hours", "Strain and cool"]) {
     const stepId = crypto.randomUUID();
     await run(tx, "addStep", {
       recipeId,
@@ -44,10 +44,7 @@ async function chickenStock(tx: Tx) {
 }
 
 async function revisions(tx: Tx, recipeId: string) {
-  const [recipe] = await tx
-    .select()
-    .from(recipes)
-    .where(eq(recipes.id, recipeId));
+  const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));
   const rows = await tx
     .select()
     .from(recipeRevisions)
@@ -72,10 +69,7 @@ describe("setMakeAhead", () => {
         window: { beforeDays: 1, shelfLifeDays: 2 },
       });
 
-      const [recipe] = await tx
-        .select()
-        .from(recipes)
-        .where(eq(recipes.id, recipeId));
+      const [recipe] = await tx.select().from(recipes).where(eq(recipes.id, recipeId));
       expect(recipe).toMatchObject({
         makeAheadBeforeDays: 3,
         shelfLifeDays: 4,
@@ -83,9 +77,7 @@ describe("setMakeAhead", () => {
       const [row] = await tx.select().from(steps).where(eq(steps.id, two));
       expect(row).toMatchObject({ makeAheadBeforeDays: 1, shelfLifeDays: 2 });
       const snapshot = await loadRecipeSnapshot(tx, ownerId, recipeId);
-      expect(
-        snapshot.steps.map((s) => [s.id, effectiveMakeAhead(s, snapshot)]),
-      ).toEqual([
+      expect(snapshot.steps.map((s) => [s.id, effectiveMakeAhead(s, snapshot)])).toEqual([
         [one, { beforeDays: 3, shelfLifeDays: 4, from: "recipe" }],
         [two, { beforeDays: 1, shelfLifeDays: 2, from: "step" }],
         [three, { beforeDays: 3, shelfLifeDays: 4, from: "recipe" }],
@@ -134,10 +126,7 @@ describe("setStepTimes", () => {
         activeMinutes: 15,
         passiveMinutes: null,
       });
-      const [row] = await tx
-        .select()
-        .from(steps)
-        .where(eq(steps.id, stepIds[1]));
+      const [row] = await tx.select().from(steps).where(eq(steps.id, stepIds[1]));
       expect(row).toMatchObject({ activeMinutes: 15, passiveMinutes: null });
     });
   });
@@ -151,9 +140,7 @@ describe("setStepTimes", () => {
     };
     for (const activeMinutes of [-1, 10081, 1.5, "10"])
       expect(args.safeParse({ ...base, activeMinutes }).success).toBe(false);
-    expect(args.safeParse({ ...base, activeMinutes: 10080 }).success).toBe(
-      true,
-    );
+    expect(args.safeParse({ ...base, activeMinutes: 10080 }).success).toBe(true);
     const window = getMutator("setMakeAhead")!.args;
     const target = { kind: "recipe", recipeId: crypto.randomUUID() };
     for (const bad of [
@@ -180,9 +167,9 @@ describe("setStepTimes", () => {
         activeMinutes: 5,
         passiveMinutes: 5,
       };
-      await expect(
-        run(tx, "setStepTimes", args, crypto.randomUUID()),
-      ).rejects.toThrow(NotFoundError);
+      await expect(run(tx, "setStepTimes", args, crypto.randomUUID())).rejects.toThrow(
+        NotFoundError,
+      );
       await expect(
         run(
           tx,
@@ -232,7 +219,11 @@ describe("setGroupWithPrevious", () => {
   it("grouping Step 2 makes Step 1 the Task's key Step", async () => {
     await inRollback(async (tx) => {
       const { recipeId, stepIds } = await chickenStock(tx);
-      await run(tx, "setGroupWithPrevious", { stepId: stepIds[1], revisionId: crypto.randomUUID(), value: true });
+      await run(tx, "setGroupWithPrevious", {
+        stepId: stepIds[1],
+        revisionId: crypto.randomUUID(),
+        value: true,
+      });
       const snapshot = await loadRecipeSnapshot(tx, ownerId, recipeId);
       expect(stepGroups(snapshot.steps)).toEqual([
         { keyStepId: stepIds[0], stepIds: [stepIds[0], stepIds[1]] },
@@ -247,7 +238,12 @@ describe("setGroupWithPrevious", () => {
       const [one, two, three] = stepIds;
       await run(tx, "addStepDependency", link(one, three));
       await run(tx, "addStepDependency", link(three, two));
-      await refused(tx, "setGroupWithPrevious", { stepId: two, revisionId: crypto.randomUUID(), value: true }, InvalidArgsError);
+      await refused(
+        tx,
+        "setGroupWithPrevious",
+        { stepId: two, revisionId: crypto.randomUUID(), value: true },
+        InvalidArgsError,
+      );
       expect(await revisions(tx, recipeId)).toMatchObject({ latest: 6, count: 6 });
     });
   });
@@ -258,7 +254,12 @@ describe("addStepDependency", () => {
     await inRollback(async (tx) => {
       const stock = await chickenStock(tx);
       const other = await chickenStock(tx);
-      const error = await refused(tx, "addStepDependency", link(other.stepIds[0], stock.stepIds[1]), InvalidArgsError);
+      const error = await refused(
+        tx,
+        "addStepDependency",
+        link(other.stepIds[0], stock.stepIds[1]),
+        InvalidArgsError,
+      );
       expect(error.message).toBe("A dependency links Steps of one Recipe");
       expect(await revisions(tx, stock.recipeId)).toMatchObject({ latest: 4, count: 4 });
       expect(await revisions(tx, other.recipeId)).toMatchObject({ latest: 4, count: 4 });
@@ -294,11 +295,17 @@ describe("addStepDependency", () => {
       const { recipeId, stepIds } = await chickenStock(tx);
       const first = link(stepIds[0], stepIds[2]);
       await run(tx, "addStepDependency", first);
-      await run(tx, "removeStepDependency", { dependencyId: first.dependencyId, revisionId: crypto.randomUUID() });
+      await run(tx, "removeStepDependency", {
+        dependencyId: first.dependencyId,
+        revisionId: crypto.randomUUID(),
+      });
       expect((await loadRecipeSnapshot(tx, ownerId, recipeId)).dependencies).toEqual([]);
 
       await run(tx, "addStepDependency", link(stepIds[0], stepIds[2]));
-      const rows = await tx.select().from(stepDependencies).where(eq(stepDependencies.recipeId, recipeId));
+      const rows = await tx
+        .select()
+        .from(stepDependencies)
+        .where(eq(stepDependencies.recipeId, recipeId));
       expect(rows).toEqual([expect.objectContaining({ id: first.dependencyId, deletedAt: null })]);
       expect((await loadRecipeSnapshot(tx, ownerId, recipeId)).dependencies).toEqual([
         { id: first.dependencyId, beforeStepId: stepIds[0], afterStepId: stepIds[2] },
@@ -327,8 +334,16 @@ describe("planning changes and their Revision", () => {
       const { recipeId, stepIds } = await chickenStock(tx);
       const [one, two, three] = stepIds;
       const dependencyId = crypto.randomUUID();
-      const changes: [string, Record<string, unknown>, (s: Awaited<ReturnType<typeof loadRecipeSnapshot>>) => unknown][] = [
-        ["setStepTimes", { stepId: one, activeMinutes: 20, passiveMinutes: 40 }, (s) => s.steps[0]!.passiveMinutes === 40],
+      const changes: [
+        string,
+        Record<string, unknown>,
+        (s: Awaited<ReturnType<typeof loadRecipeSnapshot>>) => unknown,
+      ][] = [
+        [
+          "setStepTimes",
+          { stepId: one, activeMinutes: 20, passiveMinutes: 40 },
+          (s) => s.steps[0]!.passiveMinutes === 40,
+        ],
         [
           "setMakeAhead",
           { target: { kind: "recipe", recipeId }, window: { beforeDays: 3, shelfLifeDays: 4 } },
@@ -339,8 +354,16 @@ describe("planning changes and their Revision", () => {
           { target: { kind: "step", stepId: two }, window: { beforeDays: 1, shelfLifeDays: 2 } },
           (s) => s.steps[1]!.makeAhead?.beforeDays === 1,
         ],
-        ["setGroupWithPrevious", { stepId: three, value: true }, (s) => s.steps[2]!.groupWithPrevious],
-        ["addStepDependency", { dependencyId, beforeStepId: one, afterStepId: two }, (s) => s.dependencies.length === 1],
+        [
+          "setGroupWithPrevious",
+          { stepId: three, value: true },
+          (s) => s.steps[2]!.groupWithPrevious,
+        ],
+        [
+          "addStepDependency",
+          { dependencyId, beforeStepId: one, afterStepId: two },
+          (s) => s.dependencies.length === 1,
+        ],
         ["removeStepDependency", { dependencyId }, (s) => s.dependencies.length === 0],
       ];
       let expected = 4;
@@ -363,9 +386,24 @@ describe("planning changes and their Revision", () => {
     await inRollback(async (tx) => {
       const { recipeId, stepIds } = await chickenStock(tx);
       const before = await loadRecipeSnapshot(tx, ownerId, recipeId);
-      await refused(tx, "setGroupWithPrevious", { stepId: stepIds[0], revisionId: crypto.randomUUID(), value: true }, InvalidArgsError);
+      await refused(
+        tx,
+        "setGroupWithPrevious",
+        { stepId: stepIds[0], revisionId: crypto.randomUUID(), value: true },
+        InvalidArgsError,
+      );
       await refused(tx, "addStepDependency", link(stepIds[1], stepIds[1]), InvalidArgsError);
-      await refused(tx, "setStepTimes", { stepId: crypto.randomUUID(), revisionId: crypto.randomUUID(), activeMinutes: 1, passiveMinutes: null }, NotFoundError);
+      await refused(
+        tx,
+        "setStepTimes",
+        {
+          stepId: crypto.randomUUID(),
+          revisionId: crypto.randomUUID(),
+          activeMinutes: 1,
+          passiveMinutes: null,
+        },
+        NotFoundError,
+      );
       expect(await revisions(tx, recipeId)).toMatchObject({ latest: 4, count: 4 });
       expect(await loadRecipeSnapshot(tx, ownerId, recipeId)).toEqual(before);
     });

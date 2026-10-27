@@ -3,7 +3,14 @@ import type { Minute, Placement, TaskKey } from "../scheduler/types.ts";
 // Pure: what a re-plan must write so the stored Plan equals the new one, and nothing more.
 
 /** A `task_placements` row: `live` is false once soft-deleted. */
-export type StoredPlacement = { id: string; key: TaskKey; start: Minute; cookId: string; pinned: boolean; live: boolean };
+export type StoredPlacement = {
+  id: string;
+  key: TaskKey;
+  start: Minute;
+  cookId: string;
+  pinned: boolean;
+  live: boolean;
+};
 
 export type PlacementDiff = {
   insert: Placement[];
@@ -23,7 +30,8 @@ export function diffPlacements(stored: StoredPlacement[], next: Placement[]): Pl
     placed.add(p.key);
     const row = byKey.get(p.key);
     if (!row) diff.insert.push(p);
-    else if (!row.live) diff.update.push({ id: row.id, start: p.start, cookId: p.cookId, revive: true });
+    else if (!row.live)
+      diff.update.push({ id: row.id, start: p.start, cookId: p.cookId, revive: true });
     else if (row.start !== p.start || row.cookId !== p.cookId)
       diff.update.push({ id: row.id, start: p.start, cookId: p.cookId, revive: false });
   }

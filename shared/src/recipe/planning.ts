@@ -30,9 +30,7 @@ export function effectiveMakeAhead(
 type GroupedStep = { id: string; groupWithPrevious: boolean };
 
 /** One group per Task, Steps in position order. The first Step of a group is its key Step. */
-export function stepGroups(
-  steps: GroupedStep[],
-): { keyStepId: string; stepIds: string[] }[] {
+export function stepGroups(steps: GroupedStep[]): { keyStepId: string; stepIds: string[] }[] {
   const groups: { keyStepId: string; stepIds: string[] }[] = [];
   for (const step of steps) {
     const last = groups.at(-1);
@@ -50,10 +48,7 @@ type Link = { beforeStepId: string; afterStepId: string };
  * the Step ids the links pass through, back to the first; or null. A forward link inside one Task
  * is redundant, not a cycle; a backward one is a cycle.
  */
-export function findPlanningCycle(
-  steps: GroupedStep[],
-  links: Link[],
-): string[] | null {
+export function findPlanningCycle(steps: GroupedStep[], links: Link[]): string[] | null {
   const taskOf = new Map<string, string>();
   const index = new Map<string, number>();
   for (const group of stepGroups(steps))
@@ -66,8 +61,7 @@ export function findPlanningCycle(
     const to = taskOf.get(link.afterStepId);
     if (from === undefined || to === undefined) continue;
     if (from === to) {
-      if (index.get(link.beforeStepId)! < index.get(link.afterStepId)!)
-        continue;
+      if (index.get(link.beforeStepId)! < index.get(link.afterStepId)!) continue;
       return pathOf([link]);
     }
     out.set(from, [...(out.get(from) ?? []), link]);
@@ -139,9 +133,7 @@ export function readyToPlan(
     const words = wordsOf(stepPlainText(step));
     const stems = new Set(words.map(stem));
     for (const line of lines) {
-      const prepared = wordsOf(line.preparation ?? "").filter((w) =>
-        w.endsWith("ed"),
-      );
+      const prepared = wordsOf(line.preparation ?? "").filter((w) => w.endsWith("ed"));
       if (!prepared.some((w) => stems.has(stem(w)))) continue;
       const names = [
         line.wording,

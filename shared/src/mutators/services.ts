@@ -2,11 +2,31 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Hours } from "../plan/model.ts";
 import { smallestOverride } from "../plan/more-time.ts";
-import { findLiveService, loadPlanRows, lockCook, lockServices, replan, replanAffected, replanFromScratchOf } from "../plan/replan.ts";
+import {
+  findLiveService,
+  loadPlanRows,
+  lockCook,
+  lockServices,
+  replan,
+  replanAffected,
+  replanFromScratchOf,
+} from "../plan/replan.ts";
 import { toTimeColumn } from "../plan/time.ts";
 import { taskKey } from "../scheduler/types.ts";
-import { availabilityOverrides, availabilityWeekly, kitchenSettings, menus, services } from "../schema.ts";
-import { ConflictError, defineMutator, InvalidArgsError, NotFoundError, type Tx } from "./define.ts";
+import {
+  availabilityOverrides,
+  availabilityWeekly,
+  kitchenSettings,
+  menus,
+  services,
+} from "../schema.ts";
+import {
+  ConflictError,
+  defineMutator,
+  InvalidArgsError,
+  NotFoundError,
+  type Tx,
+} from "./define.ts";
 
 // Services, the kitchen's default Service time and the implicit Cook's Availability (#86).
 // A time of day is a minute of day on the 5-minute grid; an end may be 1440 (midnight).
@@ -18,7 +38,12 @@ const endAfterStart = { message: "Hours must end after they start" };
 /** The one Service of a Menu (ADR 0010), at a date and an optional time (null: the kitchen's default). */
 export const createService = defineMutator({
   name: "createService",
-  args: z.strictObject({ serviceId: z.uuid(), menuId: z.uuid(), date: z.iso.date(), time: minuteOfDay.nullable() }),
+  args: z.strictObject({
+    serviceId: z.uuid(),
+    menuId: z.uuid(),
+    date: z.iso.date(),
+    time: minuteOfDay.nullable(),
+  }),
   async run(tx, args, ctx) {
     const { ownerId } = ctx;
     // The Menu's lock, so two concurrent createService calls check for a Service one after another.
@@ -52,8 +77,18 @@ export const setServiceTime = defineMutator({
   async run(tx, args, ctx) {
     const updated = await tx
       .update(services)
-      .set({ date: args.date, time: args.time === null ? null : toTimeColumn(args.time), updatedAt: sql`now()` })
-      .where(and(eq(services.id, args.serviceId), eq(services.ownerId, ctx.ownerId), isNull(services.deletedAt)))
+      .set({
+        date: args.date,
+        time: args.time === null ? null : toTimeColumn(args.time),
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(services.id, args.serviceId),
+          eq(services.ownerId, ctx.ownerId),
+          isNull(services.deletedAt),
+        ),
+      )
       .returning({ id: services.id });
     if (!updated.length) throw new NotFoundError("Service");
     await replan(tx, ctx, args.serviceId);
@@ -105,7 +140,12 @@ export const setKitchenSettings = defineMutator({
 });
 
 const weeklyHours = z
-  .strictObject({ availabilityId: z.uuid(), weekday: z.int().min(0).max(6), start: minuteOfDay, end: endOfDay })
+  .strictObject({
+    availabilityId: z.uuid(),
+    weekday: z.int().min(0).max(6),
+    start: minuteOfDay,
+    end: endOfDay,
+  })
   .refine((h) => h.end > h.start, endAfterStart);
 
 /** The whole week at once (D10): the Cook's live weekly hours are replaced by these. */
@@ -117,7 +157,11 @@ export const setWeeklyAvailability = defineMutator({
       .max(28)
       .refine(
         (hours) =>
-          hours.every((a, i) => hours.every((b, j) => i === j || a.weekday !== b.weekday || a.end <= b.start || b.end <= a.start)),
+          hours.every((a, i) =>
+            hours.every(
+              (b, j) => i === j || a.weekday !== b.weekday || a.end <= b.start || b.end <= a.start,
+            ),
+          ),
         { message: "Hours can't overlap on one weekday" },
       )
       .refine((hours) => new Set(hours.map((h) => h.availabilityId)).size === hours.length, {
@@ -140,7 +184,11 @@ export const setWeeklyAvailability = defineMutator({
         ),
       );
     for (const h of args.hours) {
-      const values = { weekday: h.weekday, startTime: toTimeColumn(h.start), endTime: toTimeColumn(h.end) };
+      const values = {
+        weekday: h.weekday,
+        startTime: toTimeColumn(h.start),
+        endTime: toTimeColumn(h.end),
+      };
       // A row id sent again (from the Availability read) brings that row back with the new hours.
       const written = await tx
         .insert(availabilityWeekly)
@@ -148,7 +196,10 @@ export const setWeeklyAvailability = defineMutator({
         .onConflictDoUpdate({
           target: availabilityWeekly.id,
           set: { ...values, deletedAt: null, updatedAt: sql`now()` },
-          setWhere: and(eq(availabilityWeekly.ownerId, ownerId), eq(availabilityWeekly.cookId, cookId)),
+          setWhere: and(
+            eq(availabilityWeekly.ownerId, ownerId),
+            eq(availabilityWeekly.cookId, cookId),
+          ),
         })
         .returning({ id: availabilityWeekly.id });
       if (!written.length) throw new ConflictError("A row with one of these ids already exists");
@@ -159,7 +210,14 @@ export const setWeeklyAvailability = defineMutator({
 
 // Replaces the date's live override (soft-deleting it) with `overrideId`'s hours; null: not
 // available that date; "weekly": back to the weekly hours, so no new row. Under the Cook's lock.
-async function writeOverride(tx: Tx, ownerId: string, cookId: string, overrideId: string, date: string, hours: Hours | null | "weekly") {
+async function writeOverride(
+  tx: Tx,
+  ownerId: string,
+  cookId: string,
+  overrideId: string,
+  date: string,
+  hours: Hours | null | "weekly",
+) {
   await tx
     .update(availabilityOverrides)
     .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
@@ -183,7 +241,10 @@ async function writeOverride(tx: Tx, ownerId: string, cookId: string, overrideId
     .onConflictDoUpdate({
       target: availabilityOverrides.id,
       set: { ...values, deletedAt: null, updatedAt: sql`now()` },
-      setWhere: and(eq(availabilityOverrides.ownerId, ownerId), eq(availabilityOverrides.cookId, cookId)),
+      setWhere: and(
+        eq(availabilityOverrides.ownerId, ownerId),
+        eq(availabilityOverrides.cookId, cookId),
+      ),
     })
     .returning({ id: availabilityOverrides.id });
   if (!written.length) throw new ConflictError("A row with one of these ids already exists");
@@ -196,7 +257,9 @@ export const setAvailabilityOverride = defineMutator({
     overrideId: z.uuid(),
     date: z.iso.date(),
     availability: z.discriminatedUnion("kind", [
-      z.strictObject({ kind: z.literal("hours"), start: minuteOfDay, end: endOfDay }).refine((h) => h.end > h.start, endAfterStart),
+      z
+        .strictObject({ kind: z.literal("hours"), start: minuteOfDay, end: endOfDay })
+        .refine((h) => h.end > h.start, endAfterStart),
       z.strictObject({ kind: z.literal("off") }),
       z.strictObject({ kind: z.literal("weekly") }),
     ]),
@@ -206,13 +269,22 @@ export const setAvailabilityOverride = defineMutator({
     // Lock order Service, then Cook (D6); every Service follows the Cook's Availability.
     const serviceIds = await lockServices(tx, ownerId, { allServices: true });
     const cookId = await lockCook(tx, ownerId);
-    await writeOverride(tx, ownerId, cookId, args.overrideId, args.date, overrideHours(args.availability));
+    await writeOverride(
+      tx,
+      ownerId,
+      cookId,
+      args.overrideId,
+      args.date,
+      overrideHours(args.availability),
+    );
     for (const id of serviceIds) await replan(tx, ctx, id);
   },
 });
 
 // setAvailabilityOverride's choice as writeOverride's hours.
-function overrideHours(a: { kind: "weekly" } | { kind: "off" } | ({ kind: "hours" } & Hours)): Hours | null | "weekly" {
+function overrideHours(
+  a: { kind: "weekly" } | { kind: "off" } | ({ kind: "hours" } & Hours),
+): Hours | null | "weekly" {
   if (a.kind === "weekly") return "weekly";
   if (a.kind === "off") return null;
   return a;
@@ -238,10 +310,18 @@ export const giveCookMoreTime = defineMutator({
     const serviceIds = await lockServices(tx, ownerId, { allServices: true });
     const cookId = await lockCook(tx, ownerId);
     if (!serviceIds.includes(args.serviceId)) throw new NotFoundError("Service");
-    const rows = await loadPlanRows(tx, ownerId, await findLiveService(tx, ownerId, args.serviceId));
+    const rows = await loadPlanRows(
+      tx,
+      ownerId,
+      await findLiveService(tx, ownerId, args.serviceId),
+    );
     const proposal = smallestOverride(rows, ctx.timeZone, taskKey(args.owner, args.firstStepId));
-    if (!proposal) throw new InvalidArgsError("No extra time on one date fits this Task without moving others");
-    await writeOverride(tx, ownerId, cookId, args.overrideId, proposal.date, { start: proposal.start, end: proposal.end });
+    if (!proposal)
+      throw new InvalidArgsError("No extra time on one date fits this Task without moving others");
+    await writeOverride(tx, ownerId, cookId, args.overrideId, proposal.date, {
+      start: proposal.start,
+      end: proposal.end,
+    });
     await replanAffected(tx, ctx, { allServices: true });
   },
 });

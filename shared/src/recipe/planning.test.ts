@@ -5,12 +5,7 @@ import type { RecipeSnapshot, SnapshotLine, SnapshotStep } from "./snapshot.ts";
 describe("effectiveMakeAhead", () => {
   it("reads a Step's own make-ahead window, and its Recipe's for a Step without one", () => {
     const recipe = { makeAhead: { beforeDays: 3, shelfLifeDays: 4 } };
-    expect(
-      effectiveMakeAhead(
-        { makeAhead: { beforeDays: 1, shelfLifeDays: 2 } },
-        recipe,
-      ),
-    ).toEqual({
+    expect(effectiveMakeAhead({ makeAhead: { beforeDays: 1, shelfLifeDays: 2 } }, recipe)).toEqual({
       beforeDays: 1,
       shelfLifeDays: 2,
       from: "step",
@@ -25,7 +20,10 @@ describe("effectiveMakeAhead", () => {
   it("is null when neither has a window, and a Step's beforeDays 0 is its own window", () => {
     expect(effectiveMakeAhead({ makeAhead: null }, { makeAhead: null })).toBeNull();
     expect(
-      effectiveMakeAhead({ makeAhead: { beforeDays: 0, shelfLifeDays: 0 } }, { makeAhead: { beforeDays: 3, shelfLifeDays: 4 } }),
+      effectiveMakeAhead(
+        { makeAhead: { beforeDays: 0, shelfLifeDays: 0 } },
+        { makeAhead: { beforeDays: 3, shelfLifeDays: 4 } },
+      ),
     ).toEqual({ beforeDays: 0, shelfLifeDays: 0, from: "step" });
   });
 });
@@ -54,13 +52,14 @@ describe("findPlanningCycle", () => {
   });
 
   it("finds a 2-cycle and a 3-cycle, as the path around it", () => {
-    expect(findPlanningCycle(plain, [link("s1", "s2"), link("s2", "s1")])).toEqual(["s1", "s2", "s1"]);
-    expect(findPlanningCycle(plain, [link("s1", "s2"), link("s2", "s3"), link("s3", "s1")])).toEqual([
+    expect(findPlanningCycle(plain, [link("s1", "s2"), link("s2", "s1")])).toEqual([
       "s1",
       "s2",
-      "s3",
       "s1",
     ]);
+    expect(
+      findPlanningCycle(plain, [link("s1", "s2"), link("s2", "s3"), link("s3", "s1")]),
+    ).toEqual(["s1", "s2", "s3", "s1"]);
     expect(findPlanningCycle(plain, [link("s1", "s2"), link("s2", "s3")])).toBeNull();
   });
 
@@ -74,11 +73,21 @@ describe("findPlanningCycle", () => {
     // s1 → s3 → s2, with s1 and s2 in one Task.
     const links = [link("s1", "s3"), link("s3", "s2")];
     expect(findPlanningCycle([flag("s1"), flag("s3"), flag("s2")], links)).toBeNull();
-    expect(findPlanningCycle([flag("s1"), flag("s2", true), flag("s3")], links)).toEqual(["s1", "s3", "s2", "s1"]);
+    expect(findPlanningCycle([flag("s1"), flag("s2", true), flag("s3")], links)).toEqual([
+      "s1",
+      "s3",
+      "s2",
+      "s1",
+    ]);
   });
 });
 
-const line = (id: string, wording: string, preparation: string | null, ingredientId: string | null = null): SnapshotLine => ({
+const line = (
+  id: string,
+  wording: string,
+  preparation: string | null,
+  ingredientId: string | null = null,
+): SnapshotLine => ({
   id,
   ingredientId,
   subRecipeId: null,
@@ -90,7 +99,12 @@ const line = (id: string, wording: string, preparation: string | null, ingredien
   fixedQuantity: false,
   position: "a0",
 });
-const step = (id: string, text: string, times: { active?: number | null; passive?: number | null } = {}, lines: SnapshotLine[] = []): SnapshotStep => ({
+const step = (
+  id: string,
+  text: string,
+  times: { active?: number | null; passive?: number | null } = {},
+  lines: SnapshotLine[] = [],
+): SnapshotStep => ({
   id,
   position: "a0",
   body: [{ type: "text", text }, ...lines.map((l) => ({ type: "line" as const, lineId: l.id }))],
@@ -100,7 +114,14 @@ const step = (id: string, text: string, times: { active?: number | null; passive
   makeAhead: null,
   groupWithPrevious: false,
 });
-const recipe = (steps: SnapshotStep[]): RecipeSnapshot => ({ name: "Sauce", servings: null, yield: null, makeAhead: null, steps, dependencies: [] });
+const recipe = (steps: SnapshotStep[]): RecipeSnapshot => ({
+  name: "Sauce",
+  servings: null,
+  yield: null,
+  makeAhead: null,
+  steps,
+  dependencies: [],
+});
 
 describe("ready to plan", () => {
   it("lists exactly the Steps with neither active nor passive time; active 0 counts as set", () => {
@@ -115,12 +136,18 @@ describe("ready to plan", () => {
   });
 
   it("flags 'Dice the shallots' next to 'shallots, diced'", () => {
-    const snapshot = recipe([step("s1", "Dice the shallots"), step("s2", "Sweat ", {}, [line("l1", "shallots", "diced")])]);
+    const snapshot = recipe([
+      step("s1", "Dice the shallots"),
+      step("s2", "Sweat ", {}, [line("l1", "shallots", "diced")]),
+    ]);
     expect(readyToPlan(snapshot, new Map()).duplicates).toEqual([{ stepId: "s1", lineId: "l1" }]);
   });
 
   it("does not flag 'Sweat the shallots'", () => {
-    const snapshot = recipe([step("s1", "Sweat the shallots"), step("s2", "Add ", {}, [line("l1", "shallots", "diced")])]);
+    const snapshot = recipe([
+      step("s1", "Sweat the shallots"),
+      step("s2", "Add ", {}, [line("l1", "shallots", "diced")]),
+    ]);
     expect(readyToPlan(snapshot, new Map()).duplicates).toEqual([]);
   });
 
@@ -129,11 +156,16 @@ describe("ready to plan", () => {
       step("s1", "Finely chop the onion"),
       step("s2", "Add ", {}, [line("l1", "brown ones", "chopped", "i-onion")]),
     ]);
-    expect(readyToPlan(snapshot, new Map([["i-onion", "Onions"]])).duplicates).toEqual([{ stepId: "s1", lineId: "l1" }]);
+    expect(readyToPlan(snapshot, new Map([["i-onion", "Onions"]])).duplicates).toEqual([
+      { stepId: "s1", lineId: "l1" },
+    ]);
   });
 
   it("does not flag a Step with no matching name", () => {
-    const snapshot = recipe([step("s1", "Dice the carrots"), step("s2", "Add ", {}, [line("l1", "shallots", "diced")])]);
+    const snapshot = recipe([
+      step("s1", "Dice the carrots"),
+      step("s2", "Add ", {}, [line("l1", "shallots", "diced")]),
+    ]);
     expect(readyToPlan(snapshot, new Map()).duplicates).toEqual([]);
   });
 });

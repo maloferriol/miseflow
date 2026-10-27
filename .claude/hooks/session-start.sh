@@ -1,7 +1,7 @@
 #!/bin/bash
 # Cloud sessions only: Docker for the local Supabase stack, the Playwright browser the e2e
 # pins, the npm dependencies, and an env without the session's cloud database values, so
-# `npm run setup:local` and the tests use the local .env (docs/agents/workflow.md).
+# `npm run setup:local` and the tests use the local .env (docs/agents/stage-brief.md).
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then

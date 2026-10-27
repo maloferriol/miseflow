@@ -4,7 +4,7 @@
 
 ### Ticket workflow
 
-Read `docs/agents/workflow.md` before starting, resuming or briefing work on a ticket. It covers running the stages, branch bases and stacking, setting up a worktree or a cloud session, running tests, writing Plans, and row locks.
+To run a ticket, read `docs/agents/orchestrator.md`: it covers stages, branches, Plans, the review loop and the merge gate. Give every stage subagent `docs/agents/stage-brief.md`: it covers the worktree check, setup, tests, evidence and code rules.
 
 ### Issue tracker
 

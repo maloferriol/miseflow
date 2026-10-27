@@ -299,7 +299,8 @@ const owner = z.discriminatedUnion("kind", [
  * "Give the Cook more time" (#90, spec §6.5): the smallest one-date override that places this
  * Unplaced Task and moves no other placement (`smallestOverride`), written as the date's override,
  * then every Service re-planned. Refused, writing nothing, when no such override exists (owner
- * decision 2), including a `WindowTooTight` Task and one that is placed.
+ * decision 2), including a `WindowTooTight` Task and one that is placed, and with its own message
+ * when the search gives up at its cap (#121).
  */
 export const giveCookMoreTime = defineMutator({
   name: "giveCookMoreTime",
@@ -315,9 +316,14 @@ export const giveCookMoreTime = defineMutator({
       ownerId,
       await findLiveService(tx, ownerId, args.serviceId),
     );
-    const proposal = smallestOverride(rows, ctx.timeZone, taskKey(args.owner, args.firstStepId));
-    if (!proposal)
+    const search = smallestOverride(rows, ctx.timeZone, taskKey(args.owner, args.firstStepId));
+    if (search.kind === "none")
       throw new InvalidArgsError("No extra time on one date fits this Task without moving others");
+    if (search.kind === "capped")
+      throw new InvalidArgsError(
+        "Too many options to check for this Task. Add hours on the Availability screen instead.",
+      );
+    const { proposal } = search;
     await writeOverride(tx, ownerId, cookId, args.overrideId, proposal.date, {
       start: proposal.start,
       end: proposal.end,

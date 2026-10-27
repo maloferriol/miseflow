@@ -1,6 +1,6 @@
 # Coding standards
 
-Repo facts for anyone writing or reviewing code here. `code-review` checks the diff against this file, and every implementer gets it.
+Repo facts for anyone writing or reviewing code here. `code-review` checks the diff against this file.
 
 - Never route around a hook, guard or permission denial, for example by shelling out. Stop and report the refusal.
 

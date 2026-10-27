@@ -2,9 +2,12 @@
 
 ## Agent skills
 
-### Workflow
+### Building
 
-Work runs through the mattpocock skills: `/wayfinder`, then `/to-spec` → `/to-tickets` → `/implement-spec`. See `docs/agents/mattpocock.md`. Code rules, setup and test commands are in `CODING_STANDARDS.md`.
+- Every implementer follows `CODING_STANDARDS.md` (setup, tests, code rules), so give it to each implementer subagent.
+- Tickets marked `ready-for-agent` are fully specified. Build them without stopping for a per-ticket Plan.
+- The integration branch is `spec/<n>-<slug>`. In a cloud session, push only to the session's `claude/...` branch and use it as the integration branch.
+- Each push cancels the running CI (about 5 minutes), so batch fixes into one push.
 
 ### Issue tracker
 

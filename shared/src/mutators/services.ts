@@ -51,7 +51,7 @@ export const createService = defineMutator({
       .select({ id: menus.id })
       .from(menus)
       .where(and(eq(menus.id, args.menuId), eq(menus.ownerId, ownerId), isNull(menus.deletedAt)))
-      .for("update");
+      .for("no key update");
     if (!menu) throw new NotFoundError("Menu");
     const [existing] = await tx
       .select({ id: services.id })

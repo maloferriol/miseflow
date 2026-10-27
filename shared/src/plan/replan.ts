@@ -63,7 +63,7 @@ export async function lockCook(tx: Tx, ownerId: string): Promise<string> {
     .select({ id: cooks.id })
     .from(cooks)
     .where(and(eq(cooks.id, cookId), eq(cooks.ownerId, ownerId)))
-    .for("update");
+    .for("no key update");
   return cookId;
 }
 

@@ -95,7 +95,7 @@ export const setDishScale = defineMutator({
       .from(dishes)
       .innerJoin(recipes, eq(recipes.id, dishes.recipeId))
       .where(and(eq(dishes.id, args.dishId), eq(dishes.ownerId, ownerId), isNull(dishes.deletedAt)))
-      .for("update", { of: dishes });
+      .for("no key update", { of: dishes });
     if (!dish) throw new NotFoundError("Dish");
     let factor: number | null = null;
     if (args.scale.kind === "factor") factor = args.scale.factor;

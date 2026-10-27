@@ -1,4 +1,4 @@
-import { normaliseName, searchCatalog } from "@miseflow/shared/src/catalog/match.ts";
+import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
 import { UNITS_BY_KIND } from "@miseflow/shared/src/catalog/units.ts";
 import { parseQuantity } from "@miseflow/shared/src/recipe/quantity.ts";
 import { formatStepText, parseStepText, refName } from "@miseflow/shared/src/recipe/tokens.ts";
@@ -16,17 +16,8 @@ import {
   type RecipeStep,
 } from "./api.ts";
 import { IngredientPicker } from "./IngredientPicker.tsx";
-import { type Intent, useIntent } from "./intent.ts";
-import {
-  type ChosenLink,
-  linkChoiceMutation,
-  type Lookup,
-  type Ref,
-  resolveStepLinks,
-  stepIntentKey,
-  stepSaveArgs,
-  type Target,
-} from "./step-links.ts";
+import { useIntent } from "./intent.ts";
+import { linkChoices, type Ref, saveStep, type Target } from "./step-links.ts";
 
 /** "2", "30 g", "2-3 clove", "a pinch". */
 export function amountText(line: Pick<RecipeLine, "quantity" | "quantityMax" | "unit">) {
@@ -146,42 +137,29 @@ function StepForm({
   // One set of ids per intended save, so a retry replays it (see useIntent).
   const intent = useIntent();
   const save = useMutation({
-    mutationFn: async () => {
-      const parts = parseStepText(text);
-      let recipeEntries: (RecipeListItem & { source: "own"; aliases: [] })[] | undefined;
-      const lookup: Lookup<CatalogIngredient, RecipeListItem> = async (name) => {
-        recipeEntries ??= (
-          await queryClient.fetchQuery({ queryKey: ["recipes"], queryFn: fetchRecipes })
-        )
-          .filter((r) => r.id !== recipeId)
-          .map((r) => ({ ...r, source: "own" as const, aliases: [] as [] }));
-        return {
-          ingredients: await fetchIngredients(name),
-          recipes: searchCatalog(recipeEntries, name, 5),
-        };
-      };
-      const resolved = await resolveStepLinks(parts, opened?.lines ?? [], links, lookup);
-      setLinks(resolved.links);
-      setUnlinked(resolved.missing);
-      if (resolved.missing.length) return false;
-
-      // Keyed after resolution, so linking a wording to another target is a new save (#127 A).
-      const key = stepIntentKey(text, resolved.refs);
-      const id = (name: string) => intent.id(key, name);
-      const ids = { stepId, revisionId: id("revision"), ...stepSaveArgs(parts, resolved.refs, id) };
-      if (opened) await mutate(id("mutation"), "editStep", ids);
-      else await mutate(id("mutation"), "addStep", { recipeId, ...ids });
-      return true;
-    },
+    mutationFn: () =>
+      saveStep({
+        recipeId,
+        stepId,
+        opened,
+        text,
+        links,
+        loadRecipes: () => queryClient.fetchQuery({ queryKey: ["recipes"], queryFn: fetchRecipes }),
+        findIngredients: fetchIngredients,
+        intent,
+        send: mutate,
+        onResolved: (found, missing) => {
+          setLinks(found);
+          setUnlinked(missing);
+        },
+      }),
     // A failed save refetches too: the server may hold it though the response was lost, and the
     // next Save or Add Step must see that (#127 B). `saved` is false only when links are missing.
     onSettled: async (saved) => {
       if (saved === false) return;
       await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
       await queryClient.invalidateQueries({ queryKey: ["recipes"] });
-      if (!saved) return;
-      intent.reset();
-      onDone();
+      if (saved) onDone();
     },
   });
 
@@ -311,38 +289,24 @@ function LinkChoice({
     queryKey: ["shopping-categories"],
     queryFn: fetchShoppingCategories,
   });
-  // One retry intent per action, so a retry of the same choice replays it (#127 D).
-  const aliasIntent = useIntent();
-  const ingredientIntent = useIntent();
-  const subRecipeIntent = useIntent();
-  const send = async (intent: Intent, choice: ChosenLink) => {
-    const { id, name: action, args, target } = linkChoiceMutation(intent, choice);
-    await mutate(id, action, args);
-    intent.reset();
-    return target;
-  };
+  // Each action replays on a retry after a lost response, with its own ids (#127 D).
+  const [choices] = useState(() => linkChoices(name, mutate));
   const addAlias = useMutation({
-    mutationFn: async (ingredient: CatalogIngredient): Promise<Target> =>
-      // An exact match, offered because a Recipe matches too, needs no alias.
-      ingredient.exact
-        ? { ingredientId: ingredient.id }
-        : send(aliasIntent, { action: "addAlias", wording: name, ingredientId: ingredient.id }),
+    mutationFn: choices.useNearMatch,
     onSuccess: async (target) => {
       await queryClient.invalidateQueries({ queryKey: ["ingredients"] });
       onLinked(target);
     },
   });
   const createIngredient = useMutation({
-    mutationFn: (args: { name: string; preferredKind: string; shoppingCategoryId: string }) =>
-      send(ingredientIntent, { action: "createIngredient", wording: name, ...args }),
+    mutationFn: choices.createIngredient,
     onSuccess: async (target) => {
       await queryClient.invalidateQueries({ queryKey: ["ingredients"] });
       onLinked(target);
     },
   });
   const createSubRecipe = useMutation({
-    mutationFn: (recipeName: string) =>
-      send(subRecipeIntent, { action: "createSubRecipe", wording: name, name: recipeName }),
+    mutationFn: choices.createSubRecipe,
     onSuccess: async (target) => {
       await queryClient.invalidateQueries({ queryKey: ["recipes"] });
       onLinked(target);

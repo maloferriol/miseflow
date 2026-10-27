@@ -3,9 +3,15 @@ import { parseStepText } from "@miseflow/shared/src/recipe/tokens.ts";
 import { describe, expect, it } from "vitest";
 import { createIntent } from "./intent.ts";
 import {
+  catalogLookup,
   linkChoiceMutation,
+  linkChoices,
+  saveStep,
   type Lookup,
   resolveStepLinks,
+  type Send,
+  sendLinkChoice,
+  sendStepSave,
   stepIntentKey,
   stepSaveArgs,
   type Target,
@@ -244,5 +250,211 @@ describe("stepSaveArgs", () => {
         },
       ],
     });
+  });
+});
+
+// A /mutate that records what was sent, and can lose the response after "applying" it.
+function server() {
+  const sent: { id: string; name: string; args: Record<string, unknown> }[] = [];
+  let lose = false;
+  const send: Send = (id, name, args) => {
+    sent.push({ id, name, args });
+    if (lose) {
+      lose = false;
+      return Promise.reject(new Error("Failed to fetch"));
+    }
+    return Promise.resolve();
+  };
+  return { send, sent, loseNext: () => (lose = true) };
+}
+
+describe("sendStepSave", () => {
+  const text = "Melt @butte{30%g}";
+  const parts = parseStepText(text);
+  const resolve = async (target: Target) =>
+    (await resolveStepLinks(parts, [], new Map([["butte", target]]), catalog({}).lookup)).refs;
+  const save = { recipeId: "recipe-1", stepId: "step-1", text, parts };
+
+  it("replays a retry after a lost response with the same mutation and row ids", async () => {
+    const { send, sent, loseNext } = server();
+    const intent = createIntent();
+    const refs = await resolve({ ingredientId: "butter-id" });
+
+    loseNext();
+    await expect(sendStepSave({ ...save, refs, intent, send })).rejects.toThrow();
+    await sendStepSave({ ...save, refs, intent, send });
+
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[0]).toMatchObject({
+      name: "addStep",
+      args: { recipeId: "recipe-1", stepId: "step-1", lines: [{ ingredientId: "butter-id" }] },
+    });
+  });
+
+  it("sends a new mutation when the cook re-links the wording after a lost response", async () => {
+    const { send, sent, loseNext } = server();
+    const intent = createIntent();
+
+    loseNext();
+    await expect(
+      sendStepSave({ ...save, refs: await resolve({ ingredientId: "butter-id" }), intent, send }),
+    ).rejects.toThrow();
+    await sendStepSave({ ...save, refs: await resolve({ ingredientId: "other" }), intent, send });
+
+    expect(sent[1].id).not.toBe(sent[0].id);
+    expect(sent[1].args.revisionId).not.toBe(sent[0].args.revisionId);
+    expect(sent[1].args).toMatchObject({ lines: [{ ingredientId: "other" }] });
+  });
+
+  it("edits an opened Step, and starts fresh ids once a save has gone through", async () => {
+    const { send, sent } = server();
+    const intent = createIntent();
+    const refs = await resolve({ ingredientId: "butter-id" });
+
+    await sendStepSave({ ...save, editing: true, refs, intent, send });
+    await sendStepSave({ ...save, editing: true, refs, intent, send });
+
+    expect(sent.map((m) => m.name)).toEqual(["editStep", "editStep"]);
+    expect(sent[0].args).not.toHaveProperty("recipeId");
+    expect(sent[1].id).not.toBe(sent[0].id);
+  });
+});
+
+describe("sendLinkChoice", () => {
+  const choice = { action: "addAlias", wording: "shallo", ingredientId: "shallot-id" } as const;
+
+  it("replays the same choice after a lost response, and returns its target", async () => {
+    const { send, sent, loseNext } = server();
+    const intent = createIntent();
+
+    loseNext();
+    await expect(sendLinkChoice(intent, choice, send)).rejects.toThrow();
+    const target = await sendLinkChoice(intent, choice, send);
+
+    expect(sent[1]).toEqual(sent[0]);
+    expect(target).toEqual({ ingredientId: "shallot-id" });
+  });
+
+  it("starts fresh ids once the choice has gone through", async () => {
+    const { send, sent } = server();
+    const intent = createIntent();
+
+    await sendLinkChoice(intent, choice, send);
+    await sendLinkChoice(intent, choice, send);
+
+    expect(sent[1].id).not.toBe(sent[0].id);
+  });
+});
+
+describe("catalogLookup", () => {
+  it("searches Ingredients by name and the kitchen's other Recipes, loading them once", async () => {
+    let loads = 0;
+    const lookup = catalogLookup(
+      "this-recipe",
+      () => {
+        loads += 1;
+        return Promise.resolve([
+          { id: "this-recipe", name: "Stock" },
+          { id: "stock-recipe", name: "Stock" },
+          { id: "sauce-recipe", name: "Sauce" },
+        ]);
+      },
+      (name) => Promise.resolve([{ id: `${name}-id`, name, exact: true }]),
+    );
+
+    const first = await lookup("stock");
+    await lookup("sauce");
+
+    expect(first.ingredients).toEqual([{ id: "stock-id", name: "stock", exact: true }]);
+    expect(first.recipes.map((h) => [h.entry.id, h.exact])).toEqual([["stock-recipe", true]]);
+    expect(loads).toBe(1);
+  });
+});
+
+describe("linkChoices", () => {
+  it("links an exact match offered beside a Recipe without teaching an alias", async () => {
+    const { send, sent } = server();
+
+    const target = await linkChoices("stock", send).useNearMatch({ id: "stock-id", exact: true });
+
+    expect(target).toEqual({ ingredientId: "stock-id" });
+    expect(sent).toEqual([]);
+  });
+
+  it("gives each action its own retry intent: one going through keeps another's ids", async () => {
+    const { send, sent, loseNext } = server();
+    const choices = linkChoices("zest", send);
+    const create = { name: "zest", preferredKind: "mass", shoppingCategoryId: "other-id" };
+
+    loseNext();
+    await expect(choices.createIngredient(create)).rejects.toThrow();
+    await choices.useNearMatch({ id: "lemon-id", exact: false });
+    await choices.createSubRecipe("Zest");
+    const target = await choices.createIngredient(create);
+
+    expect(sent.map((m) => m.name)).toEqual([
+      "createIngredient",
+      "addAlias",
+      "createSubRecipe",
+      "createIngredient",
+    ]);
+    expect(sent[3]).toEqual(sent[0]);
+    expect(target).toEqual({ ingredientId: sent[0].args.ingredientId });
+    expect(sent[1].args).toMatchObject({ ingredientId: "lemon-id", name: "zest" });
+  });
+});
+
+describe("saveStep", () => {
+  const catalogOf = (ingredients: Ingredient[]) => ({
+    loadRecipes: () => Promise.resolve([] as Recipe[]),
+    findIngredients: () => Promise.resolve(ingredients),
+  });
+
+  it("hands back the links and missing names, and sends nothing while a name waits", async () => {
+    const { send, sent } = server();
+    const resolved: unknown[] = [];
+
+    const saved = await saveStep({
+      recipeId: "recipe-1",
+      stepId: "step-1",
+      text: "Sweat @shallo{2}",
+      links: new Map(),
+      ...catalogOf([shallot]),
+      intent: createIntent(),
+      send,
+      onResolved: (links, missing) => resolved.push(links, missing),
+    });
+
+    expect(saved).toBe(false);
+    expect(sent).toEqual([]);
+    expect(resolved).toEqual([
+      new Map(),
+      [{ name: "shallo", amount: "2", near: [shallot], nearRecipes: [] }],
+    ]);
+  });
+
+  it("keeps the opened Step's lines and sends editStep once every ref is linked", async () => {
+    const { send, sent } = server();
+
+    const saved = await saveStep({
+      recipeId: "recipe-1",
+      stepId: "step-1",
+      opened: { lines: [{ id: "line-1", wording: "butter", ingredient: { id: "butter-id" } }] },
+      text: "Melt @butter{40%g}",
+      links: new Map(),
+      ...catalogOf([]),
+      intent: createIntent(),
+      send,
+      onResolved: () => {},
+    });
+
+    expect(saved).toBe(true);
+    expect(sent).toMatchObject([
+      {
+        name: "editStep",
+        args: { stepId: "step-1", lines: [{ lineId: "line-1", amount: "40%g" }] },
+      },
+    ]);
   });
 });

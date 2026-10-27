@@ -29,6 +29,21 @@ export function createIntent(): Intent {
   };
 }
 
+/**
+ * `run` with ids from `intent`, keyed on its args: a retry with the same args replays, and the
+ * slot resets once `run` succeeds.
+ */
+export function retryable<A>(
+  intent: Intent,
+  run: (args: A, id: (name: string) => string) => Promise<void>,
+) {
+  return async (args: A) => {
+    const key = JSON.stringify(args);
+    await run(args, (name) => intent.id(key, name));
+    intent.reset();
+  };
+}
+
 /** One `createIntent` slot for the component's lifetime. */
 export function useIntent() {
   const [intent] = useState(createIntent);

@@ -1,10 +1,10 @@
 import { SERVINGS } from "@miseflow/shared/src/recipe/servings.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { fetchRecipe, mutate } from "./api.ts";
 import { ExtractToSubRecipe } from "./ExtractToSubRecipe.tsx";
-import { type Intent, useIntent } from "./intent.ts";
 import { PlanningPass } from "./PlanningPass.tsx";
+import { recipeEdits } from "./recipe-edits.ts";
 import { amountText, StepEditor } from "./StepEditor.tsx";
 import { YieldField } from "./YieldField.tsx";
 
@@ -33,15 +33,8 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
     window.history.replaceState(null, "", `?${params}`);
     setMode(next);
   };
-  // One set of ids per intended edit, so a retry after a lost response replays it (useIntent).
-  // One slot per mutation, so one's success doesn't drop another's pending ids (#127 C).
-  const editIntent = useIntent();
-  const moveIntent = useIntent();
-  const removeIntent = useIntent();
-  const ids = (intent: Intent, args: object) => {
-    const key = JSON.stringify(args);
-    return { mutationId: intent.id(key, "mutation"), revisionId: intent.id(key, "revision") };
-  };
+  // Each edit replays on a retry after a lost response, with its own ids (recipe-edits.ts).
+  const edits = useMemo(() => recipeEdits(recipeId, mutate), [recipeId]);
   // After a failure too: the server may hold the edit though the response was lost (#127 B).
   const refetch = async () => {
     await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
@@ -49,27 +42,15 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
   };
 
   const editRecipe = useMutation({
-    mutationFn: async (args: { name: string; servings: number | null }) => {
-      const { mutationId, revisionId } = ids(editIntent, args);
-      await mutate(mutationId, "editRecipe", { recipeId, revisionId, ...args });
-      editIntent.reset();
-    },
+    mutationFn: edits.editRecipe,
     onSettled: refetch,
   });
   const moveStep = useMutation({
-    mutationFn: async (args: { stepId: string; afterStepId: string | null }) => {
-      const { mutationId, revisionId } = ids(moveIntent, args);
-      await mutate(mutationId, "moveStep", { revisionId, ...args });
-      moveIntent.reset();
-    },
+    mutationFn: edits.moveStep,
     onSettled: refetch,
   });
   const removeStep = useMutation({
-    mutationFn: async (stepId: string) => {
-      const { mutationId, revisionId } = ids(removeIntent, { stepId });
-      await mutate(mutationId, "removeStep", { stepId, revisionId });
-      removeIntent.reset();
-    },
+    mutationFn: edits.removeStep,
     onSettled: refetch,
   });
 

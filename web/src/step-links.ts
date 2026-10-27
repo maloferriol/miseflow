@@ -1,6 +1,6 @@
-import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
-import type { StepTextPart } from "@miseflow/shared/src/recipe/tokens.ts";
-import type { Intent } from "./intent.ts";
+import { normaliseName, searchCatalog } from "@miseflow/shared/src/catalog/match.ts";
+import { parseStepText, type StepTextPart } from "@miseflow/shared/src/recipe/tokens.ts";
+import { createIntent, type Intent } from "./intent.ts";
 
 export type Ref = Extract<StepTextPart, { type: "ref" }>;
 
@@ -119,6 +119,85 @@ export function stepSaveArgs(
   return { body, lines };
 }
 
+/** Sends one mutation to `/mutate` (api.ts `mutate`); throws when it fails. */
+export type Send = (id: string, name: string, args: Record<string, unknown>) => Promise<void>;
+
+/**
+ * The catalog the Step editor links against: Ingredients by name or alias, and the kitchen's
+ * Recipes other than this one, loaded once per Save.
+ */
+export function catalogLookup<I, R extends { id: string; name: string }>(
+  recipeId: string,
+  loadRecipes: () => Promise<R[]>,
+  findIngredients: (name: string) => Promise<I[]>,
+) {
+  let entries: (R & { source: "own"; aliases: [] })[] | undefined;
+  const lookup: Lookup<I, R & { source: "own"; aliases: [] }> = async (name) => {
+    entries ??= (await loadRecipes())
+      .filter((r) => r.id !== recipeId)
+      .map((r) => ({ ...r, source: "own" as const, aliases: [] as [] }));
+    return { ingredients: await findIngredients(name), recipes: searchCatalog(entries, name, 5) };
+  };
+  return lookup;
+}
+
+/**
+ * Sends a resolved Step: `addStep`, or `editStep` for a Step the form opened. Its ids come from
+ * `intent`, keyed after resolution, so linking a wording to another target is a new save while a
+ * plain retry replays (#127 A). The slot resets once the save goes through.
+ */
+export async function sendStepSave(save: {
+  recipeId: string;
+  stepId: string;
+  editing?: boolean;
+  text: string;
+  parts: StepTextPart[];
+  refs: ResolvedRef[];
+  intent: Intent;
+  send: Send;
+}) {
+  const key = stepIntentKey(save.text, save.refs);
+  const id = (name: string) => save.intent.id(key, name);
+  const args = {
+    stepId: save.stepId,
+    revisionId: id("revision"),
+    ...stepSaveArgs(save.parts, save.refs, id),
+  };
+  if (save.editing) await save.send(id("mutation"), "editStep", args);
+  else await save.send(id("mutation"), "addStep", { recipeId: save.recipeId, ...args });
+  save.intent.reset();
+}
+
+/**
+ * One Save of the Step form: resolves the text's refs against the opened Step's lines, the links
+ * and the catalog, hands the links and missing names to `onResolved`, then sends the Step once
+ * every ref is linked. False when a name still waits for the cook.
+ */
+export async function saveStep<
+  I extends { id: string; exact: boolean },
+  R extends { id: string; name: string },
+>(save: {
+  recipeId: string;
+  stepId: string;
+  /** The Step as the form opened it; undefined for a new Step. */
+  opened?: { lines: KeptLine[] };
+  text: string;
+  links: ReadonlyMap<string, Target>;
+  loadRecipes: () => Promise<R[]>;
+  findIngredients: (name: string) => Promise<I[]>;
+  intent: Intent;
+  send: Send;
+  onResolved: (links: Map<string, Target>, missing: Unlinked<I, R>[]) => void;
+}) {
+  const parts = parseStepText(save.text);
+  const lookup = catalogLookup(save.recipeId, save.loadRecipes, save.findIngredients);
+  const resolved = await resolveStepLinks(parts, save.opened?.lines ?? [], save.links, lookup);
+  save.onResolved(resolved.links, resolved.missing);
+  if (resolved.missing.length) return false;
+  await sendStepSave({ ...save, editing: !!save.opened, parts, refs: resolved.refs });
+  return true;
+}
+
 /** What the cook chose for one unlinked wording (Decision 5, #84 Q1). */
 export type ChosenLink =
   | { action: "addAlias"; wording: string; ingredientId: string }
@@ -167,4 +246,33 @@ export function linkChoiceMutation(
       };
     }
   }
+}
+
+/** Sends a chosen link (see `linkChoiceMutation`) and returns the target to link the wording to. */
+export async function sendLinkChoice(intent: Intent, choice: ChosenLink, send: Send) {
+  const { id, name, args, target } = linkChoiceMutation(intent, choice);
+  await send(id, name, args);
+  intent.reset();
+  return target;
+}
+
+/**
+ * The link choices for one unlinked wording, each action with its own retry intent, so one
+ * going through doesn't drop another's pending ids (#127 D).
+ */
+export function linkChoices(wording: string, send: Send) {
+  const alias = createIntent();
+  const ingredient = createIntent();
+  const subRecipe = createIntent();
+  return {
+    /** A near match teaches `wording` as its alias; an exact one, offered because a Recipe matches too, needs none. */
+    useNearMatch: (match: { id: string; exact: boolean }): Promise<Target> =>
+      match.exact
+        ? Promise.resolve({ ingredientId: match.id })
+        : sendLinkChoice(alias, { action: "addAlias", wording, ingredientId: match.id }, send),
+    createIngredient: (args: { name: string; preferredKind: string; shoppingCategoryId: string }) =>
+      sendLinkChoice(ingredient, { action: "createIngredient", wording, ...args }, send),
+    createSubRecipe: (name: string) =>
+      sendLinkChoice(subRecipe, { action: "createSubRecipe", wording, name }, send),
+  };
 }

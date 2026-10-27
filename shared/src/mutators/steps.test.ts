@@ -226,7 +226,7 @@ describe("addStep", () => {
     ).toBe(false);
   });
 
-  it("refuses an amount with a zero denominator, a non-finite number or an inverted range", () => {
+  it("refuses an amount that is zero, divides by zero, is unreadable or has an inverted range", () => {
     const args = getMutator("addStep")!.args;
     const lineId = crypto.randomUUID();
     const withAmount = (amount: string) =>
@@ -246,9 +246,14 @@ describe("addStep", () => {
       }).success;
     expect(withAmount("1/0")).toBe(false);
     expect(withAmount("0/0%g")).toBe(false);
-    expect(withAmount("1" + "0".repeat(400))).toBe(false);
+    // Short enough for the length limit, so the refine is what refuses it.
+    expect(withAmount("1 1/0")).toBe(false);
     expect(withAmount("3-2")).toBe(false);
+    expect(withAmount("0")).toBe(false);
+    expect(withAmount("1,000 g")).toBe(false);
+    expect(withAmount("9".repeat(40))).toBe(false);
     expect(withAmount("2-3")).toBe(true);
+    expect(withAmount("1,5 kg")).toBe(true);
   });
 
   it("can't link a line to an Ingredient the caller can't see, and then appends nothing", async () => {

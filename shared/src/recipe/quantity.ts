@@ -85,8 +85,10 @@ const VULGAR: Record<string, number> = {
   "⅛": 1 / 8,
 };
 
-// "1", "1.5", "1/2", "1 1/2", "½", "1½"
-const NUMBER = String.raw`(?:\d+(?:\.\d+)?(?:\s+\d+\/\d+|\s*[½⅓⅔¼¾⅛])?|\d+\/\d+|[½⅓⅔¼¾⅛])`;
+// "1", "1.5", "1,5", "1/2", "1 1/2", "½", "1½". A comma is a decimal separator only before one or
+// two digits: "1,000" could be a thousand or one, so it stays unread and isValidQuantity refuses it.
+const DECIMAL = String.raw`(?:\.\d+|,\d{1,2}(?!\d))`;
+const NUMBER = String.raw`(?:\d+${DECIMAL}?(?:\s+\d+\/\d+|\s*[½⅓⅔¼¾⅛])?|\d+\/\d+|[½⅓⅔¼¾⅛])`;
 const AMOUNT = new RegExp(
   String.raw`^(${NUMBER})(?:\s*[-–]\s*(${NUMBER}))?(?=\s|%|[^\d./]|$)\s*(.*)$`,
   "u",
@@ -94,12 +96,12 @@ const AMOUNT = new RegExp(
 
 function parseNumber(text: string): number {
   let total = 0;
-  for (const part of text.match(/\d+\/\d+|\d+(?:\.\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
+  for (const part of text.match(/\d+\/\d+|\d+(?:[.,]\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
     if (part in VULGAR) total += VULGAR[part]!;
     else if (part.includes("/")) {
       const [n, d] = part.split("/").map(Number);
       total += n! / d!;
-    } else total += Number(part);
+    } else total += Number(part.replace(",", "."));
   }
   return total;
 }
@@ -150,13 +152,20 @@ export function parseQuantity(input: string): Quantity {
 }
 
 /**
- * False for an amount no line can store: a zero denominator or a number too big to be finite
- * ("1/0" → Infinity, "0/0" → NaN, which a jsonb snapshot can't hold), or a range whose upper
- * end is below its lower end ("3-2").
+ * False for an amount no line can store: zero (an empty amount is the placeholder), a zero
+ * denominator or a number too big to be finite ("1/0" → Infinity, "0/0" → NaN, which a jsonb
+ * snapshot can't hold), a range whose upper end is below its lower end ("3-2"), a number only
+ * partly read ("1,000 g" leaves ",000 g"), or one that formatQuantity would write with an exponent.
  */
 export function isValidQuantity(q: Quantity): boolean {
-  const ok = (n: number | null) => n === null || Number.isFinite(n);
-  return ok(q.value) && ok(q.max) && !(q.max !== null && q.value !== null && q.max < q.value);
+  // String(n) switches to an exponent from 1e21 and below 1e-6, which parseQuantity can't read.
+  const ok = (n: number | null) => n === null || (n >= 1e-6 && n < 1e21);
+  return (
+    ok(q.value) &&
+    ok(q.max) &&
+    !(q.max !== null && q.value !== null && q.max < q.value) &&
+    !(q.unit !== null && /^[.,]\d/.test(q.unit))
+  );
 }
 
 /** Back to the Cooklang shorthand ("1.5%cup", "=2-3%clove"), so a saved line can be re-edited. */

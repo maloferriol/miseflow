@@ -27,7 +27,8 @@ const lineInput = z
       .string()
       .max(100)
       .refine((amount) => isValidQuantity(parseQuantity(amount)), {
-        message: "An amount can't divide by zero or have a range whose end is below its start",
+        message:
+          "An amount can't be zero, divide by zero, be a number like 1,000 or have a range whose end is below its start",
       }),
     // The characters that delimit a ref in the shorthand can't be part of its name.
     wording: z

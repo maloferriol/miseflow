@@ -1,12 +1,13 @@
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { SERVINGS } from "../recipe/servings.ts";
 import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipeRevisions, recipes } from "../schema.ts";
 import { defineMutator } from "./define.ts";
 import { appendRevision, lockRecipe } from "./revision.ts";
 
 const name = z.string().trim().min(1).max(200);
-const servings = z.number().positive().max(10_000);
+const servings = z.number().min(SERVINGS.min).max(SERVINGS.max);
 
 export const createRecipe = defineMutator({
   name: "createRecipe",

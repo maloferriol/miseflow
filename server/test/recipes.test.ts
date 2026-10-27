@@ -1,6 +1,10 @@
-import { getMutator, ingredientAliases, recipeRevisions, recipes } from "@miseflow/shared";
+import { getMutator, ingredientAliases, ingredients, recipeRevisions, recipes } from "@miseflow/shared";
 import { eq, inArray, sql } from "drizzle-orm";
+import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { AuthEnv } from "../src/auth.ts";
+import type { Db } from "../src/db.ts";
+import { type RecipesRouteOptions, recipesRoute } from "../src/routes/recipes.ts";
 import { loadSeed, readSeed } from "../src/seed.ts";
 import { db, FIXED_NOW, getToken, testApp } from "./helpers.ts";
 
@@ -165,6 +169,139 @@ describe("GET /recipes/:recipeId", () => {
       404,
     );
     expect((await send("GET", "/recipes/not-a-uuid")).status).toBe(404);
+  });
+
+  it("reads a deleted Recipe as 404 NOT_FOUND", async () => {
+    const recipeId = await newRecipe();
+    await db
+      .update(recipes)
+      .set({ deletedAt: sql`now()` })
+      .where(eq(recipes.id, recipeId));
+
+    const res = await send("GET", `/recipes/${recipeId}`);
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("NOT_FOUND");
+  });
+});
+
+describe("GET /recipes/:recipeId in one read-only transaction (#128)", () => {
+  // The route alone, signed in as the Recipe's owner, so a test can pass its own db or hook.
+  async function routeApp(recipeId: string, routeDb: Db, options?: RecipesRouteOptions) {
+    const [row] = await db
+      .select({ ownerId: recipes.ownerId })
+      .from(recipes)
+      .where(eq(recipes.id, recipeId));
+    const ownerId = row?.ownerId;
+    if (!ownerId) throw new Error(`Recipe ${recipeId} has no owner`);
+    return new Hono<AuthEnv>()
+      .use(async (c, next) => {
+        c.set("ownerId", ownerId);
+        await next();
+      })
+      .route("/recipes", recipesRoute(routeDb, options));
+  }
+
+  async function recipeWithStep() {
+    const recipeId = await newRecipe();
+    const stepId = crypto.randomUUID();
+    await ok("addStep", {
+      recipeId,
+      stepId,
+      revisionId: crypto.randomUUID(),
+      body: [{ type: "text", text: "Stir" }],
+      lines: [],
+    });
+    return { recipeId, stepId };
+  }
+
+  it("a Recipe deleted after the ownership check still reads as it was, with 200", async () => {
+    const { recipeId, stepId } = await recipeWithStep();
+    const [before] = await db
+      .select({ name: recipes.name })
+      .from(recipes)
+      .where(eq(recipes.id, recipeId));
+    // Commits on another connection, between the check and the snapshot load.
+    const app = await routeApp(recipeId, db, {
+      afterOwnershipCheck: async () => {
+        await db
+          .update(recipes)
+          .set({ deletedAt: sql`now()` })
+          .where(eq(recipes.id, recipeId));
+      },
+    });
+
+    const res = await app.request(`/recipes/${recipeId}`);
+
+    expect(res.status, await res.clone().text()).toBe(200);
+    const { recipe } = await res.json();
+    expect(recipe).toMatchObject({ id: recipeId, name: before!.name });
+    expect(recipe.steps.map((s: { id: string }) => s.id)).toEqual([stepId]);
+    expect((await send("GET", `/recipes/${recipeId}`)).status).toBe(404);
+  });
+
+  it("runs as repeatable read and read only", async () => {
+    const { recipeId } = await recipeWithStep();
+    const settings: unknown[] = [];
+    const app = await routeApp(recipeId, db, {
+      afterOwnershipCheck: async (tx) => {
+        settings.push(
+          ...((await tx.execute(sql`show transaction_isolation`)) as unknown[]),
+          ...((await tx.execute(sql`show transaction_read_only`)) as unknown[]),
+        );
+      },
+    });
+
+    expect((await app.request(`/recipes/${recipeId}`)).status).toBe(200);
+    expect(settings).toEqual([
+      { transaction_isolation: "repeatable read" },
+      { transaction_read_only: "on" },
+    ]);
+  });
+
+  it("makes no query on db outside the transaction", async () => {
+    const { recipeId } = await recipeWithStep();
+    const onlyTransactions = new Proxy(db, {
+      get(target, prop) {
+        if (prop === "transaction") return target.transaction.bind(target);
+        throw new Error(`db.${String(prop)} used outside the transaction`);
+      },
+    });
+    const app = await routeApp(recipeId, onlyTransactions);
+
+    const res = await app.request(`/recipes/${recipeId}`);
+
+    expect(res.status, await res.clone().text()).toBe(200);
+  });
+
+  it("names a line whose Ingredient was deleted by the line's wording", async () => {
+    const recipeId = await newRecipe();
+    const ingredientId = crypto.randomUUID();
+    await ok("createIngredient", {
+      ingredientId,
+      name: `smoked salt ${crypto.randomUUID().slice(0, 8)}`,
+      preferredKind: "mass",
+      shoppingCategoryId: seed.shoppingCategories.find((c) => c.name === "Spices")!.id,
+    });
+    const lineId = crypto.randomUUID();
+    await ok("addStep", {
+      recipeId,
+      stepId: crypto.randomUUID(),
+      revisionId: crypto.randomUUID(),
+      body: [{ type: "text", text: "Season with " }, { type: "line", lineId }],
+      lines: [{ lineId, ingredientId, amount: "1%g", wording: "a pinch of smoked salt" }],
+    });
+    await db
+      .update(ingredients)
+      .set({ deletedAt: sql`now()` })
+      .where(eq(ingredients.id, ingredientId));
+
+    const { recipe } = await (await send("GET", `/recipes/${recipeId}`)).json();
+
+    expect(recipe.steps[0].lines[0]).toMatchObject({
+      id: lineId,
+      ingredient: { id: ingredientId, name: "a pinch of smoked salt" },
+    });
   });
 });
 

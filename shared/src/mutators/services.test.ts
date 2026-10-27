@@ -1047,7 +1047,7 @@ describe("Cook and Menu locks", () => {
     try {
       let w!: Walkthrough;
       await db.transaction(async (tx) => void (w = await walkthrough(tx, owner)));
-      const [{ pid: pidOfB }] = (await clients[1]!`select pg_backend_pid() as pid`) as unknown as {
+      const [{ pid: pidOfB }] = (await clients[1]`select pg_backend_pid() as pid`) as unknown as {
         pid: number;
       }[];
 

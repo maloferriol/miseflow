@@ -230,9 +230,9 @@ describe("seed rows", () => {
     const [before] = await db
       .select()
       .from(ingredientAliases)
-      .where(eq(ingredientAliases.id, flour.aliases[0]!.id));
+      .where(eq(ingredientAliases.id, flour.aliases[0].id));
     const res = await mutate("addAlias", {
-      aliasId: flour.aliases[0]!.id,
+      aliasId: flour.aliases[0].id,
       ingredientId: flour.id,
       name: `${crypto.randomUUID().slice(0, 8)} flour`,
     });
@@ -241,7 +241,7 @@ describe("seed rows", () => {
       await db
         .select()
         .from(ingredientAliases)
-        .where(eq(ingredientAliases.id, flour.aliases[0]!.id)),
+        .where(eq(ingredientAliases.id, flour.aliases[0].id)),
     ).toEqual([before]);
   });
 
@@ -260,7 +260,7 @@ describe("seed rows", () => {
 describe("GET /shopping-categories", () => {
   it("lists the seed categories in order, then the caller's own, and hides other owners' and deleted ones", async () => {
     const token = await getToken();
-    const ownerId = JSON.parse(Buffer.from(token.split(".")[1]!, "base64url").toString())
+    const ownerId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString())
       .sub as string;
     const tag = crypto.randomUUID().slice(0, 8);
     const rows = [

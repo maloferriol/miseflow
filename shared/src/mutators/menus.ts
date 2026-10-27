@@ -70,7 +70,7 @@ export const addDish = defineMutator({
       .select({ menuId: courses.menuId })
       .from(courses)
       .where(eq(courses.id, args.courseId));
-    await replanAffected(tx, ctx, { menuId: course!.menuId });
+    await replanAffected(tx, ctx, { menuId: course.menuId });
   },
 });
 

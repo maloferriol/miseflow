@@ -10,10 +10,12 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 // 503 while `down`.
 function fakeJwks(kids: string[]) {
   const server = { kids, fetches: 0, down: false };
-  const fetch = async () => {
+  const fetch = () => {
     server.fetches += 1;
-    if (server.down) return new Response("unavailable", { status: 503 });
-    return new Response(JSON.stringify({ keys: server.kids.map((kid) => ({ kid, kty: "EC" })) }));
+    if (server.down) return Promise.resolve(new Response("unavailable", { status: 503 }));
+    return Promise.resolve(
+      new Response(JSON.stringify({ keys: server.kids.map((kid) => ({ kid, kty: "EC" })) })),
+    );
   };
   return { server, fetch };
 }
@@ -116,7 +118,7 @@ describe("JWKS cache", () => {
     const fetch = (_url: string, init?: RequestInit): Promise<Response> =>
       hang
         ? new Promise((_, reject) =>
-            init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)),
+            init?.signal?.addEventListener("abort", () => reject(init.signal!.reason as Error)),
           )
         : serve();
     let now = 0;

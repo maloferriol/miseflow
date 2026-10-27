@@ -39,7 +39,7 @@ async function stockPlan(
   });
   const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
   const courses = (["Starter", "Main", "Dessert"] as const).map((name, i) => {
-    const key = (["veloute", "duck", "tarte"] as const)[i]!;
+    const key = (["veloute", "duck", "tarte"] as const)[i];
     return { id: name, name, dishes: [{ id: w.dishes[key], name: w.names[key] }] };
   });
   const tasks = plan.days.flatMap((d) => d.tasks);
@@ -59,7 +59,7 @@ describe("the Gantt lane tree", () => {
     await inRollback(async (tx) => {
       const { w, plan, tree } = await stockPlan(tx);
       const names = Object.fromEntries(Object.entries(w.steps).map(([k, id]) => [id, k]));
-      const stepOf = (key: string) => names[key.split(":")[2]!]!;
+      const stepOf = (key: string) => names[key.split(":")[2]];
       const n = w.names;
       expect(describeRows(collapse(tree, []), stepOf)).toEqual([
         "Starter",
@@ -76,11 +76,11 @@ describe("the Gantt lane tree", () => {
         r.kind === "lane" && r.lane.name === n.stock ? [r.lane] : [],
       );
       expect(stockLanes.map((l) => l.ghost)).toEqual([false, true]);
-      expect(stockLanes[1]!.taskKeys).toEqual(stockLanes[0]!.taskKeys);
-      expect(stockLanes[0]!.batchId).toBe(
+      expect(stockLanes[1].taskKeys).toEqual(stockLanes[0].taskKeys);
+      expect(stockLanes[0].batchId).toBe(
         plan.batches.find((b) => b.subRecipe.id === w.recipes.stock)!.id,
       );
-      expect(stockLanes[0]!.label).toBe(
+      expect(stockLanes[0].label).toBe(
         plan.batches.find((b) => b.subRecipe.id === w.recipes.stock)!.label,
       );
     });
@@ -90,7 +90,7 @@ describe("the Gantt lane tree", () => {
     await inRollback(async (tx) => {
       const { w, tree } = await stockPlan(tx);
       const names = Object.fromEntries(Object.entries(w.steps).map(([k, id]) => [id, k]));
-      const stepOf = (key: string) => names[key.split(":")[2]!]!;
+      const stepOf = (key: string) => names[key.split(":")[2]];
       const n = w.names;
       const expanded = describeRows(collapse(tree, []), stepOf);
 

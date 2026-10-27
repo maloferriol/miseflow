@@ -88,8 +88,7 @@ export function Gantt({
   const colors = useMemo(() => {
     const out = new Map<string, string>();
     for (const t of tasks)
-      if (!out.has(ownerKey(t.owner)))
-        out.set(ownerKey(t.owner), COLORS[out.size % COLORS.length]!);
+      if (!out.has(ownerKey(t.owner))) out.set(ownerKey(t.owner), COLORS[out.size % COLORS.length]);
     return out;
   }, [tasks]);
   const width = axis.width * PX + 16;

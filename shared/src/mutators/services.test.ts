@@ -225,7 +225,7 @@ describe("the walkthrough Plan", () => {
         [s.T3]: "Sat 18:00",
       });
       const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
-      const d4 = plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0]!.id === s.D4)!;
+      const d4 = plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0].id === s.D4)!;
       expect(d4).toMatchObject({ start: "18:40", end: "18:50", approximate: true });
       expect(plan.approximate).toBe(true);
       expect(plan.unplaced).toEqual([]);
@@ -242,14 +242,14 @@ const writes = async (tx: Tx) =>
   Number(
     (
       (await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
-      from pg_stat_xact_user_tables where relname = 'task_placements'`)) as unknown as Row[]
+      from pg_stat_xact_user_tables where relname = 'task_placements'`)) as Row[]
     )[0]?.n ?? 0,
   );
 const versions = async (tx: Tx, serviceId: string) =>
   new Map(
     (
       (await tx.execute(sql`select first_step_id, ctid::text as v
-      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as unknown as Row[]
+      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as Row[]
     ).map((r) => [r.first_step_id as string, r.v as string]),
   );
 
@@ -302,7 +302,7 @@ describe("re-plan writes", () => {
 // placements from before the edit as the previous Plan: what a re-plan after the edit must store.
 async function stored(tx: Tx, serviceId: string) {
   const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
-  return (await loadPlanRows(tx, ownerId, service!)).previous;
+  return (await loadPlanRows(tx, ownerId, service)).previous;
 }
 async function expectReplanned(
   tx: Tx,
@@ -311,7 +311,7 @@ async function expectReplanned(
   { moved = true } = {},
 ) {
   const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
-  const rows = await loadPlanRows(tx, ownerId, service!);
+  const rows = await loadPlanRows(tx, ownerId, service);
   const { model, tasks } = toPlanningModel({ ...rows, previous: before }, timeZone);
   const live = rows.previous.map((p) => `${p.key}@${p.start}`).sort();
   // The edit must force a move, or this would pass with no re-plan at all.
@@ -478,9 +478,9 @@ describe("every edit that changes a Task re-plans", () => {
       const serviceId = await addService(tx, w);
       const [link] = (await tx.execute(
         sql`select id from step_dependencies where before_step_id = ${w.steps.T2} and deleted_at is null`,
-      )) as unknown as Row[];
+      )) as Row[];
       const before = await stored(tx, serviceId);
-      await run(tx, "removeStepDependency", { dependencyId: link!.id, revisionId: revisionId() });
+      await run(tx, "removeStepDependency", { dependencyId: link.id, revisionId: revisionId() });
       await expectReplanned(tx, serviceId, before, { moved: false });
     });
   });
@@ -501,10 +501,10 @@ describe("every edit that changes a Task re-plans", () => {
       });
       const [course] = (await tx.execute(
         sql`select course_id from dishes where id = ${w.dishes.veloute}`,
-      )) as unknown as Row[];
+      )) as Row[];
       await run(tx, "addDish", {
         dishId: crypto.randomUUID(),
-        courseId: course!.course_id,
+        courseId: course.course_id,
         recipeId,
       });
       expect((await stored(tx, serviceId)).length).toBe(before.length + 1);
@@ -561,7 +561,7 @@ const tableWrites = async (tx: Tx, table: string) =>
   Number(
     (
       (await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
-      from pg_stat_xact_user_tables where relname = ${table}`)) as unknown as Row[]
+      from pg_stat_xact_user_tables where relname = ${table}`)) as Row[]
     )[0]?.n ?? 0,
   );
 const liveOverrides = (tx: Tx, owner = ownerId) =>
@@ -594,7 +594,7 @@ describe("giveCookMoreTime", () => {
       ).toEqual([taskKey(tarte, w.steps.T1)]);
       const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
       const expected = smallestOverride(
-        await loadPlanRows(tx, ownerId, service!),
+        await loadPlanRows(tx, ownerId, service),
         timeZone,
         taskKey(tarte, w.steps.T1),
       )!;
@@ -650,7 +650,7 @@ describe("giveCookMoreTime", () => {
         start: zonedMinute("2026-10-30", h(19, 15), timeZone),
       });
       const blocked = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
-      expect(blocked.unplaced.map((u) => [u.steps[0]!.id, u.kind, u.moreTime])).toEqual([
+      expect(blocked.unplaced.map((u) => [u.steps[0].id, u.kind, u.moreTime])).toEqual([
         [w.steps.T1, "BlockedByPin", true],
       ]);
       const starts = await placements(tx, serviceId);
@@ -717,8 +717,8 @@ describe("giveCookMoreTime", () => {
       const [p, k] = [crypto.randomUUID(), crypto.randomUUID()].sort();
       await run(tx, "createRecipe", { recipeId, revisionId: revisionId(), name: "Two steps" });
       for (const [stepId, active] of [
-        [p!, 30],
-        [k!, 40],
+        [p, 30],
+        [k, 40],
       ] as const) {
         await run(tx, "addStep", {
           recipeId,
@@ -752,7 +752,7 @@ describe("giveCookMoreTime", () => {
       await run(tx, "setWeeklyAvailability", { hours: [hours(5, h(18), h(18, 30))] });
       await run(tx, "createService", { serviceId, menuId, date: "2026-10-30", time: h(18, 30) });
       const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
-      expect(plan.unplaced.map((u) => [u.steps[0]!.id, u.kind])).toEqual([[k, "NoAvailability"]]);
+      expect(plan.unplaced.map((u) => [u.steps[0].id, u.kind])).toEqual([[k, "NoAvailability"]]);
 
       const before = [await tableWrites(tx, "availability_overrides"), await liveOverrides(tx)];
       const thrown = await refused(tx, "giveCookMoreTime", {
@@ -956,7 +956,7 @@ describe("Plan trouble and the Unplaced quick-fix fields", () => {
         availability: { kind: "off" },
       });
       const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
-      const item = (stepId: string) => plan.unplaced.find((u) => u.steps[0]!.id === stepId)!;
+      const item = (stepId: string) => plan.unplaced.find((u) => u.steps[0].id === stepId)!;
       const veloute = { id: w.dishes.veloute, name: w.names.veloute };
       const duck = { id: w.dishes.duck, name: w.names.duck };
       // The stock feeds the Velouté and the Beurre blanc, which feeds the duck: both, in Menu order.

@@ -211,7 +211,7 @@ const tableWrites = async (tx: Tx, table: string) =>
   Number(
     (
       (await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
-      from pg_stat_xact_user_tables where relname = ${table}`)) as unknown as { n: string }[]
+      from pg_stat_xact_user_tables where relname = ${table}`)) as { n: string }[]
     )[0]?.n ?? 0,
   );
 
@@ -350,7 +350,7 @@ describe("removeDish locks", () => {
           time: SERVICE_TIME,
         });
       });
-      const [{ pid: pidOfA }] = (await clients[0]!`select pg_backend_pid() as pid`) as unknown as {
+      const [{ pid: pidOfA }] = (await clients[0]`select pg_backend_pid() as pid`) as unknown as {
         pid: number;
       }[];
 
@@ -398,7 +398,7 @@ describe("removeDish locks", () => {
       const [dish] = (await db.execute(
         sql`select deleted_at from dishes where id = ${w.dishes.veloute}`,
       )) as unknown as Record<string, unknown>[];
-      expect(dish!.deleted_at).not.toBeNull();
+      expect(dish.deleted_at).not.toBeNull();
       const live = (await db.execute(
         sql`select 1 from task_placements where dish_id = ${w.dishes.veloute} and deleted_at is null`,
       )) as unknown as unknown[];

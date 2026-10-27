@@ -27,7 +27,7 @@ async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
 }
 
 // Runs a mutation that should be refused in a savepoint, so the checks after it can still run.
-async function refused(tx: Tx, name: string, args: unknown, error: new (...a: any[]) => Error) {
+async function refused(tx: Tx, name: string, args: unknown, error: new (...a: never[]) => Error) {
   let thrown: unknown;
   await tx.transaction(async (sp) => run(sp, name, args)).catch((e) => (thrown = e));
   expect(thrown).toBeInstanceOf(error);
@@ -40,7 +40,7 @@ async function revisions(tx: Tx, recipeId: string) {
     .select()
     .from(recipeRevisions)
     .where(eq(recipeRevisions.recipeId, recipeId));
-  return { latest: recipe!.latestRevision, count: rows.length, rows };
+  return { latest: recipe.latestRevision, count: rows.length, rows };
 }
 
 async function createRecipe(tx: Tx, name: string, owner = ownerId) {
@@ -102,7 +102,7 @@ describe("createSubRecipe", () => {
 
       const created = await revisions(tx, stock);
       expect(created).toMatchObject({ latest: 1, count: 1 });
-      expect(created.rows[0]!.snapshot).toMatchObject({
+      expect(created.rows[0].snapshot).toMatchObject({
         name: "Chicken stock",
         yield: null,
         steps: [],
@@ -321,8 +321,8 @@ describe("extractToSubRecipe", () => {
       expect(pastry.steps.flatMap((s) => s.lines.map((l) => l.id))).toEqual(lineIds);
       const tarte = await loadRecipeSnapshot(tx, ownerId, recipeId);
       expect(tarte.steps.map((s) => s.id)).toEqual([s1, args.stepId, s4]);
-      expect(tarte.steps[1]!.body).toEqual([{ type: "line", lineId: args.lineId }]);
-      expect(tarte.steps[1]!.lines).toEqual([
+      expect(tarte.steps[1].body).toEqual([{ type: "line", lineId: args.lineId }]);
+      expect(tarte.steps[1].lines).toEqual([
         expect.objectContaining({
           id: args.lineId,
           subRecipeId: args.subRecipeId,
@@ -335,7 +335,7 @@ describe("extractToSubRecipe", () => {
 
       const pastryRevisions = await revisions(tx, args.subRecipeId);
       expect(pastryRevisions).toMatchObject({ latest: 1, count: 1 });
-      expect(pastryRevisions.rows[0]!.snapshot).toEqual(pastry);
+      expect(pastryRevisions.rows[0].snapshot).toEqual(pastry);
       const tarteRevisions = await revisions(tx, recipeId);
       expect(tarteRevisions).toMatchObject({ latest: 6, count: 6 });
       expect(tarteRevisions.rows.find((r) => r.number === 6)!.snapshot).toEqual(tarte);
@@ -346,7 +346,7 @@ describe("extractToSubRecipe", () => {
     await inRollback(async (tx) => {
       const { recipeId, stepIds } = await tarteTatin(tx);
       const before = await loadRecipeSnapshot(tx, ownerId, recipeId);
-      const args = extract(recipeId, [stepIds[0]!, stepIds[2]!]);
+      const args = extract(recipeId, [stepIds[0], stepIds[2]]);
       await refused(tx, "extractToSubRecipe", args, InvalidArgsError);
       expect(await loadRecipeSnapshot(tx, ownerId, recipeId)).toEqual(before);
       expect(await revisions(tx, recipeId)).toMatchObject({ latest: 5, count: 5 });
@@ -358,12 +358,7 @@ describe("extractToSubRecipe", () => {
     await inRollback(async (tx) => {
       const { recipeId } = await tarteTatin(tx);
       const other = await tarteTatin(tx);
-      await refused(
-        tx,
-        "extractToSubRecipe",
-        extract(recipeId, [other.stepIds[1]!]),
-        NotFoundError,
-      );
+      await refused(tx, "extractToSubRecipe", extract(recipeId, [other.stepIds[1]]), NotFoundError);
       expect(await revisions(tx, recipeId)).toMatchObject({ latest: 5, count: 5 });
     });
   });
@@ -378,7 +373,7 @@ describe("extractToSubRecipe", () => {
         beforeStepId: stepIds[1],
         afterStepId: stepIds[2],
       });
-      const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
+      const args = extract(recipeId, [stepIds[1], stepIds[2]]);
       await run(tx, "extractToSubRecipe", args);
       expect((await loadRecipeSnapshot(tx, ownerId, args.subRecipeId)).dependencies).toEqual([
         { id: dependencyId, beforeStepId: stepIds[1], afterStepId: stepIds[2] },
@@ -397,13 +392,13 @@ describe("extractToSubRecipe", () => {
         beforeStepId: stepIds[0],
         afterStepId: stepIds[2],
       });
-      const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
+      const args = extract(recipeId, [stepIds[1], stepIds[2]]);
       await run(tx, "extractToSubRecipe", args);
       const [row] = await tx
         .select()
         .from(stepDependencies)
         .where(eq(stepDependencies.id, dependencyId));
-      expect(row!.deletedAt).not.toBeNull();
+      expect(row.deletedAt).not.toBeNull();
       expect((await loadRecipeSnapshot(tx, ownerId, args.subRecipeId)).dependencies).toEqual([]);
     });
   });
@@ -418,7 +413,7 @@ describe("extractToSubRecipe", () => {
           revisionId: crypto.randomUUID(),
           value: true,
         });
-      const args = extract(recipeId, [stepIds[1]!, stepIds[2]!]);
+      const args = extract(recipeId, [stepIds[1], stepIds[2]]);
       await run(tx, "extractToSubRecipe", args);
       const grouped = await tx
         .select({ id: steps.id, groupWithPrevious: steps.groupWithPrevious })

@@ -56,7 +56,7 @@ describe("stepStates", () => {
       [2, 0, 3, 1],
       [1, 3, 0, 2],
     ]) {
-      expect(stepStates(order.map((i) => events[i]!))).toEqual(expected);
+      expect(stepStates(order.map((i) => events[i]))).toEqual(expected);
     }
   });
 

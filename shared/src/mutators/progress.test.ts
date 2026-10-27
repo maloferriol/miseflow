@@ -59,7 +59,7 @@ async function starts(tx: Tx, serviceId: string) {
 }
 
 const taskOf = (plan: PlanRead, stepId: string) =>
-  plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0]!.id === stepId)!;
+  plan.days.flatMap((d) => d.tasks).find((t) => t.steps[0].id === stepId)!;
 
 describe("Behind on the Plan read", () => {
   it("AC3: with the clock 5 minutes past D2's due time and nothing ticked, D2 is behind and holds up D3 and D4; 5 minutes before, it isn't", async () => {
@@ -110,7 +110,7 @@ const events = (tx: Tx, serviceId: string, stepId: string) =>
 type Row = Record<string, unknown>;
 const actions = async (tx: Tx, table: string) => {
   const [row] = (await tx.execute(sql`select n_tup_ins as ins, n_tup_upd as upd, n_tup_del as del
-    from pg_stat_xact_user_tables where relname = ${table}`)) as unknown as Row[];
+    from pg_stat_xact_user_tables where relname = ${table}`)) as Row[];
   return { ins: Number(row?.ins ?? 0), upd: Number(row?.upd ?? 0), del: Number(row?.del ?? 0) };
 };
 
@@ -273,14 +273,13 @@ const versions = async (tx: Tx, serviceId: string) =>
   new Map(
     (
       (await tx.execute(sql`select first_step_id, ctid::text as v
-      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as unknown as Row[]
+      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as Row[]
     ).map((r) => [r.first_step_id as string, r.v as string]),
   );
 const writes = async (tx: Tx, table: string) => {
   const a = await actions(tx, table);
   return a.ins + a.upd + a.del;
 };
-const minute = (date: Date) => date.getTime() / 60_000;
 const at = (m: number) => new Date(m * 60_000);
 const revisionId = () => crypto.randomUUID();
 
@@ -384,7 +383,7 @@ describe("Progress in the re-plan", () => {
       expect(plan.unplaced).toEqual([]);
       expect(
         plan.conflicts.map((c) => ({
-          step: c.steps[0]!.id,
+          step: c.steps[0].id,
           kind: c.kind,
           use: c.use,
           sentence: c.sentence,
@@ -449,8 +448,9 @@ describe("Service locks", () => {
             time: SERVICE_TIME,
           });
         });
-        const [{ pid: pidOfA }] =
-          (await clients[0]!`select pg_backend_pid() as pid`) as unknown as { pid: number }[];
+        const [{ pid: pidOfA }] = (await clients[0]`select pg_backend_pid() as pid`) as unknown as {
+          pid: number;
+        }[];
         // Inserting a row that references the Service takes FOR KEY SHARE on it.
         const addEvent = (tx: Tx) =>
           tx.insert(stepEvents).values({
@@ -491,7 +491,7 @@ describe("Service locks", () => {
         while (!settled) {
           const [row] = (await db.execute(
             sql`select wait_event_type from pg_stat_activity where pid = ${pidOfA}`,
-          )) as unknown as Row[];
+          )) as Row[];
           if (row?.wait_event_type === "Lock") break;
         }
         goOn();

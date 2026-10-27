@@ -45,7 +45,7 @@ if (existsSync(envFile)) {
       encoding: "utf8",
       stdio: ["inherit", "pipe", "inherit"],
     }),
-  );
+  ) as { DB_URL: string; API_URL: string; PUBLISHABLE_KEY: string; SECRET_KEY: string };
   const values = {
     DATABASE_URL: status.DB_URL,
     SUPABASE_URL: status.API_URL,

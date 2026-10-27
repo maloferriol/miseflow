@@ -196,6 +196,8 @@ async function upsert<T extends PgTable & { id: PgColumn; ownerId: PgColumn }>(
     .returning({ id: table.id });
   const [owned] = await tx
     .select({ id: table.id })
+    // Widening the generic T skips Drizzle's conditional check on the table type.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     .from(table as PgTable)
     .where(
       and(
@@ -207,7 +209,7 @@ async function upsert<T extends PgTable & { id: PgColumn; ownerId: PgColumn }>(
       ),
     )
     .limit(1);
-  if (owned) throw new Error(`${owned.id} is not a seed row: it belongs to a user`);
+  if (owned) throw new Error(`${String(owned.id)} is not a seed row: it belongs to a user`);
   return written.length;
 }
 

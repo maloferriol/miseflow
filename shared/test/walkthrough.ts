@@ -194,13 +194,13 @@ export async function buildWalkthrough(
   const dishIds = sortedIds(3);
   const out = { menuId, recipes: {}, dishes: {}, steps: {}, names: {} } as Walkthrough;
   const stepKey = (key: string, j: number) =>
-    `${key === "beurre" ? "B" : key === "stock" ? "S" : key[0]!.toUpperCase()}${j + 1}`;
+    `${key === "beurre" ? "B" : key === "stock" ? "S" : key[0].toUpperCase()}${j + 1}`;
 
   // One Recipe's Steps in order, each after the previous one, with any sub-recipe line it uses.
   const addSteps = async (key: string, recipeId: string, steps: StepSpec[]) => {
     const stepIds = sortedIds(steps.length);
     for (const [j, s] of steps.entries()) {
-      const stepId = stepIds[j]!;
+      const stepId = stepIds[j];
       const named = stepKey(key, j);
       (out.steps as Record<string, string>)[named] = stepId;
       const use = stock ? USES[named] : undefined;

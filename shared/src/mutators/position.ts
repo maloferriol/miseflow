@@ -17,7 +17,7 @@ export function positionAfter(last: string | null): string {
   const digitCount = head.charCodeAt(0) - "a".charCodeAt(0) + 1;
   const digits = last.slice(1, 1 + digitCount).split("");
   for (let i = digits.length - 1; i >= 0; i--) {
-    const next = DIGITS.indexOf(digits[i]!) + 1;
+    const next = DIGITS.indexOf(digits[i]) + 1;
     if (next < DIGITS.length) {
       digits[i] = DIGITS[next]!;
       return head + digits.join("");

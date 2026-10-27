@@ -96,7 +96,7 @@ const AMOUNT = new RegExp(
 
 function parseNumber(text: string): number {
   let total = 0;
-  for (const part of text.match(/\d+\/\d+|\d+(?:[.,]\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
+  for (const part of text.match(/\d+(?:\/\d+|[.,]\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
     if (part in VULGAR) total += VULGAR[part];
     else if (part.includes("/")) {
       const [n, d] = part.split("/").map(Number);
@@ -116,6 +116,26 @@ function parseUnit(raw: string): { unit: string | null; tier: QuantityTier } {
   return known ?? { unit: text, tier: "unknown" };
 }
 
+/** The number at the start of an amount and the text after it; `numbered` is false for "a"/"an". */
+function readAmount(amount: string) {
+  const match = AMOUNT.exec(amount);
+  if (match) {
+    // A number only partly read ("1,000" stops at ","): NaN, which isValidQuantity refuses,
+    // even when a "%" means the rest isn't the unit.
+    const partial = /^[.,]\d/.test(match[3]);
+    return {
+      value: partial ? Number.NaN : parseNumber(match[1]),
+      max: match[2] ? parseNumber(match[2]) : null,
+      rest: match[3],
+      numbered: true,
+    };
+  }
+  // "a pinch", "an onion": the article is one.
+  const article = /^an?\s+(.*)$/i.exec(amount);
+  if (article) return { value: 1, max: null, rest: article[1], numbered: false };
+  return { value: null, max: null, rest: amount, numbered: false };
+}
+
 export function parseQuantity(input: string): Quantity {
   let text = input.trim();
   const fixed = text.startsWith("=");
@@ -127,27 +147,9 @@ export function parseQuantity(input: string): Quantity {
   const amount = percent >= 0 ? text.slice(0, percent).trim() : text;
   const unitText = percent >= 0 ? text.slice(percent + 1) : null;
 
-  const match = AMOUNT.exec(amount);
-  let value: number | null = null;
-  let max: number | null = null;
-  let rest = amount;
-  if (match) {
-    // A number only partly read ("1,000" stops at ","): NaN, which isValidQuantity refuses,
-    // even when a "%" means the rest isn't the unit.
-    const partial = /^[.,]\d/.test(match[3]);
-    value = partial ? NaN : parseNumber(match[1]);
-    max = match[2] ? parseNumber(match[2]) : null;
-    rest = match[3]!;
-  } else {
-    // "a pinch", "an onion": the article is one.
-    const article = /^an?\s+(.*)$/i.exec(amount);
-    if (article) {
-      value = 1;
-      rest = article[1]!;
-    }
-  }
+  const { value, max, rest, numbered } = readAmount(amount);
   const { unit, tier } = parseUnit(unitText ?? rest);
-  if (tier === "vague") return { value: match ? value : null, max, unit, tier, fixed };
+  if (tier === "vague") return { value: numbered ? value : null, max, unit, tier, fixed };
   // Words with no number and no known unit ("some") stay as written.
   if (value === null && tier === "ingredient" && unit === null)
     return { value: null, max: null, unit: null, tier: "vague", fixed };

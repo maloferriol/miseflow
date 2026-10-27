@@ -7,22 +7,31 @@ A software to manage your cooking: recipes, ingredients, and meal prep workflow.
 Needs Node 24+ and Docker.
 
 ```sh
-npm install
-npm run setup:local         # ES256 signing key, starts the stack, writes .env, seeds the test user
+npm run preflight           # checks Node, Docker and ports; installs dependencies; writes .env
 npm run db:migrate          # drizzle-kit migrate; Supabase CLI migrations are not used
 npm run seed -w server      # the shared Ingredient seed (ODbL); safe to run again
 npm run dev:server          # API on http://localhost:8787
 npm run dev:web             # web app on http://localhost:5173
 ```
 
-`npm run setup:local` starts the stack itself. It creates `supabase/signing_keys.json`, so on a
+`npm run preflight` is the first step in any new clone or worktree, and safe to run again. It
+stops at the first problem (Node older than 24, Docker not running, the stack stopped, a `.env`
+with cloud values, or port 8787 or 5173 held by a server from another checkout) and prints the fix.
+Otherwise it runs `npm ci --ignore-scripts` when `node_modules` is missing or older than
+`package-lock.json`, and `npm run setup:local` when `.env` is missing. A missing or logged-out
+`gh` only warns. It doesn't check Claude skills: sessions need the `mattpocock-skills` plugin
+installed in your Claude config.
+
+`npm run setup:local` (ES256 signing key, starts the stack, writes `.env`, seeds the test user)
+starts the stack itself. It creates `supabase/signing_keys.json`, so on a
 fresh clone `npx supabase start` fails until `npm run setup:local` has run once; afterwards
 `npx supabase start` restarts the stack.
 
 It also writes the git-ignored `.env` from `npx supabase status`, with a random password for the
 test user (`.env.example` lists the names). An existing `.env` is kept; delete it to write a fresh
 one. Every checkout on this machine shares one local stack and one test user, so running it in a
-second checkout resets that user's password: copy the first checkout's `.env` instead.
+second checkout resets that user's password: rerun `npm run setup:local` in the first checkout to
+reset it back. Don't copy another checkout's `.env`.
 
 - `npm test` runs every workspace's tests against the local stack. `npm run test:coverage` does
   the same and writes `<workspace>/coverage/lcov.info` for `shared`, `server` and `web`.

@@ -6,10 +6,11 @@ Repo facts for anyone writing or reviewing code here. `code-review` checks the d
 
 ## Setup
 
-- In a new worktree, run `npm run setup:local` (it writes this worktree's `.env`), then `npm run db:migrate`. Run migrate again after pulling a migration.
+- In a new worktree, run `npm run preflight` (it checks Node, Docker, the local stack and the app ports, installs dependencies, and runs `npm run setup:local` to write this worktree's `.env`), then `npm run db:migrate`. Run migrate again after pulling a migration.
+- Preflight doesn't check Claude skills: a session needs the `mattpocock-skills` plugin installed in the user's Claude config.
 - Cloud session: the SessionStart hook starts `dockerd`, unsets the cloud database vars, and installs dependencies and Playwright chromium. If `env | grep DATABASE_URL` still shows a value, prefix each command with `env -u DATABASE_URL -u SUPABASE_URL -u VITE_SUPABASE_URL -u VITE_SUPABASE_PUBLISHABLE_KEY -u SUPABASE_PUBLISHABLE_KEY -u SUPABASE_SECRET_KEY`. Node older than 24 only warns (`EBADENGINE`).
 - `Invalid login credentials` from every server suite means another checkout reset the shared test user. Rerun `npm run setup:local` here. Don't read other checkouts' `.env` files.
-- Before `npm run e2e`, check `lsof -iTCP:8787 -iTCP:5173 -sTCP:LISTEN`. A server already listening may belong to another worktree.
+- Before `npm run e2e`, rerun `npm run preflight`. It fails when a server on 8787 or 5173 belongs to another checkout.
 
 ## Tests
 

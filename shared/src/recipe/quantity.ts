@@ -86,9 +86,9 @@ const VULGAR: Record<string, number> = {
 };
 
 // "1", "1.5", "1,5", "1/2", "1 1/2", "½", "1½". A comma is a decimal separator only before one or
-// two digits: "1,000" could be a thousand or one, so it stays unread and isValidQuantity refuses it.
-const DECIMAL = String.raw`(?:\.\d+|,\d{1,2}(?!\d))`;
-const NUMBER = String.raw`(?:\d+${DECIMAL}?(?:\s+\d+\/\d+|\s*[½⅓⅔¼¾⅛])?|\d+\/\d+|[½⅓⅔¼¾⅛])`;
+// two digits: "1,000" could be a thousand or one, so parseQuantity gives it a NaN value.
+const FRACTION_DIGITS = String.raw`(?:\.\d+|,\d{1,2}(?!\d))`;
+const NUMBER = String.raw`(?:\d+${FRACTION_DIGITS}?(?:\s+\d+\/\d+|\s*[½⅓⅔¼¾⅛])?|\d+\/\d+|[½⅓⅔¼¾⅛])`;
 const AMOUNT = new RegExp(
   String.raw`^(${NUMBER})(?:\s*[-–]\s*(${NUMBER}))?(?=\s|%|[^\d./]|$)\s*(.*)$`,
   "u",
@@ -132,7 +132,10 @@ export function parseQuantity(input: string): Quantity {
   let max: number | null = null;
   let rest = amount;
   if (match) {
-    value = parseNumber(match[1]!);
+    // A number only partly read ("1,000" stops at ","): NaN, which isValidQuantity refuses,
+    // even when a "%" means the rest isn't the unit.
+    const partial = /^[.,]\d/.test(match[3]!);
+    value = partial ? NaN : parseNumber(match[1]!);
     max = match[2] ? parseNumber(match[2]) : null;
     rest = match[3]!;
   } else {
@@ -154,18 +157,13 @@ export function parseQuantity(input: string): Quantity {
 /**
  * False for an amount no line can store: zero (an empty amount is the placeholder), a zero
  * denominator or a number too big to be finite ("1/0" → Infinity, "0/0" → NaN, which a jsonb
- * snapshot can't hold), a range whose upper end is below its lower end ("3-2"), a number only
- * partly read ("1,000 g" leaves ",000 g"), or one that formatQuantity would write with an exponent.
+ * snapshot can't hold), a number only partly read ("1,000 g"), a range whose upper end is below
+ * its lower end ("3-2"), or one that formatQuantity would write with an exponent.
  */
 export function isValidQuantity(q: Quantity): boolean {
   // String(n) switches to an exponent from 1e21 and below 1e-6, which parseQuantity can't read.
   const ok = (n: number | null) => n === null || (n >= 1e-6 && n < 1e21);
-  return (
-    ok(q.value) &&
-    ok(q.max) &&
-    !(q.max !== null && q.value !== null && q.max < q.value) &&
-    !(q.unit !== null && /^[.,]\d/.test(q.unit))
-  );
+  return ok(q.value) && ok(q.max) && !(q.max !== null && q.value !== null && q.max < q.value);
 }
 
 /** Back to the Cooklang shorthand ("1.5%cup", "=2-3%clove"), so a saved line can be re-edited. */

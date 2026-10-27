@@ -156,9 +156,9 @@ describe("isValidQuantity", () => {
   });
 
   it('refuses a number it could only half read ("1,000 g": a thousand, or one?)', () => {
-    expect(parseQuantity("1,000 g")).toMatchObject({ value: 1, unit: ",000 g" });
-    expect(isValidQuantity(parseQuantity("1,000 g"))).toBe(false);
-    expect(isValidQuantity(parseQuantity("2,500"))).toBe(false);
+    for (const text of ["1,000 g", "2,500", "1,000%g", "=2,500%ml", "1-1,000 g", "1,000-2,000%g"]) {
+      expect(isValidQuantity(parseQuantity(text)), text).toBe(false);
+    }
   });
 
   it('refuses zero ("0", "0 g", "0-1"): leave the amount empty instead', () => {

@@ -12,3 +12,6 @@ supabase/.temp
 test-results/
 playwright-report/
 coverage/
+
+# SonarQube scanner output, written by scripts/ci-local.sh --sonar
+.scannerwork/

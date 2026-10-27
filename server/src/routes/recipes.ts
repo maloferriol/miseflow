@@ -45,9 +45,7 @@ export function recipesRoute(db: Db, { afterOwnershipCheck }: RecipesRouteOption
           latestRevision: recipes.latestRevision,
         })
         .from(recipes)
-        .where(
-          and(eq(recipes.ownerId, c.get("ownerId")), isNull(recipes.deletedAt)),
-        )
+        .where(and(eq(recipes.ownerId, c.get("ownerId")), isNull(recipes.deletedAt)))
         .orderBy(asc(recipes.name), asc(recipes.id));
       return c.json(
         {
@@ -116,8 +114,7 @@ export function recipesRoute(db: Db, { afterOwnershipCheck }: RecipesRouteOption
             { isolationLevel: "repeatable read", accessMode: "read only" },
           )
         : null;
-      if (!read)
-        return c.json(errorBody("NOT_FOUND", "Recipe not found"), 404);
+      if (!read) return c.json(errorBody("NOT_FOUND", "Recipe not found"), 404);
       const { recipe, snapshot, catalog, live, usedBy } = read;
       const names = new Map(catalog.map((entry) => [entry.id, entry.name]));
       const liveRecipes = new Map(
@@ -143,27 +140,19 @@ export function recipesRoute(db: Db, { afterOwnershipCheck }: RecipesRouteOption
               id: step.id,
               position: step.position,
               body: step.body,
-              lines: step.lines.map(
-                ({ ingredientId, subRecipeId, position: _, ...line }) => ({
-                  ...line,
-                  ingredient:
-                    ingredientId === null
-                      ? null
-                      : {
-                          id: ingredientId,
-                          // A deleted Ingredient is gone from the catalog: name it by the line (#128).
-                          name: names.get(ingredientId) ?? line.wording ?? "",
-                        },
-                  subRecipe:
-                    subRecipeId === null
-                      ? null
-                      : (liveRecipes.get(subRecipeId) ?? null),
-                  missingSubRecipe: isMissingSubRecipe(
-                    { ingredientId, subRecipeId },
-                    liveIds,
-                  ),
-                }),
-              ),
+              lines: step.lines.map(({ ingredientId, subRecipeId, position: _, ...line }) => ({
+                ...line,
+                ingredient:
+                  ingredientId === null
+                    ? null
+                    : {
+                        id: ingredientId,
+                        // A deleted Ingredient is gone from the catalog: name it by the line (#128).
+                        name: names.get(ingredientId) ?? line.wording ?? "",
+                      },
+                subRecipe: subRecipeId === null ? null : (liveRecipes.get(subRecipeId) ?? null),
+                missingSubRecipe: isMissingSubRecipe({ ingredientId, subRecipeId }, liveIds),
+              })),
               activeMinutes: step.activeMinutes,
               passiveMinutes: step.passiveMinutes,
               makeAhead: step.makeAhead,

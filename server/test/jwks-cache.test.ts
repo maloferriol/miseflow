@@ -13,9 +13,7 @@ function fakeJwks(kids: string[]) {
   const fetch = async () => {
     server.fetches += 1;
     if (server.down) return new Response("unavailable", { status: 503 });
-    return new Response(
-      JSON.stringify({ keys: server.kids.map((kid) => ({ kid, kty: "EC" })) }),
-    );
+    return new Response(JSON.stringify({ keys: server.kids.map((kid) => ({ kid, kty: "EC" })) }));
   };
   return { server, fetch };
 }

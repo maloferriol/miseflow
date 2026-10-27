@@ -30,7 +30,9 @@ let days: { date: string; tasks: Task[] }[];
 
 test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], { encoding: "utf8" }).trim();
+  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], {
+    encoding: "utf8",
+  }).trim();
   const run = async (name: string, args: Record<string, unknown>) => {
     const res = await request.post("http://localhost:8787/mutate", {
       headers: { Authorization: `Bearer ${token}` },
@@ -40,8 +42,15 @@ test.beforeAll(async ({ request }) => {
   };
   w = await buildWalkthrough(run, s, { stock: true });
   await setWalkthroughAvailability(run);
-  await run("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
-  const res = await request.get(`http://localhost:8787/services/${serviceId}/plan`, { headers: { Authorization: `Bearer ${token}` } });
+  await run("createService", {
+    serviceId,
+    menuId: w.menuId,
+    date: SERVICE_DATE,
+    time: SERVICE_TIME,
+  });
+  const res = await request.get(`http://localhost:8787/services/${serviceId}/plan`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   expect(res.status()).toBe(200);
   days = (await res.json()).plan.days;
 });
@@ -61,10 +70,12 @@ test.afterAll(async () => {
 // "Thursday 29 October", as the web app heads a kitchen-zone date.
 const heading = (date: string) => {
   const at = new Date(`${date}T00:00:00Z`);
-  const part = (options: Intl.DateTimeFormatOptions) => at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
   return `${part({ weekday: "long" })} ${part({ day: "numeric" })} ${part({ month: "long" })}`;
 };
-const shortDay = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
+const shortDay = (date: string) =>
+  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
 // "18:20–18:40 · Chicken stock ×1.5 · for: … · Roast the bones", as the Plan screen's line.
 const line = (task: Task, date: string) =>
   `${task.start}–${task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`} · ${task.batch?.label ?? task.dish?.name} · ${task.steps
@@ -90,7 +101,10 @@ test("AC4: a tab per day with Tasks, Tasks in Plan time order", async ({ page })
 
   const saturday = days.find((d) => d.date === SERVICE_DATE)!;
   await page.getByRole("tab", { name: heading(saturday.date) }).click();
-  const items = page.getByRole("tabpanel").getByRole("list", { name: heading(saturday.date) }).getByRole("listitem");
+  const items = page
+    .getByRole("tabpanel")
+    .getByRole("list", { name: heading(saturday.date) })
+    .getByRole("listitem");
   await expect(items).toHaveCount(saturday.tasks.length);
   const lines = saturday.tasks.map((t) => line(t, saturday.date));
   const texts = await items.allInnerTexts();
@@ -105,16 +119,22 @@ test("AC6: a tick on Thursday's tab is still there after a reload", async ({ pag
   await page.getByRole("tab", { name: "Thursday 29 October" }).click();
   const box = page.getByRole("checkbox", { name: stepText });
   await expect(box).not.toBeChecked();
-  const applied = page.waitForResponse((r) => r.url().endsWith("/api/mutate") && r.request().method() === "POST");
+  const applied = page.waitForResponse(
+    (r) => r.url().endsWith("/api/mutate") && r.request().method() === "POST",
+  );
   await box.check();
   expect((await applied).status()).toBe(200);
 
   await page.reload();
-  await expect(page.getByRole("tab", { name: "Thursday 29 October", selected: true })).toBeVisible();
+  await expect(
+    page.getByRole("tab", { name: "Thursday 29 October", selected: true }),
+  ).toBeVisible();
   await expect(page.getByRole("checkbox", { name: stepText })).toBeChecked();
 });
 
-test("AC5: print media shows one section per day, a tick box per Step and Printed at, with no app chrome", async ({ page }) => {
+test("AC5: print media shows one section per day, a tick box per Step and Printed at, with no app chrome", async ({
+  page,
+}) => {
   await signIn(page);
   await page.goto(`/?view=today&service=${serviceId}`);
   await expect(page.getByRole("tablist", { name: "Prep days" })).toBeVisible();
@@ -135,7 +155,10 @@ test("AC5: print media shows one section per day, a tick box per Step and Printe
   for (const [i, day] of days.entries()) {
     const section = sections.nth(i);
     await expect(section).toHaveAccessibleName(heading(day.date));
-    const steps = await section.getByRole("list", { name: "Steps" }).getByRole("listitem").allInnerTexts();
+    const steps = await section
+      .getByRole("list", { name: "Steps" })
+      .getByRole("listitem")
+      .allInnerTexts();
     expect(steps).toHaveLength(day.tasks.reduce((n, t) => n + t.steps.length, 0));
     for (const step of steps) expect(step.startsWith("☐ ")).toBe(true);
   }

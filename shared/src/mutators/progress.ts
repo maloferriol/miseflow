@@ -36,7 +36,14 @@ async function ownerRecipe(tx: Tx, ownerId: string, menuId: string, args: Args):
       : await tx
           .select({ recipeId: batches.subRecipeId })
           .from(batches)
-          .where(and(eq(batches.id, o.batchId), eq(batches.ownerId, ownerId), eq(batches.serviceId, serviceId), isNull(batches.deletedAt)));
+          .where(
+            and(
+              eq(batches.id, o.batchId),
+              eq(batches.ownerId, ownerId),
+              eq(batches.serviceId, serviceId),
+              isNull(batches.deletedAt),
+            ),
+          );
   if (!row) throw new NotFoundError("Step");
   return row.recipeId;
 }
@@ -48,7 +55,14 @@ async function appendEvent(tx: Tx, args: Args, ctx: MutatorContext, kind: "done"
   const [step] = await tx
     .select({ id: steps.id })
     .from(steps)
-    .where(and(eq(steps.id, args.stepId), eq(steps.recipeId, recipeId), eq(steps.ownerId, ctx.ownerId), isNull(steps.deletedAt)));
+    .where(
+      and(
+        eq(steps.id, args.stepId),
+        eq(steps.recipeId, recipeId),
+        eq(steps.ownerId, ctx.ownerId),
+        isNull(steps.deletedAt),
+      ),
+    );
   if (!step) throw new NotFoundError("Step");
 
   const dishId = args.owner.kind === "dish" ? args.owner.dishId : null;
@@ -68,7 +82,16 @@ async function appendEvent(tx: Tx, args: Args, ctx: MutatorContext, kind: "done"
   // Strictly after the Step's latest event (D3), so "latest" has one answer on a clock that stands still.
   const at = new Date(Math.max(ctx.now().getTime(), latest ? latest.at.getTime() + 1 : -Infinity));
   // A reused `eventId` is a unique violation: 409 through /mutate.
-  await tx.insert(stepEvents).values({ id: args.eventId, ownerId: ctx.ownerId, serviceId: args.serviceId, dishId, batchId, stepId: args.stepId, kind, at });
+  await tx.insert(stepEvents).values({
+    id: args.eventId,
+    ownerId: ctx.ownerId,
+    serviceId: args.serviceId,
+    dishId,
+    batchId,
+    stepId: args.stepId,
+    kind,
+    at,
+  });
   await replan(tx, ctx, args.serviceId);
 }
 

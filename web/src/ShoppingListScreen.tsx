@@ -14,8 +14,17 @@ function Row({ serviceId, row }: { serviceId: string; row: ShoppingRow }) {
   const tick = useMutation({
     mutationFn: async (got: boolean) => {
       const key = JSON.stringify([row.ingredientId, got]);
-      if (got) await mutate(intent.id(key, "mutation"), "markGot", { markId: intent.id(key, "mark"), serviceId, ingredientId: row.ingredientId });
-      else await mutate(intent.id(key, "mutation"), "unmarkGot", { serviceId, ingredientId: row.ingredientId });
+      if (got)
+        await mutate(intent.id(key, "mutation"), "markGot", {
+          markId: intent.id(key, "mark"),
+          serviceId,
+          ingredientId: row.ingredientId,
+        });
+      else
+        await mutate(intent.id(key, "mutation"), "unmarkGot", {
+          serviceId,
+          ingredientId: row.ingredientId,
+        });
     },
     onSuccess: async () => {
       intent.reset();
@@ -29,7 +38,12 @@ function Row({ serviceId, row }: { serviceId: string; row: ShoppingRow }) {
   return (
     <li>
       <label>
-        <input type="checkbox" checked={intended ?? row.got} onChange={(event) => onChange(event.currentTarget.checked)} /> {row.name}
+        <input
+          type="checkbox"
+          checked={intended ?? row.got}
+          onChange={(event) => onChange(event.currentTarget.checked)}
+        />{" "}
+        {row.name}
       </label>{" "}
       {needText(row)}
       {tick.error && <span role="alert"> {tick.error.message}</span>}
@@ -40,7 +54,10 @@ function Row({ serviceId, row }: { serviceId: string; row: ShoppingRow }) {
 // One Service's Shopping list: a section per Shopping category in the kitchen's order, the
 // Missing sub-recipes on top, and a Print button. print.css drops the app chrome on paper.
 export function ShoppingListScreen({ serviceId }: { serviceId: string }) {
-  const list = useQuery({ queryKey: ["shopping-list", serviceId], queryFn: () => fetchShoppingList(serviceId) });
+  const list = useQuery({
+    queryKey: ["shopping-list", serviceId],
+    queryFn: () => fetchShoppingList(serviceId),
+  });
 
   if (list.isPending) return <p>Loading…</p>;
   if (list.isError) return <p role="alert">{list.error.message}</p>;
@@ -59,7 +76,8 @@ export function ShoppingListScreen({ serviceId }: { serviceId: string }) {
         <ul aria-label="Missing sub-recipes">
           {missing.map((m) => (
             <li key={m.lineId}>
-              {m.recipeName}: {m.wording ?? "a sub-recipe"} is a Missing sub-recipe and adds nothing to this list
+              {m.recipeName}: {m.wording ?? "a sub-recipe"} is a Missing sub-recipe and adds nothing
+              to this list
             </li>
           ))}
         </ul>

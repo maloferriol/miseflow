@@ -37,7 +37,10 @@ export function freeIntervals(
       ? [byDate.get(date)].filter((h): h is Hours => h != null)
       : weekly.filter((w) => w.weekday === weekdayOf(date));
     for (const h of hours) {
-      out.push({ start: zonedMinute(date, h.start, timeZone), end: zonedMinute(date, h.end, timeZone) });
+      out.push({
+        start: zonedMinute(date, h.start, timeZone),
+        end: zonedMinute(date, h.end, timeZone),
+      });
     }
   }
   return out.sort((a, b) => a.start - b.start || a.end - b.end);
@@ -54,7 +57,12 @@ export type PlanRows = {
   guestCount: number | null;
   region: Region;
   /** In Menu order. `scaleFactor`: the Dish's override, or null. */
-  dishes: { dishId: string; recipeId: string; scaleFactor: number | null; recipe: RecipeSnapshot }[];
+  dishes: {
+    dishId: string;
+    recipeId: string;
+    scaleFactor: number | null;
+    recipe: RecipeSnapshot;
+  }[];
   /** The live sub-recipes the Dishes reach, by Recipe id. */
   subRecipes: Map<string, RecipeSnapshot>;
   /** The Service's live stored Batch rows. */
@@ -92,11 +100,17 @@ const recipesOf = (rows: Pick<PlanRows, "dishes" | "subRecipes">) => {
 };
 
 /** Each Dish's Scale factor and the Batches its Recipes need, sized (units spec §5). */
-export function deriveScale(rows: Pick<PlanRows, "guestCount" | "region" | "dishes" | "subRecipes">) {
+export function deriveScale(
+  rows: Pick<PlanRows, "guestCount" | "region" | "dishes" | "subRecipes">,
+) {
   return deriveBatches({
     guestCount: rows.guestCount,
     region: rows.region,
-    dishes: rows.dishes.map(({ dishId, recipeId, scaleFactor }) => ({ dishId, recipeId, scaleFactor })),
+    dishes: rows.dishes.map(({ dishId, recipeId, scaleFactor }) => ({
+      dishId,
+      recipeId,
+      scaleFactor,
+    })),
     recipes: recipesOf(rows),
   });
 }
@@ -112,7 +126,11 @@ export function deriveScale(rows: Pick<PlanRows, "guestCount" | "region" | "dish
 export function toPlanningModel(
   rows: PlanRows,
   timeZone: string,
-): { model: PlanningModel; tasks: Map<TaskKey, TaskInfo>; scale: ReturnType<typeof deriveBatches> } {
+): {
+  model: PlanningModel;
+  tasks: Map<TaskKey, TaskInfo>;
+  scale: ReturnType<typeof deriveBatches>;
+} {
   const { date } = rows.service;
   const tasks = new Map<TaskKey, TaskInfo>();
   const specs: TaskSpec[] = [];
@@ -147,22 +165,33 @@ export function toPlanningModel(
       // A done Step's tick, in whole minutes (rounded up), is frozen for the scheduler (#88).
       const doneAt = (stepId: string) => {
         const state = rows.progress.get(stepKey(owner, stepId));
-        return state?.done && state.doneAt ? { doneAt: Math.ceil(state.doneAt.getTime() / 60_000) } : {};
+        return state?.done && state.doneAt
+          ? { doneAt: Math.ceil(state.doneAt.getTime() / 60_000) }
+          : {};
       };
       specs.push({
         owner,
-        steps: steps.map((s) => ({ stepId: s.id, activeMinutes: s.activeMinutes, passiveMinutes: s.passiveMinutes, ...doneAt(s.id) })),
+        steps: steps.map((s) => ({
+          stepId: s.id,
+          activeMinutes: s.activeMinutes,
+          passiveMinutes: s.passiveMinutes,
+          ...doneAt(s.id),
+        })),
         earliestStart,
         keepsMinutes,
       });
-      const unknown = (s: (typeof steps)[number]) => s.activeMinutes === null && s.passiveMinutes === null;
+      const unknown = (s: (typeof steps)[number]) =>
+        s.activeMinutes === null && s.passiveMinutes === null;
       tasks.set(key, {
         key,
         owner,
         dishId: owner.kind === "dish" ? owner.dishId : null,
         batchId: owner.kind === "batch" ? owner.batchId : null,
         stepIds: group.stepIds,
-        activeMinutes: steps.reduce((n, s) => n + (unknown(s) ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0)), 0),
+        activeMinutes: steps.reduce(
+          (n, s) => n + (unknown(s) ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0)),
+          0,
+        ),
         passiveMinutes: steps.reduce((n, s) => n + roundUp(s.passiveMinutes ?? 0), 0),
         trailingPassiveMinutes: roundUp(steps.at(-1)!.passiveMinutes ?? 0),
         approximate: steps.some(unknown),
@@ -180,7 +209,8 @@ export function toPlanningModel(
   };
 
   const dishKeys = new Map<string, TaskKey[]>();
-  for (const { dishId, recipe } of rows.dishes) dishKeys.set(dishId, addOwner({ kind: "dish", dishId }, recipe));
+  for (const { dishId, recipe } of rows.dishes)
+    dishKeys.set(dishId, addOwner({ kind: "dish", dishId }, recipe));
 
   const recipes = recipesOf(rows);
   const scale = deriveScale(rows);
@@ -189,7 +219,11 @@ export function toPlanningModel(
   // Every stored Batch's Tasks first, so a child Batch can link to its parent Batch's.
   for (const b of scale.batches) {
     const batchId = stored.get(b.subRecipeId);
-    if (batchId) batchKeys.set(b.subRecipeId, addOwner({ kind: "batch", batchId }, recipes.get(b.subRecipeId)!));
+    if (batchId)
+      batchKeys.set(
+        b.subRecipeId,
+        addOwner({ kind: "batch", batchId }, recipes.get(b.subRecipeId)!),
+      );
   }
   for (const b of scale.batches) {
     const own = batchKeys.get(b.subRecipeId);
@@ -209,7 +243,13 @@ export function toPlanningModel(
       cooks: [
         {
           id: rows.cookId,
-          free: freeIntervals(rows.weekly, rows.overrides, addDays(date, -maxBeforeDays), date, timeZone),
+          free: freeIntervals(
+            rows.weekly,
+            rows.overrides,
+            addDays(date, -maxBeforeDays),
+            date,
+            timeZone,
+          ),
         },
       ],
       tasks: specs,

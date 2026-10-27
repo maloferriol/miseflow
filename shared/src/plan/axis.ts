@@ -9,7 +9,14 @@ import { addDays, type LocalDate, localParts, zonedMinute } from "./time.ts";
 // linearly so the mapping inverts. Inside a segment one axis unit is one minute.
 
 /** One date's stretch of the axis. `offset`: where it starts on the axis. `free`: its Availability. */
-export type Segment = { date: LocalDate; start: Minute; end: Minute; available: boolean; free: Interval[]; offset: number };
+export type Segment = {
+  date: LocalDate;
+  start: Minute;
+  end: Minute;
+  available: boolean;
+  free: Interval[];
+  offset: number;
+};
 
 export type Axis = { segments: Segment[]; seam: number; width: number };
 
@@ -36,7 +43,14 @@ const endOfDay = (end: Minute, date: LocalDate, timeZone: string) => {
   return p.date === date ? p.minuteOfDay : 1440;
 };
 
-export function buildAxis({ from, to, free, placed, timeZone, seam = DEFAULT_SEAM }: AxisInput): Axis {
+export function buildAxis({
+  from,
+  to,
+  free,
+  placed,
+  timeZone,
+  seam = DEFAULT_SEAM,
+}: AxisInput): Axis {
   const dateOf = (m: Minute) => localParts(m, timeZone).date;
   const dates: LocalDate[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) dates.push(d);
@@ -51,7 +65,9 @@ export function buildAxis({ from, to, free, placed, timeZone, seam = DEFAULT_SEA
   for (const [d, list] of freeOn) {
     const start = Math.min(...list.map((i) => localParts(i.start, timeZone).minuteOfDay));
     const end = Math.max(...list.map((i) => endOfDay(i.end, d, timeZone)));
-    envelope = envelope ? { start: Math.min(envelope.start, start), end: Math.max(envelope.end, end) } : { start, end };
+    envelope = envelope
+      ? { start: Math.min(envelope.start, start), end: Math.max(envelope.end, end) }
+      : { start, end };
   }
   const hoursOf = envelope ?? FALLBACK;
 
@@ -59,7 +75,10 @@ export function buildAxis({ from, to, free, placed, timeZone, seam = DEFAULT_SEA
     const list = freeOn.get(date);
     const hours = list?.length
       ? { start: Math.min(...list.map((i) => i.start)), end: Math.max(...list.map((i) => i.end)) }
-      : { start: zonedMinute(date, hoursOf.start, timeZone), end: zonedMinute(date, hoursOf.end, timeZone) };
+      : {
+          start: zonedMinute(date, hoursOf.start, timeZone),
+          end: zonedMinute(date, hoursOf.end, timeZone),
+        };
     for (const p of placed) {
       if (dateOf(p.start) !== date) continue;
       hours.start = Math.min(hours.start, p.start);
@@ -96,7 +115,8 @@ export function toAxis(axis: Axis, minute: Minute): number {
     const s = segments[i]!;
     if (minute <= s.end) return s.offset + (minute - s.start);
     const next = segments[i + 1];
-    if (next && minute < next.start) return s.offset + (s.end - s.start) + ((minute - s.end) / (next.start - s.end)) * seam;
+    if (next && minute < next.start)
+      return s.offset + (s.end - s.start) + ((minute - s.end) / (next.start - s.end)) * seam;
   }
   const last = segments.at(-1)!;
   return last.offset + (minute - last.start);
@@ -112,7 +132,8 @@ export function fromAxis(axis: Axis, x: number): Minute {
     const length = s.end - s.start;
     if (x <= s.offset + length) return s.start + (x - s.offset);
     const next = segments[i + 1];
-    if (next && x < next.offset) return s.end + ((x - s.offset - length) / seam) * (next.start - s.end);
+    if (next && x < next.offset)
+      return s.end + ((x - s.offset - length) / seam) * (next.start - s.end);
   }
   const last = segments.at(-1)!;
   return last.start + (x - last.offset);
@@ -131,8 +152,12 @@ export function barParts(
   const activeEnd = task.start + task.activeMinutes;
   const end = activeEnd + task.passiveMinutes;
   return {
-    active: task.activeMinutes > 0 ? { from: toAxis(axis, task.start), to: toAxis(axis, activeEnd) } : null,
-    passive: task.passiveMinutes > 0 ? { from: toAxis(axis, activeEnd), to: toAxis(axis, end) } : null,
+    active:
+      task.activeMinutes > 0
+        ? { from: toAxis(axis, task.start), to: toAxis(axis, activeEnd) }
+        : null,
+    passive:
+      task.passiveMinutes > 0 ? { from: toAxis(axis, activeEnd), to: toAxis(axis, end) } : null,
   };
 }
 

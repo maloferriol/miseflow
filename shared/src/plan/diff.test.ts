@@ -21,7 +21,11 @@ const next = (key: string, start: number): Placement => ({
 
 describe("diffPlacements", () => {
   it("writes nothing when nothing moved", () => {
-    expect(diffPlacements([stored("a", 100)], [next("a", 100)])).toEqual({ insert: [], update: [], remove: [] });
+    expect(diffPlacements([stored("a", 100)], [next("a", 100)])).toEqual({
+      insert: [],
+      update: [],
+      remove: [],
+    });
   });
 
   it("updates a placement whose start moved", () => {
@@ -43,6 +47,10 @@ describe("diffPlacements", () => {
   });
 
   it("removes the placement of a Task that is Unplaced or gone", () => {
-    expect(diffPlacements([stored("a", 100), stored("b", 50, false)], [])).toEqual({ insert: [], update: [], remove: ["id-a"] });
+    expect(diffPlacements([stored("a", 100), stored("b", 50, false)], [])).toEqual({
+      insert: [],
+      update: [],
+      remove: ["id-a"],
+    });
   });
 });

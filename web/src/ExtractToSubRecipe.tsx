@@ -72,9 +72,7 @@ export function ExtractToSubRecipe({
       >
         Extract to sub-recipe
       </button>
-      {selected.length > 0 && !consecutive && (
-        <p>Select Steps that follow one another.</p>
-      )}
+      {selected.length > 0 && !consecutive && <p>Select Steps that follow one another.</p>}
       {extract.error && <p role="alert">{extract.error.message}</p>}
     </fieldset>
   );

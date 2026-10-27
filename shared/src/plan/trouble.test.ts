@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { planTrouble } from "./trouble.ts";
 
 // Only the list lengths count (AC5), so the items are stand-ins.
-const items = (n: number, key = (i: number) => `dish:d:${i}`) => Array.from({ length: n }, (_, i) => ({ key: key(i) }));
+const items = (n: number, key = (i: number) => `dish:d:${i}`) =>
+  Array.from({ length: n }, (_, i) => ({ key: key(i) }));
 
 describe("planTrouble", () => {
   it("is 0 with no Unplaced Tasks and no conflicts", () => {

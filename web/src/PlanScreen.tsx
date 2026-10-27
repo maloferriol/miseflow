@@ -10,11 +10,13 @@ import { quickFixes, troubleBadge } from "./quick-fixes.ts";
 // can't move it to another day.
 function dayHeading(date: string) {
   const at = new Date(`${date}T00:00:00Z`);
-  const part = (options: Intl.DateTimeFormatOptions) => at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
   return `${part({ weekday: "long" })} ${part({ day: "numeric" })} ${part({ month: "long" })}`;
 }
 
-const shortDay = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
+const shortDay = (date: string) =>
+  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
 
 function passive(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -23,7 +25,8 @@ function passive(minutes: number) {
 }
 
 // A Dish's name, or a Batch's label ("Chicken stock ×1.5 · for: Velouté, Beurre blanc").
-const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) => task.batch?.label ?? task.dish?.name;
+const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) =>
+  task.batch?.label ?? task.dish?.name;
 
 function TaskLine({ task, date }: { task: PlanTask; date: string }) {
   const end = task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`;
@@ -58,15 +61,25 @@ function usePinTask(serviceId: string) {
     mutationKey,
     scope: { id: serviceId },
     mutationFn: ({ task, start }: { task: PlanTask; start: number }) =>
-      mutate(crypto.randomUUID(), "pinTask", { serviceId, owner: task.owner, firstStepId: task.steps[0]!.id, start }),
+      mutate(crypto.randomUUID(), "pinTask", {
+        serviceId,
+        owner: task.owner,
+        firstStepId: task.steps[0]!.id,
+        start,
+      }),
     onMutate: async ({ task, start }) => {
       await queryClient.cancelQueries({ queryKey });
       const read = queryClient.getQueryData<Plan>(queryKey);
-      if (read) queryClient.setQueryData<Plan>(queryKey, applyPlacements(read, schedule(withPin(read.model, task.key, start))));
+      if (read)
+        queryClient.setQueryData<Plan>(
+          queryKey,
+          applyPlacements(read, schedule(withPin(read.model, task.key, start))),
+        );
     },
     // Still counted here, so 1 means no other pin is pending.
     onSettled: () => {
-      if (queryClient.isMutating({ mutationKey }) === 1) return queryClient.invalidateQueries({ queryKey });
+      if (queryClient.isMutating({ mutationKey }) === 1)
+        return queryClient.invalidateQueries({ queryKey });
     },
   });
 }
@@ -79,7 +92,8 @@ function usePinTask(serviceId: string) {
 function usePlanFix(serviceId: string, menuId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, args }: { name: string; args: Record<string, unknown> }) => mutate(crypto.randomUUID(), name, args),
+    mutationFn: ({ name, args }: { name: string; args: Record<string, unknown> }) =>
+      mutate(crypto.randomUUID(), name, args),
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ["plan", serviceId] }),
@@ -103,7 +117,11 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
   });
   const menuId = plan.data?.service.menuId;
   // The Courses and Dishes for the Gantt chart's lanes.
-  const menu = useQuery({ queryKey: ["menu", menuId], queryFn: () => fetchMenu(menuId!), enabled: Boolean(menuId) });
+  const menu = useQuery({
+    queryKey: ["menu", menuId],
+    queryFn: () => fetchMenu(menuId!),
+    enabled: Boolean(menuId),
+  });
   const pin = usePinTask(serviceId);
   const fix = usePlanFix(serviceId, menuId);
 
@@ -111,7 +129,11 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
   if (plan.isError) return <p role="alert">{plan.error.message}</p>;
   const { service, days, unplaced, approximate, batches, conflicts } = plan.data;
   const badge = troubleBadge(plan.data);
-  const courses = menu.data?.courses.map((c) => ({ id: c.id, name: c.name, dishes: c.dishes.map((d) => ({ id: d.id, name: d.recipe.name })) }));
+  const courses = menu.data?.courses.map((c) => ({
+    id: c.id,
+    name: c.name,
+    dishes: c.dishes.map((d) => ({ id: d.id, name: d.recipe.name })),
+  }));
 
   return (
     <>
@@ -130,12 +152,22 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
             {badge}
           </span>
         )}
-        <button type="button" disabled={fix.isPending} onClick={() => fix.mutate({ name: "replanFromScratch", args: { serviceId } })}>
+        <button
+          type="button"
+          disabled={fix.isPending}
+          onClick={() => fix.mutate({ name: "replanFromScratch", args: { serviceId } })}
+        >
           Re-plan from scratch
         </button>
         {fix.isError && <p role="alert">{fix.error.message}</p>}
         {approximate && <p>Plan is approximate</p>}
-        {courses && <Gantt plan={plan.data} courses={courses} onPin={(task, start) => pin.mutate({ task, start })} />}
+        {courses && (
+          <Gantt
+            plan={plan.data}
+            courses={courses}
+            onPin={(task, start) => pin.mutate({ task, start })}
+          />
+        )}
         <section aria-label="Plan">
           {days.map((day) => {
             const heading = dayHeading(day.date);
@@ -163,7 +195,8 @@ export function PlanScreen({ serviceId }: { serviceId: string }) {
                     type="button"
                     disabled={fix.isPending}
                     onClick={() => {
-                      if (f.confirm === null || window.confirm(f.confirm)) fix.mutate({ name: f.name, args: f.args });
+                      if (f.confirm === null || window.confirm(f.confirm))
+                        fix.mutate({ name: f.name, args: f.args });
                     }}
                   >
                     {f.label}

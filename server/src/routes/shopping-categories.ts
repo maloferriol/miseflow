@@ -16,10 +16,7 @@ export function shoppingCategoriesRoute(db: Db) {
       .from(shoppingCategories)
       .where(
         and(
-          or(
-            isNull(shoppingCategories.ownerId),
-            eq(shoppingCategories.ownerId, c.get("ownerId")),
-          ),
+          or(isNull(shoppingCategories.ownerId), eq(shoppingCategories.ownerId, c.get("ownerId"))),
           isNull(shoppingCategories.deletedAt),
         ),
       )

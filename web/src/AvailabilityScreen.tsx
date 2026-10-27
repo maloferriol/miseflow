@@ -43,9 +43,16 @@ export function AvailabilityScreen() {
     onSuccess,
   });
   const setOverride = useMutation({
-    mutationFn: async (args: { date: string; availability: { kind: "hours"; start: number; end: number } | { kind: "off" } | { kind: "weekly" } }) => {
+    mutationFn: async (args: {
+      date: string;
+      availability:
+        { kind: "hours"; start: number; end: number } | { kind: "off" } | { kind: "weekly" };
+    }) => {
       const key = JSON.stringify(["setAvailabilityOverride", args]);
-      await mutate(intent.id(key, "mutation"), "setAvailabilityOverride", { overrideId: intent.id(key, "override"), ...args });
+      await mutate(intent.id(key, "mutation"), "setAvailabilityOverride", {
+        overrideId: intent.id(key, "override"),
+        ...args,
+      });
     },
     onSuccess,
   });
@@ -81,7 +88,8 @@ export function AvailabilityScreen() {
     if (form.get("off")) return setOverride.mutate({ date, availability: { kind: "off" } });
     const start = minuteOfDay(form.get("from"));
     const end = endOfDay(form.get("to"));
-    if (start !== null && end !== null) setOverride.mutate({ date, availability: { kind: "hours", start, end } });
+    if (start !== null && end !== null)
+      setOverride.mutate({ date, availability: { kind: "hours", start, end } });
   }
 
   return (
@@ -91,7 +99,13 @@ export function AvailabilityScreen() {
       <form onSubmit={saveDefault}>
         <label>
           Default Service time{" "}
-          <input name="defaultServiceTime" type="time" step={300} defaultValue={timeValue(data.defaultServiceTime)} required />
+          <input
+            name="defaultServiceTime"
+            type="time"
+            step={300}
+            defaultValue={timeValue(data.defaultServiceTime)}
+            required
+          />
         </label>
         <button type="submit" disabled={setDefault.isPending}>
           Save default
@@ -99,7 +113,12 @@ export function AvailabilityScreen() {
       </form>
 
       <h3>Every week</h3>
-      <WeekForm key={JSON.stringify(data.weekly)} weekly={data.weekly} onSubmit={saveWeek} pending={setWeek.isPending} />
+      <WeekForm
+        key={JSON.stringify(data.weekly)}
+        weekly={data.weekly}
+        onSubmit={saveWeek}
+        pending={setWeek.isPending}
+      />
 
       <h3>Date overrides</h3>
       <form onSubmit={saveOverride}>
@@ -122,8 +141,12 @@ export function AvailabilityScreen() {
       <ul aria-label="Date overrides">
         {data.overrides.map((o) => (
           <li key={o.id}>
-            {o.date}: {o.hours ? `${timeValue(o.hours.start)}–${timeValue(o.hours.end)}` : "not available"}{" "}
-            <button type="button" onClick={() => setOverride.mutate({ date: o.date, availability: { kind: "weekly" } })}>
+            {o.date}:{" "}
+            {o.hours ? `${timeValue(o.hours.start)}–${timeValue(o.hours.end)}` : "not available"}{" "}
+            <button
+              type="button"
+              onClick={() => setOverride.mutate({ date: o.date, availability: { kind: "weekly" } })}
+            >
               Remove
             </button>
           </li>
@@ -151,13 +174,26 @@ function WeekForm({
           <fieldset key={name}>
             <legend>{name}</legend>
             <label>
-              <input name={`available-${weekday}`} type="checkbox" defaultChecked={!!hours} /> Available
+              <input name={`available-${weekday}`} type="checkbox" defaultChecked={!!hours} />{" "}
+              Available
             </label>
             <label>
-              From <input name={`from-${weekday}`} type="time" step={300} defaultValue={hours ? timeValue(hours.start) : ""} />
+              From{" "}
+              <input
+                name={`from-${weekday}`}
+                type="time"
+                step={300}
+                defaultValue={hours ? timeValue(hours.start) : ""}
+              />
             </label>
             <label>
-              To <input name={`to-${weekday}`} type="time" step={300} defaultValue={hours ? timeValue(hours.end) : ""} />
+              To{" "}
+              <input
+                name={`to-${weekday}`}
+                type="time"
+                step={300}
+                defaultValue={hours ? timeValue(hours.end) : ""}
+              />
             </label>
           </fieldset>
         );

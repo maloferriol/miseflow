@@ -35,8 +35,7 @@ async function search(q: string) {
 }
 
 const seed = readSeed();
-const seedIngredient = (name: string) =>
-  seed.ingredients.find((i) => i.name === name)!;
+const seedIngredient = (name: string) => seed.ingredients.find((i) => i.name === name)!;
 const spices = seed.shoppingCategories.find((c) => c.name === "Spices")!.id;
 
 // The local database isn't reset between runs, so the test user's own rows made here are
@@ -115,10 +114,7 @@ describe("GET /ingredients search", () => {
 
   it("finds a kitchen alias added with addAlias", async () => {
     const tag = crypto.randomUUID().slice(0, 8);
-    expect(
-      (await addAlias(seedIngredient("shallot").id, `${tag} grey shallot`))
-        .status,
-    ).toBe(200);
+    expect((await addAlias(seedIngredient("shallot").id, `${tag} grey shallot`)).status).toBe(200);
 
     const [first] = await search(`${tag} grey shallots`);
     expect(first).toMatchObject({
@@ -129,9 +125,7 @@ describe("GET /ingredients search", () => {
   });
 
   it("ranks a kitchen alias first over a seed alias of the same name", async () => {
-    const ingredientId = await createOwn(
-      `${crypto.randomUUID().slice(0, 8)} house cream`,
-    );
+    const ingredientId = await createOwn(`${crypto.randomUUID().slice(0, 8)} house cream`);
     expect((await addAlias(ingredientId, "cream")).status).toBe(200);
 
     const results = await search("cream");
@@ -140,9 +134,7 @@ describe("GET /ingredients search", () => {
       exact: true,
       matchedBy: "alias",
     });
-    expect(results).toContainEqual(
-      expect.objectContaining({ name: "heavy cream", exact: true }),
-    );
+    expect(results).toContainEqual(expect.objectContaining({ name: "heavy cream", exact: true }));
   });
 
   it("never shows another owner's Ingredients", async () => {
@@ -172,17 +164,16 @@ describe("GET /ingredients search", () => {
 
     const results = await search("butter");
     expect(results[0]).toMatchObject({ id: ingredientId, exact: true, matchedBy: "alias" });
-    expect(results).toContainEqual(expect.objectContaining({ name: "butter", source: "seed", exact: true }));
+    expect(results).toContainEqual(
+      expect.objectContaining({ name: "butter", source: "seed", exact: true }),
+    );
   });
 });
 
 describe("overrideIngredient", () => {
   it("writes the override, leaves the seed row untouched, and search returns the overridden Main unit", async () => {
     const milk = seedIngredient("milk").id;
-    const [before] = await db
-      .select()
-      .from(ingredients)
-      .where(eq(ingredients.id, milk));
+    const [before] = await db.select().from(ingredients).where(eq(ingredients.id, milk));
 
     const res = await mutate("overrideIngredient", {
       overrideId: crypto.randomUUID(),
@@ -192,15 +183,15 @@ describe("overrideIngredient", () => {
     created.overrides.push(milk);
 
     expect(res.status).toBe(200);
-    expect(
-      await db.select().from(ingredients).where(eq(ingredients.id, milk)),
-    ).toEqual([before]);
+    expect(await db.select().from(ingredients).where(eq(ingredients.id, milk))).toEqual([before]);
     const [first] = await search("milk");
     expect(first).toMatchObject({ id: milk, mainUnit: "L", overridden: true });
     const [override] = await db
       .select({ id: ingredientOverrides.id })
       .from(ingredientOverrides)
-      .where(and(eq(ingredientOverrides.ingredientId, milk), isNull(ingredientOverrides.deletedAt)));
+      .where(
+        and(eq(ingredientOverrides.ingredientId, milk), isNull(ingredientOverrides.deletedAt)),
+      );
     expect(first?.overrideId).toBe(override?.id);
   });
 
@@ -269,25 +260,44 @@ describe("seed rows", () => {
 describe("GET /shopping-categories", () => {
   it("lists the seed categories in order, then the caller's own, and hides other owners' and deleted ones", async () => {
     const token = await getToken();
-    const ownerId = JSON.parse(Buffer.from(token.split(".")[1]!, "base64url").toString()).sub as string;
+    const ownerId = JSON.parse(Buffer.from(token.split(".")[1]!, "base64url").toString())
+      .sub as string;
     const tag = crypto.randomUUID().slice(0, 8);
     const rows = [
       { id: crypto.randomUUID(), ownerId, name: `${tag} mine`, position: "b0" },
-      { id: crypto.randomUUID(), ownerId, name: `${tag} deleted`, position: "b1", deletedAt: new Date() },
-      { id: crypto.randomUUID(), ownerId: crypto.randomUUID(), name: `${tag} theirs`, position: "b2" },
+      {
+        id: crypto.randomUUID(),
+        ownerId,
+        name: `${tag} deleted`,
+        position: "b1",
+        deletedAt: new Date(),
+      },
+      {
+        id: crypto.randomUUID(),
+        ownerId: crypto.randomUUID(),
+        name: `${tag} theirs`,
+        position: "b2",
+      },
     ];
     await db.insert(shoppingCategories).values(rows);
     try {
       const res = await send("GET", "/shopping-categories");
 
       expect(res.status).toBe(200);
-      const names = ((await res.json()).shoppingCategories as { name: string }[]).map((c) => c.name);
+      const names = ((await res.json()).shoppingCategories as { name: string }[]).map(
+        (c) => c.name,
+      );
       expect(names).toEqual([...seed.shoppingCategories.map((c) => c.name), `${tag} mine`]);
     } finally {
       await db
         .update(shoppingCategories)
         .set({ deletedAt: sql`now()` })
-        .where(inArray(shoppingCategories.id, rows.map((row) => row.id)));
+        .where(
+          inArray(
+            shoppingCategories.id,
+            rows.map((row) => row.id),
+          ),
+        );
     }
   });
 });

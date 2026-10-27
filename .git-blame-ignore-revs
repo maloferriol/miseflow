@@ -1,0 +1,6 @@
+# Formatting-only commits for `git blame` to skip. Enable locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# A squash merge changes these SHAs; update them after merging.
+
+# style: reformat the repo with Prettier (#105)
+e7c337e4e36a54ddae6af26e39dcbe95f4e618b3

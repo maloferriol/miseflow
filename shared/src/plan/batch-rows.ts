@@ -23,7 +23,12 @@ export type ScaleRows = {
   guestCount: number | null;
   region: Region;
   /** Live Dishes of live Courses and Recipes, in Menu order. */
-  dishes: { dishId: string; recipeId: string; scaleFactor: number | null; recipe: RecipeSnapshot }[];
+  dishes: {
+    dishId: string;
+    recipeId: string;
+    scaleFactor: number | null;
+    recipe: RecipeSnapshot;
+  }[];
   /** Every live sub-recipe the Dishes reach, by Recipe id. */
   subRecipes: Map<string, RecipeSnapshot>;
 };
@@ -55,24 +60,39 @@ export async function loadScaleRows(tx: Tx, ownerId: string, menuId: string): Pr
         isNull(recipes.deletedAt),
       ),
     )
-    .orderBy(asc(sql`${courses.position} collate "C"`), asc(sql`${dishes.position} collate "C"`), asc(dishes.id));
+    .orderBy(
+      asc(sql`${courses.position} collate "C"`),
+      asc(sql`${dishes.position} collate "C"`),
+      asc(dishes.id),
+    );
 
   const snapshots = new Map<string, RecipeSnapshot>();
   for (const { recipeId } of dishRows)
-    if (!snapshots.has(recipeId)) snapshots.set(recipeId, await loadRecipeSnapshot(tx, ownerId, recipeId));
+    if (!snapshots.has(recipeId))
+      snapshots.set(recipeId, await loadRecipeSnapshot(tx, ownerId, recipeId));
 
   // Walk down the sub-recipe lines; a line to a missing or soft-deleted Recipe is a Missing sub-recipe.
   const subRecipes = new Map<string, RecipeSnapshot>();
   let frontier = [...snapshots.values()];
   while (frontier.length) {
     const wanted = [
-      ...new Set(frontier.flatMap((r) => r.steps.flatMap((s) => s.lines.flatMap((l) => (l.subRecipeId ? [l.subRecipeId] : []))))),
+      ...new Set(
+        frontier.flatMap((r) =>
+          r.steps.flatMap((s) => s.lines.flatMap((l) => (l.subRecipeId ? [l.subRecipeId] : []))),
+        ),
+      ),
     ].filter((id) => !subRecipes.has(id));
     const live = wanted.length
       ? await tx
           .select({ id: recipes.id })
           .from(recipes)
-          .where(and(inArray(recipes.id, wanted), eq(recipes.ownerId, ownerId), isNull(recipes.deletedAt)))
+          .where(
+            and(
+              inArray(recipes.id, wanted),
+              eq(recipes.ownerId, ownerId),
+              isNull(recipes.deletedAt),
+            ),
+          )
       : [];
     frontier = [];
     for (const { id } of live.sort((a, b) => (a.id < b.id ? -1 : 1))) {
@@ -96,7 +116,10 @@ export async function loadScaleRows(tx: Tx, ownerId: string, menuId: string): Pr
 }
 
 /** The Service's live Batch rows. */
-export async function loadBatchRows(tx: Tx, serviceId: string): Promise<{ batchId: string; subRecipeId: string }[]> {
+export async function loadBatchRows(
+  tx: Tx,
+  serviceId: string,
+): Promise<{ batchId: string; subRecipeId: string }[]> {
   const rows = await tx
     .select({ batchId: batches.id, subRecipeId: batches.subRecipeId })
     .from(batches)
@@ -124,31 +147,51 @@ export async function reconcileBatches(
   const wanted = new Set(needed);
   const insert = [];
   for (const subRecipeId of wanted)
-    if (!bySubRecipe.has(subRecipeId)) insert.push({ id: await batchId(serviceId, subRecipeId), ownerId, serviceId, subRecipeId });
-  const revive = rows.filter((r) => r.deletedAt !== null && wanted.has(r.subRecipeId)).map((r) => r.id);
-  const remove = rows.filter((r) => r.deletedAt === null && !wanted.has(r.subRecipeId)).map((r) => r.id);
+    if (!bySubRecipe.has(subRecipeId))
+      insert.push({ id: await batchId(serviceId, subRecipeId), ownerId, serviceId, subRecipeId });
+  const revive = rows
+    .filter((r) => r.deletedAt !== null && wanted.has(r.subRecipeId))
+    .map((r) => r.id);
+  const remove = rows
+    .filter((r) => r.deletedAt === null && !wanted.has(r.subRecipeId))
+    .map((r) => r.id);
   if (insert.length) await tx.insert(batches).values(insert);
   if (revive.length)
-    await tx.update(batches).set({ deletedAt: null, updatedAt: sql`now()` }).where(inArray(batches.id, revive));
+    await tx
+      .update(batches)
+      .set({ deletedAt: null, updatedAt: sql`now()` })
+      .where(inArray(batches.id, revive));
   if (remove.length)
-    await tx.update(batches).set({ deletedAt: sql`now()`, updatedAt: sql`now()` }).where(inArray(batches.id, remove));
+    await tx
+      .update(batches)
+      .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(inArray(batches.id, remove));
   return { inserted: insert.length, revived: revive.length, removed: remove.length };
 }
 
 /** `recipeId` and every live Recipe that uses it, directly or through other sub-recipes. */
-export async function recipeAndAncestors(tx: Tx, ownerId: string, recipeId: string): Promise<string[]> {
+export async function recipeAndAncestors(
+  tx: Tx,
+  ownerId: string,
+  recipeId: string,
+): Promise<string[]> {
   const parentsOf = new Map<string, string[]>();
   for (const [parent, children] of await loadSubRecipeGraph(tx, ownerId))
     for (const child of children) parentsOf.set(child, [...(parentsOf.get(child) ?? []), parent]);
   const seen = new Set([recipeId]);
   const queue = [recipeId];
   for (let id = queue.shift(); id !== undefined; id = queue.shift())
-    for (const parent of parentsOf.get(id) ?? []) if (!seen.has(parent)) (seen.add(parent), queue.push(parent));
+    for (const parent of parentsOf.get(id) ?? [])
+      if (!seen.has(parent)) (seen.add(parent), queue.push(parent));
   return [...seen];
 }
 
 export type MenuScale = {
-  dishes: { dishId: string; scale: { factor: number; source: DishScale["source"] }; fixes: { subRecipe: { id: string; name: string } | null; text: string }[] }[];
+  dishes: {
+    dishId: string;
+    scale: { factor: number; source: DishScale["source"] };
+    fixes: { subRecipe: { id: string; name: string } | null; text: string }[];
+  }[];
   /** `id`: the Service's live Batch row, or null with no Service or no row yet (D8). */
   batches: BatchRead[];
 };
@@ -159,13 +202,20 @@ export async function readMenuScale(tx: Tx, ownerId: string, menuId: string): Pr
   const [service] = await tx
     .select({ id: services.id })
     .from(services)
-    .where(and(eq(services.menuId, menuId), eq(services.ownerId, ownerId), isNull(services.deletedAt)));
-  const stored = new Map(service ? (await loadBatchRows(tx, service.id)).map((b) => [b.subRecipeId, b.batchId]) : []);
+    .where(
+      and(eq(services.menuId, menuId), eq(services.ownerId, ownerId), isNull(services.deletedAt)),
+    );
+  const stored = new Map(
+    service ? (await loadBatchRows(tx, service.id)).map((b) => [b.subRecipeId, b.batchId]) : [],
+  );
   return {
     dishes: scale.dishes.map((d) => ({
       dishId: d.dishId,
       scale: { factor: d.factor, source: d.source },
-      fixes: d.fixes.map((f) => ({ subRecipe: f.subRecipeId === null ? null : { id: f.subRecipeId, name: f.subRecipeName! }, text: f.text })),
+      fixes: d.fixes.map((f) => ({
+        subRecipe: f.subRecipeId === null ? null : { id: f.subRecipeId, name: f.subRecipeName! },
+        text: f.text,
+      })),
     })),
     batches: scale.batches.map((b) => toBatchRead(b, stored.get(b.subRecipeId) ?? null)),
   };

@@ -27,7 +27,10 @@ async function ok(name: string, args: Record<string, unknown>) {
 const made: string[] = [];
 afterAll(async () => {
   if (made.length)
-    await db.update(recipes).set({ deletedAt: sql`now()` }).where(inArray(recipes.id, made));
+    await db
+      .update(recipes)
+      .set({ deletedAt: sql`now()` })
+      .where(inArray(recipes.id, made));
 });
 
 const stamp = () => crypto.randomUUID().slice(0, 8);
@@ -80,7 +83,10 @@ describe("GET /recipes/:id with sub-recipes", () => {
       needsYield: true,
     });
     await ok("setYield", { recipeId: stock, revisionId: crypto.randomUUID(), yield: "2 L" });
-    expect(await read(stock)).toMatchObject({ yield: { quantity: 2, unit: "L" }, needsYield: false });
+    expect(await read(stock)).toMatchObject({
+      yield: { quantity: 2, unit: "L" },
+      needsYield: false,
+    });
 
     const res = await send("GET", "/recipes");
     const listed = (await res.json()).recipes.find((r: { id: string }) => r.id === stock);
@@ -92,10 +98,17 @@ describe("GET /recipes/:id with sub-recipes", () => {
     const veloute = await newRecipe(`Velouté ${s}`);
     const stock = await newRecipe(`Chicken stock ${s}`, "createSubRecipe");
     expect((await use(veloute, stock, "chicken stock")).status).toBe(200);
-    await db.update(recipes).set({ deletedAt: sql`now()` }).where(eq(recipes.id, stock));
+    await db
+      .update(recipes)
+      .set({ deletedAt: sql`now()` })
+      .where(eq(recipes.id, stock));
 
     const line = (await read(veloute)).steps[0].lines[0];
-    expect(line).toMatchObject({ subRecipe: null, missingSubRecipe: true, wording: "chicken stock" });
+    expect(line).toMatchObject({
+      subRecipe: null,
+      missingSubRecipe: true,
+      wording: "chicken stock",
+    });
   });
 
   it("refuses a cycle through /mutate with 400 naming it, and writes nothing", async () => {

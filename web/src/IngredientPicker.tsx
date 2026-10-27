@@ -99,9 +99,7 @@ export function IngredientPicker({
           aria-autocomplete="list"
           aria-expanded={expanded}
           aria-controls={expanded ? listId : undefined}
-          aria-activedescendant={
-            active >= 0 && options[active] ? `${listId}-${active}` : undefined
-          }
+          aria-activedescendant={active >= 0 && options[active] ? `${listId}-${active}` : undefined}
           maxLength={200}
           value={query}
           onChange={(event) => {

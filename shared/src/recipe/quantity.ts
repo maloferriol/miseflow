@@ -57,8 +57,7 @@ const SPELLINGS: Record<
 const UNITS = new Map<string, { unit: string | null; tier: QuantityTier }>();
 for (const [tier, units] of Object.entries(SPELLINGS)) {
   for (const [unit, spellings] of Object.entries(units)) {
-    for (const spelling of spellings)
-      UNITS.set(spelling, { unit, tier: tier as QuantityTier });
+    for (const spelling of spellings) UNITS.set(spelling, { unit, tier: tier as QuantityTier });
   }
 }
 // "piece" is the absence of a unit ("3 eggs").
@@ -119,8 +118,7 @@ export function parseQuantity(input: string): Quantity {
   let text = input.trim();
   const fixed = text.startsWith("=");
   if (fixed) text = text.slice(1).trim();
-  if (text === "")
-    return { value: null, max: null, unit: null, tier: "vague", fixed };
+  if (text === "") return { value: null, max: null, unit: null, tier: "vague", fixed };
 
   // Cooklang writes the unit after a "%".
   const percent = text.indexOf("%");
@@ -144,8 +142,7 @@ export function parseQuantity(input: string): Quantity {
     }
   }
   const { unit, tier } = parseUnit(unitText ?? rest);
-  if (tier === "vague")
-    return { value: match ? value : null, max, unit, tier, fixed };
+  if (tier === "vague") return { value: match ? value : null, max, unit, tier, fixed };
   // Words with no number and no known unit ("some") stay as written.
   if (value === null && tier === "ingredient" && unit === null)
     return { value: null, max: null, unit: null, tier: "vague", fixed };
@@ -164,10 +161,7 @@ export function isValidQuantity(q: Quantity): boolean {
 
 /** Back to the Cooklang shorthand ("1.5%cup", "=2-3%clove"), so a saved line can be re-edited. */
 export function formatQuantity(q: Quantity): string {
-  const number =
-    q.value === null
-      ? ""
-      : String(q.value) + (q.max === null ? "" : `-${q.max}`);
+  const number = q.value === null ? "" : String(q.value) + (q.max === null ? "" : `-${q.max}`);
   const unit = q.unit === null ? "" : number ? `%${q.unit}` : q.unit;
   return (q.fixed ? "=" : "") + number + unit;
 }

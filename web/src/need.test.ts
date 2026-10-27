@@ -30,7 +30,9 @@ describe("needText", () => {
   });
 
   it("joins the total, Vague amounts and parts that need a conversion", () => {
-    const text = needText(row({ need: 40, unit: "g", vague: ["a pinch"], unconverted: [{ amount: 2, unit: "thumb" }] }));
+    const text = needText(
+      row({ need: 40, unit: "g", vague: ["a pinch"], unconverted: [{ amount: 2, unit: "thumb" }] }),
+    );
     expect(text).toBe("40 g + a pinch + 2 thumb ⚠ needs conversion");
   });
 

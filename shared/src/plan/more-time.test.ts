@@ -1,7 +1,12 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
-import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, setWalkthroughAvailability } from "../../test/walkthrough.ts";
+import {
+  buildWalkthrough,
+  SERVICE_DATE,
+  SERVICE_TIME,
+  setWalkthroughAvailability,
+} from "../../test/walkthrough.ts";
 import { getMutator, type Tx } from "../mutators/registry.ts";
 import type { RecipeSnapshot } from "../recipe/snapshot.ts";
 import { schedule } from "../scheduler/schedule.ts";
@@ -29,19 +34,31 @@ async function run(tx: Tx, name: string, args: unknown) {
 // The rows with `proposal` as that date's only override.
 const withOverride = (rows: PlanRows, p: OverrideProposal): PlanRows => ({
   ...rows,
-  overrides: [...rows.overrides.filter((o) => o.date !== p.date), { date: p.date, hours: { start: p.start, end: p.end } }],
+  overrides: [
+    ...rows.overrides.filter((o) => o.date !== p.date),
+    { date: p.date, hours: { start: p.start, end: p.end } },
+  ],
 });
 
 // Whether a schedule() run over `rows` places `key`.
-const placesAlone = (rows: PlanRows, key: string) => schedule(toPlanningModel(rows, timeZone).model).placements.some((p) => p.key === key);
+const placesAlone = (rows: PlanRows, key: string) =>
+  schedule(toPlanningModel(rows, timeZone).model).placements.some((p) => p.key === key);
 
 // The proposal places the Task and keeps every other start; 5 minutes less on the side that grew doesn't place it.
 // A merge ("none") only fills the gap: the cheaper candidates are what the search tried before it.
-function expectSmallest(rows: PlanRows, key: string, p: OverrideProposal, grew: "start" | "end" | "none") {
-  const base = new Map(schedule(toPlanningModel(rows, timeZone).model).placements.map((x) => [x.key, x.start]));
+function expectSmallest(
+  rows: PlanRows,
+  key: string,
+  p: OverrideProposal,
+  grew: "start" | "end" | "none",
+) {
+  const base = new Map(
+    schedule(toPlanningModel(rows, timeZone).model).placements.map((x) => [x.key, x.start]),
+  );
   const after = schedule(toPlanningModel(withOverride(rows, p), timeZone).model);
   expect(after.placements.some((x) => x.key === key)).toBe(true);
-  for (const [k, start] of base) expect(after.placements.find((x) => x.key === k)?.start).toBe(start);
+  for (const [k, start] of base)
+    expect(after.placements.find((x) => x.key === k)?.start).toBe(start);
   if (grew === "none") return;
   const less = grew === "start" ? { ...p, start: p.start + 5 } : { ...p, end: p.end - 5 };
   if (less.end > less.start) expect(placesAlone(withOverride(rows, less), key)).toBe(false);
@@ -50,14 +67,24 @@ function expectSmallest(rows: PlanRows, key: string, p: OverrideProposal, grew: 
 describe("smallestOverride on the walkthrough", () => {
   it("the smallest override for the Unplaced pastry places it, and 5 minutes less doesn't", async () => {
     await inRollback(async (tx) => {
-      const w = await buildWalkthrough((name, args) => run(tx, name, args), crypto.randomUUID().slice(0, 8));
+      const w = await buildWalkthrough(
+        (name, args) => run(tx, name, args),
+        crypto.randomUUID().slice(0, 8),
+      );
       await setWalkthroughAvailability((name, args) => run(tx, name, args), h(19, 35));
       const serviceId = crypto.randomUUID();
-      await run(tx, "createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+      await run(tx, "createService", {
+        serviceId,
+        menuId: w.menuId,
+        date: SERVICE_DATE,
+        time: SERVICE_TIME,
+      });
       const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
       const rows = await loadPlanRows(tx, ownerId, service!);
       const key = taskKey({ kind: "dish", dishId: w.dishes.tarte }, w.steps.T1);
-      expect(schedule(toPlanningModel(rows, timeZone).model).unplaced.map((u) => u.key)).toEqual([key]);
+      expect(schedule(toPlanningModel(rows, timeZone).model).unplaced.map((u) => u.key)).toEqual([
+        key,
+      ]);
 
       const proposal = smallestOverride(rows, timeZone, key);
       // Friday's override starts earlier; ending later can't help, the pastry must be done by T2 at Fri 19:50.
@@ -71,13 +98,27 @@ describe("smallestOverride on a BlockedByPin Task", () => {
   it("the pastry blocked by its chill pinned at Fri 19:15: Friday starts earlier so it ends by the pin, and the pin stays", async () => {
     await inRollback(async (tx) => {
       // pins.test.ts's setup: the ADR 0004 walkthrough with its stock, T2 pinned at Fri 19:15.
-      const w = await buildWalkthrough((name, args) => run(tx, name, args), crypto.randomUUID().slice(0, 8), { stock: true });
+      const w = await buildWalkthrough(
+        (name, args) => run(tx, name, args),
+        crypto.randomUUID().slice(0, 8),
+        { stock: true },
+      );
       await setWalkthroughAvailability((name, args) => run(tx, name, args));
       const serviceId = crypto.randomUUID();
-      await run(tx, "createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+      await run(tx, "createService", {
+        serviceId,
+        menuId: w.menuId,
+        date: SERVICE_DATE,
+        time: SERVICE_TIME,
+      });
       const tarte = { kind: "dish" as const, dishId: w.dishes.tarte };
       const fri1915 = zonedMinute("2026-10-30", h(19, 15), timeZone);
-      await run(tx, "pinTask", { serviceId, owner: tarte, firstStepId: w.steps.T2, start: fri1915 });
+      await run(tx, "pinTask", {
+        serviceId,
+        owner: tarte,
+        firstStepId: w.steps.T2,
+        start: fri1915,
+      });
       const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
       const rows = await loadPlanRows(tx, ownerId, service!);
       const key = taskKey(tarte, w.steps.T1);
@@ -88,15 +129,22 @@ describe("smallestOverride on a BlockedByPin Task", () => {
       expect(proposal).toEqual({ date: "2026-10-30", start: h(18, 55), end: h(21) });
       expectSmallest(rows, key, proposal!, "start");
       const after = schedule(toPlanningModel(withOverride(rows, proposal!), timeZone).model);
-      expect(after.placements.find((p) => p.key === taskKey(tarte, w.steps.T2))).toMatchObject({ start: fri1915 });
-      expect(after.placements.find((p) => p.key === key)!.start).toBe(zonedMinute("2026-10-30", h(18, 55), timeZone));
+      expect(after.placements.find((p) => p.key === taskKey(tarte, w.steps.T2))).toMatchObject({
+        start: fri1915,
+      });
+      expect(after.placements.find((p) => p.key === key)!.start).toBe(
+        zonedMinute("2026-10-30", h(18, 55), timeZone),
+      );
     });
   });
 });
 
 // A Recipe snapshot with plain Steps, built in the test.
 type StepSpec = { id: string; active: number | null; passive?: number | null };
-function recipe(steps: StepSpec[], makeAhead: { beforeDays: number; shelfLifeDays: number } | null = null): RecipeSnapshot {
+function recipe(
+  steps: StepSpec[],
+  makeAhead: { beforeDays: number; shelfLifeDays: number } | null = null,
+): RecipeSnapshot {
   return {
     name: "R",
     servings: null,
@@ -112,14 +160,22 @@ function recipe(steps: StepSpec[], makeAhead: { beforeDays: number; shelfLifeDay
       makeAhead: null,
       groupWithPrevious: false,
     })),
-    dependencies: steps.slice(1).map((s, i) => ({ id: `l${i}`, beforeStepId: steps[i]!.id, afterStepId: s.id })),
+    dependencies: steps
+      .slice(1)
+      .map((s, i) => ({ id: `l${i}`, beforeStepId: steps[i]!.id, afterStepId: s.id })),
   };
 }
 
 // One Service on Sat 31 Oct 2026 (Paris), the Dishes in order, and the Cook's hours.
 function rows(
   dishes: { dishId: string; recipe: RecipeSnapshot }[],
-  hours: { weekly?: PlanRows["weekly"]; overrides?: PlanRows["overrides"]; previous?: PreviousPlacement[]; date?: string; time?: number } = {},
+  hours: {
+    weekly?: PlanRows["weekly"];
+    overrides?: PlanRows["overrides"];
+    previous?: PreviousPlacement[];
+    date?: string;
+    time?: number;
+  } = {},
 ): PlanRows {
   return {
     service: { id: "svc", date: hours.date ?? "2026-10-31", time: hours.time ?? h(19, 30) },
@@ -129,7 +185,12 @@ function rows(
     overrides: hours.overrides ?? [],
     guestCount: 6,
     region: "metric",
-    dishes: dishes.map((d) => ({ dishId: d.dishId, recipeId: `r-${d.dishId}`, scaleFactor: null, recipe: d.recipe })),
+    dishes: dishes.map((d) => ({
+      dishId: d.dishId,
+      recipeId: `r-${d.dishId}`,
+      scaleFactor: null,
+      recipe: d.recipe,
+    })),
     subRecipes: new Map(),
     batches: [],
     previous: hours.previous ?? [],
@@ -140,19 +201,24 @@ function rows(
 const SAT = 6;
 const FRI = 5;
 const dishKey = (dishId: string, stepId: string) => taskKey({ kind: "dish", dishId }, stepId);
-const reasonOf = (r: PlanRows, key: string) => schedule(toPlanningModel(r, timeZone).model).unplaced.find((u) => u.key === key)?.reason.kind;
+const reasonOf = (r: PlanRows, key: string) =>
+  schedule(toPlanningModel(r, timeZone).model).unplaced.find((u) => u.key === key)?.reason.kind;
 
 describe("smallestOverride: the combinations grid", () => {
   it("weekly hours, end later: a new override from the weekly start, ending later; a tie with starting earlier goes to ending later", () => {
     // 30 active minutes, last-minute, and only Sat 09:00–09:20.
-    const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], { weekly: [{ weekday: SAT, start: h(9), end: h(9, 20) }] });
+    const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], {
+      weekly: [{ weekday: SAT, start: h(9), end: h(9, 20) }],
+    });
     const key = dishKey("d", "s1");
     expect(reasonOf(r, key)).toBe("NoAvailability");
     const p = smallestOverride(r, timeZone, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(9, 30) });
     expectSmallest(r, key, p!, "end");
     // Starting 10 minutes earlier would place it too, at the same cost.
-    expect(placesAlone(withOverride(r, { date: "2026-10-31", start: h(8, 50), end: h(9, 20) }), key)).toBe(true);
+    expect(
+      placesAlone(withOverride(r, { date: "2026-10-31", start: h(8, 50), end: h(9, 20) }), key),
+    ).toBe(true);
   });
 
   it("an override's hours, end later: the override grows the same way as weekly hours", () => {
@@ -180,7 +246,12 @@ describe("smallestOverride: the combinations grid", () => {
 
   it("no hours that date: a new range of exactly the active minutes, on the later date of a tie", () => {
     // Made up to a day ahead, so Friday and Saturday both could hold it; neither has hours.
-    const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 25 }], { beforeDays: 1, shelfLifeDays: 2 }) }]);
+    const r = rows([
+      {
+        dishId: "d",
+        recipe: recipe([{ id: "s1", active: 25 }], { beforeDays: 1, shelfLifeDays: 2 }),
+      },
+    ]);
     const key = dishKey("d", "s1");
     expect(reasonOf(r, key)).toBe("NoAvailability");
     const p = smallestOverride(r, timeZone, key);
@@ -213,10 +284,20 @@ describe("smallestOverride: the combinations grid", () => {
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(10, 20) });
     expectSmallest(r, key, p!, "none");
     // Either range widened by the 10 minutes it lacks, but kept apart, would place it: one override can't.
-    expect(placesAlone({ ...r, weekly: [two[0]!, { ...two[1]!, end: h(10, 30) }] }, key)).toBe(true);
+    expect(placesAlone({ ...r, weekly: [two[0]!, { ...two[1]!, end: h(10, 30) }] }, key)).toBe(
+      true,
+    );
 
     // With a day ahead allowed and Friday free of hours, 30 new minutes on Friday beat the 40-minute gap.
-    const ahead = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }], { beforeDays: 1, shelfLifeDays: 2 }) }], { weekly: two });
+    const ahead = rows(
+      [
+        {
+          dishId: "d",
+          recipe: recipe([{ id: "s1", active: 30 }], { beforeDays: 1, shelfLifeDays: 2 }),
+        },
+      ],
+      { weekly: two },
+    );
     const q = smallestOverride(ahead, timeZone, key);
     expect(q).toEqual({ date: "2026-10-30", start: h(23, 30), end: h(24) });
     expectSmallest(ahead, key, q!, "start");
@@ -235,14 +316,18 @@ describe("smallestOverride: the combinations grid", () => {
 
   it("WindowTooTight: no Availability can help, so null", () => {
     // 30 active minutes before a Service at 00:20.
-    const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], { time: h(0, 20) });
+    const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], {
+      time: h(0, 20),
+    });
     const key = dishKey("d", "s1");
     expect(reasonOf(r, key)).toBe("WindowTooTight");
     expect(smallestOverride(r, timeZone, key)).toBeNull();
   });
 
   it("a placed Task, or one that isn't there, gets null", () => {
-    const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], { weekly: [{ weekday: SAT, start: h(9), end: h(10) }] });
+    const r = rows([{ dishId: "d", recipe: recipe([{ id: "s1", active: 30 }]) }], {
+      weekly: [{ weekday: SAT, start: h(9), end: h(10) }],
+    });
     expect(smallestOverride(r, timeZone, dishKey("d", "s1"))).toBeNull();
     expect(smallestOverride(r, timeZone, dishKey("d", "nope"))).toBeNull();
   });
@@ -252,14 +337,30 @@ describe("smallestOverride: the combinations grid", () => {
     // 09:30–10:00. Starting earlier (40 minutes) would put K before P and push P: rejected.
     const r = rows(
       [
-        { dishId: "d", recipe: recipe([{ id: "p", active: 30 }, { id: "k", active: 40 }]) },
+        {
+          dishId: "d",
+          recipe: recipe([
+            { id: "p", active: 30 },
+            { id: "k", active: 40 },
+          ]),
+        },
         { dishId: "q", recipe: recipe([{ id: "q1", active: 30 }]) },
       ],
       {
         weekly: [{ weekday: SAT, start: h(9), end: h(9, 30) }],
         previous: [
-          { key: dishKey("q", "q1"), start: zonedMinute("2026-10-31", h(9, 30), timeZone), cookId: "cook", pinned: true },
-          { key: dishKey("d", "p"), start: zonedMinute("2026-10-31", h(9), timeZone), cookId: "cook", pinned: false },
+          {
+            key: dishKey("q", "q1"),
+            start: zonedMinute("2026-10-31", h(9, 30), timeZone),
+            cookId: "cook",
+            pinned: true,
+          },
+          {
+            key: dishKey("d", "p"),
+            start: zonedMinute("2026-10-31", h(9), timeZone),
+            cookId: "cook",
+            pinned: false,
+          },
         ],
       },
     );
@@ -268,7 +369,9 @@ describe("smallestOverride: the combinations grid", () => {
     const earlier = { date: "2026-10-31", start: h(8, 20), end: h(9, 30) };
     const pushed = schedule(toPlanningModel(withOverride(r, earlier), timeZone).model);
     expect(pushed.placements.find((x) => x.key === key)).toBeDefined();
-    expect(pushed.placements.find((x) => x.key === dishKey("d", "p"))!.start).not.toBe(zonedMinute("2026-10-31", h(9), timeZone));
+    expect(pushed.placements.find((x) => x.key === dishKey("d", "p"))!.start).not.toBe(
+      zonedMinute("2026-10-31", h(9), timeZone),
+    );
 
     const p = smallestOverride(r, timeZone, key);
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(10, 40) });
@@ -277,12 +380,30 @@ describe("smallestOverride: the combinations grid", () => {
 
   it("when every candidate would push a placed predecessor, null", () => {
     // As above with the Service on Fri 18:30 and Fri 18:00–18:30 holding P: K can only go before P.
-    const r = rows([{ dishId: "d", recipe: recipe([{ id: "p", active: 30 }, { id: "k", active: 40 }]) }], {
-      date: "2026-10-30",
-      time: h(18, 30),
-      weekly: [{ weekday: FRI, start: h(18), end: h(18, 30) }],
-      previous: [{ key: dishKey("d", "p"), start: zonedMinute("2026-10-30", h(18), timeZone), cookId: "cook", pinned: false }],
-    });
+    const r = rows(
+      [
+        {
+          dishId: "d",
+          recipe: recipe([
+            { id: "p", active: 30 },
+            { id: "k", active: 40 },
+          ]),
+        },
+      ],
+      {
+        date: "2026-10-30",
+        time: h(18, 30),
+        weekly: [{ weekday: FRI, start: h(18), end: h(18, 30) }],
+        previous: [
+          {
+            key: dishKey("d", "p"),
+            start: zonedMinute("2026-10-30", h(18), timeZone),
+            cookId: "cook",
+            pinned: false,
+          },
+        ],
+      },
+    );
     const key = dishKey("d", "k");
     expect(reasonOf(r, key)).toBe("NoAvailability");
     expect(smallestOverride(r, timeZone, key)).toBeNull();

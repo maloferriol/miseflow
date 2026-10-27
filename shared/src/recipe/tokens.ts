@@ -79,10 +79,7 @@ export function parseStepText(text: string): StepTextPart[] {
 }
 
 /** Tokens and their lines back to the shorthand, so a saved Step can be edited again. */
-export function formatStepText(
-  body: StepToken[],
-  lines: Map<string, LineText>,
-): string {
+export function formatStepText(body: StepToken[], lines: Map<string, LineText>): string {
   return body
     .map((token) => {
       if (token.type === "text") return token.text;
@@ -96,8 +93,7 @@ export function formatStepText(
         fixed: line.fixedQuantity,
       });
       return (
-        `@${line.wording ?? ""}{${amount}}` +
-        (line.preparation ? `(${line.preparation})` : "")
+        `@${line.wording ?? ""}{${amount}}` + (line.preparation ? `(${line.preparation})` : "")
       );
     })
     .join("");

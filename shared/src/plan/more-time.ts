@@ -50,6 +50,78 @@ function shapeOf(spec: TaskSpec): {
   return { duration: offset, stretches };
 }
 
+// One date of the searched window: its hours now, each minute of day as an instant, the free time of
+// every other date less the other placements, and how much of that lies in the window.
+type Day = {
+  date: LocalDate;
+  hours: Hours[];
+  at: Minute[];
+  others: Interval[];
+  othersInWindow: number;
+};
+type Candidate = OverrideProposal & { range: Interval; others: Interval[]; othersInWindow: number };
+
+// A date's hours now: its override if any (an empty list when it is off), else its weekday's.
+function hoursOn(
+  rows: PlanRows,
+  overrides: Map<LocalDate, Hours | null>,
+  date: LocalDate,
+): Hours[] {
+  if (overrides.has(date)) return [overrides.get(date)].filter((x): x is Hours => x != null);
+  return rows.weekly
+    .filter((w) => w.weekday === weekdayOf(date))
+    .map(({ start, end }) => ({ start, end }));
+}
+
+// One date's candidates of one cost, the one that ends later first.
+function* widenings(day: Day, cost: number): Generator<Candidate> {
+  const { date, hours, at, others, othersInWindow } = day;
+  const make = (start: number, end: number) => ({
+    date,
+    start,
+    end,
+    range: { start: at[start / GRID], end: at[end / GRID] },
+    others,
+    othersInWindow,
+  });
+  if (!hours.length) {
+    for (let start = DAY - cost; start >= 0; start -= GRID) yield make(start, start + cost);
+    return;
+  }
+  const from = Math.min(...hours.map((x) => x.start));
+  const to = Math.max(...hours.map((x) => x.end));
+  const gap = to - from - hours.reduce((n, x) => n + x.end - x.start, 0);
+  for (let earlier = 0; earlier <= cost - gap; earlier += GRID) {
+    const later = cost - gap - earlier;
+    if (from - earlier >= 0 && to + later <= DAY) yield make(from - earlier, to + later);
+  }
+}
+
+// Every candidate, cheapest first: fewest added minutes, then the later date, then ending later.
+function* candidates(days: Day[]): Generator<Candidate> {
+  for (let cost = GRID; cost <= DAY; cost += GRID)
+    for (const day of days) yield* widenings(day, cost);
+}
+
+// Whether the Task's active stretches fit `free` at a start on the grid in `[lo, hi]` that reaches
+// into `range`: a start that fits without it would have placed the Task already.
+function fitsAround(
+  task: ReturnType<typeof shapeOf>,
+  free: Timeline,
+  range: Interval,
+  lo: Minute,
+  hi: Minute,
+): boolean {
+  for (
+    let start = Math.min(hi, Math.floor(range.end / GRID) * GRID);
+    start >= Math.max(lo, range.start - task.duration);
+    start -= GRID
+  )
+    if (task.stretches.every((s) => fits(free, start + s.offset, start + s.offset + s.minutes)))
+      return true;
+  return false;
+}
+
 /**
  * The smallest override that places the Unplaced Task `key`, or `none`: when it is placed, isn't a
  * Task, is `WindowTooTight`, or every override that places it would move another placement. Gives
@@ -87,31 +159,11 @@ export function smallestOverride(rows: PlanRows, timeZone: string, key: TaskKey)
   const active = task.stretches.reduce((n, s) => n + s.minutes, 0);
   const inWindow = (iv: Interval) =>
     Math.max(0, Math.min(iv.end, window.end) - Math.max(iv.start, window.start));
-  // A start that fits now would have placed the Task already, so only starts that reach into the new range are tried.
-  // `others` already has the other placements taken out (once per date); the new range has them taken out here.
-  const fitsIn = (others: Timeline, range: Interval) => {
-    const free = normalize([...others, ...withoutTaken([range])]);
-    for (
-      let start = Math.min(hi, Math.floor(range.end / GRID) * GRID);
-      start >= Math.max(lo, range.start - task.duration);
-      start -= GRID
-    )
-      if (task.stretches.every((s) => fits(free, start + s.offset, start + s.offset + s.minutes)))
-        return true;
-    return false;
-  };
 
   const overrides = new Map(rows.overrides.map((o) => [o.date, o.hours]));
   const free = model.cooks[0].free;
-  // Each date in the window, latest first: its hours now, each minute of day as an instant, the free
-  // time of every other date less the other placements, and how much of that lies in the window.
-  const days: {
-    date: LocalDate;
-    hours: Hours[];
-    at: Minute[];
-    others: Interval[];
-    othersInWindow: number;
-  }[] = [];
+  // Each date in the window, latest first. `others` has the other placements taken out once per date.
+  const days: Day[] = [];
   for (
     let date = localParts(window.start, timeZone).date;
     date <= localParts(window.end - 1, timeZone).date;
@@ -120,46 +172,14 @@ export function smallestOverride(rows: PlanRows, timeZone: string, key: TaskKey)
     const at = Array.from({ length: DAY / GRID + 1 }, (_, i) =>
       zonedMinute(date, i * GRID, timeZone),
     );
-    const hours = overrides.has(date)
-      ? [overrides.get(date)].filter((x): x is Hours => x != null)
-      : rows.weekly
-          .filter((w) => w.weekday === weekdayOf(date))
-          .map(({ start, end }) => ({ start, end }));
     const others = withoutTaken(free.filter((iv) => iv.start < at[0] || iv.start >= at.at(-1)!));
     days.unshift({
       date,
-      hours,
+      hours: hoursOn(rows, overrides, date),
       at,
       others,
       othersInWindow: others.reduce((n, iv) => n + inWindow(iv), 0),
     });
-  }
-
-  // The candidates of one cost: the later date first, then the one that ends later.
-  function* candidates(
-    cost: number,
-  ): Generator<OverrideProposal & { range: Interval; others: Interval[]; othersInWindow: number }> {
-    for (const { date, hours, at, others, othersInWindow } of days) {
-      const make = (start: number, end: number) => ({
-        date,
-        start,
-        end,
-        range: { start: at[start / GRID], end: at[end / GRID] },
-        others,
-        othersInWindow,
-      });
-      if (!hours.length) {
-        for (let start = DAY - cost; start >= 0; start -= GRID) yield make(start, start + cost);
-        continue;
-      }
-      const from = Math.min(...hours.map((x) => x.start));
-      const to = Math.max(...hours.map((x) => x.end));
-      const gap = to - from - hours.reduce((n, x) => n + x.end - x.start, 0);
-      for (let earlier = 0; earlier <= cost - gap; earlier += GRID) {
-        const later = cost - gap - earlier;
-        if (from - earlier >= 0 && to + later <= DAY) yield make(from - earlier, to + later);
-      }
-    }
   }
 
   const kept = (plan: Plan) => {
@@ -167,25 +187,28 @@ export function smallestOverride(rows: PlanRows, timeZone: string, key: TaskKey)
     return after.has(key) && base.placements.every((p) => after.get(p.key) === p.start);
   };
   let runs = 0;
-  for (let cost = GRID; cost <= DAY; cost += GRID) {
-    for (const c of candidates(cost)) {
-      // A new range must reach into the window to help, and the window's free time must at least
-      // hold the Task's active minutes (a bound in instants, so a DST day's longer hours count).
-      if (c.range.start >= window.end || c.range.end <= window.start) continue;
-      if (c.othersInWindow + inWindow(c.range) < active) continue;
-      if (!fitsIn(c.others, c.range)) continue;
-      if (runs === MAX_TRIALS) return { kind: "capped", runs };
-      runs++;
-      const trial = {
-        ...rows,
-        overrides: [
-          ...rows.overrides.filter((o) => o.date !== c.date),
-          { date: c.date, hours: { start: c.start, end: c.end } },
-        ],
-      };
-      if (kept(schedule(toPlanningModel(trial, timeZone).model)))
-        return { kind: "found", proposal: { date: c.date, start: c.start, end: c.end }, runs };
-    }
+  for (const c of candidates(days)) {
+    // A new range must reach into the window to help, the window's free time must at least hold
+    // the Task's active minutes (a bound in instants, so a DST day's longer hours count), and the
+    // Task must fit the free time with the new range, the other placements taken out of it.
+    if (
+      c.range.start >= window.end ||
+      c.range.end <= window.start ||
+      c.othersInWindow + inWindow(c.range) < active ||
+      !fitsAround(task, normalize([...c.others, ...withoutTaken([c.range])]), c.range, lo, hi)
+    )
+      continue;
+    if (runs === MAX_TRIALS) return { kind: "capped", runs };
+    runs++;
+    const trial = {
+      ...rows,
+      overrides: [
+        ...rows.overrides.filter((o) => o.date !== c.date),
+        { date: c.date, hours: { start: c.start, end: c.end } },
+      ],
+    };
+    if (kept(schedule(toPlanningModel(trial, timeZone).model)))
+      return { kind: "found", proposal: { date: c.date, start: c.start, end: c.end }, runs };
   }
   return { kind: "none", runs };
 }

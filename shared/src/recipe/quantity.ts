@@ -95,10 +95,10 @@ const AMOUNT = new RegExp(
 function parseNumber(text: string): number {
   let total = 0;
   for (const part of text.match(/\d+\/\d+|\d+(?:\.\d+)?|[½⅓⅔¼¾⅛]/gu) ?? []) {
-    if (part in VULGAR) total += VULGAR[part]!;
+    if (part in VULGAR) total += VULGAR[part];
     else if (part.includes("/")) {
       const [n, d] = part.split("/").map(Number);
-      total += n! / d!;
+      total += n / d;
     } else total += Number(part);
   }
   return total;
@@ -130,7 +130,7 @@ export function parseQuantity(input: string): Quantity {
   let max: number | null = null;
   let rest = amount;
   if (match) {
-    value = parseNumber(match[1]!);
+    value = parseNumber(match[1]);
     max = match[2] ? parseNumber(match[2]) : null;
     rest = match[3]!;
   } else {

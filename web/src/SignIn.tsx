@@ -19,7 +19,7 @@ export function SignIn() {
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={(event) => void onSubmit(event)}>
       <h2>Sign in</h2>
       <label>
         Email <input name="email" type="email" autoComplete="username" required />

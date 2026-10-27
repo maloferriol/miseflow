@@ -1,4 +1,4 @@
-import type { Mutator } from "./define.ts";
+import type { AnyMutator } from "./define.ts";
 import { addAlias, createIngredient, overrideIngredient } from "./ingredients.ts";
 import { addCourse, addDish, createMenu, removeDish, setDishScale } from "./menus.ts";
 import {
@@ -25,11 +25,11 @@ import { markGot, unmarkGot } from "./shopping.ts";
 import { addStep, editStep, moveStep, removeStep } from "./steps.ts";
 import { createSubRecipe, extractToSubRecipe, setYield } from "./subrecipes.ts";
 
-export type { Mutator, MutatorContext, Tx } from "./define.ts";
+export type { AnyMutator, Mutator, MutatorContext, Tx } from "./define.ts";
 export { ConflictError, defineMutator, InvalidArgsError, NotFoundError } from "./define.ts";
 
 // Every named mutation the server accepts on POST /mutate (ADR 0007).
-export const mutators: Record<string, Mutator<any>> = {
+export const mutators: Record<string, AnyMutator> = {
   createMenu,
   addCourse,
   createRecipe,
@@ -70,8 +70,8 @@ export const mutators: Record<string, Mutator<any>> = {
 
 export function getMutator(
   name: string,
-  registry: Record<string, Mutator<any>> = mutators,
-): Mutator<any> | undefined {
+  registry: Record<string, AnyMutator> = mutators,
+): AnyMutator | undefined {
   // Own keys only, so "toString" or "__proto__" never resolve to something callable.
   return Object.hasOwn(registry, name) ? registry[name] : undefined;
 }

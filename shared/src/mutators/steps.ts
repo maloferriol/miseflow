@@ -203,7 +203,7 @@ async function liveSteps(tx: Tx, ownerId: string, recipeId: string) {
 // previous group.
 function followerOfKeyStep(ordered: { id: string; groupWithPrevious: boolean }[], stepId: string) {
   const index = ordered.findIndex((s) => s.id === stepId);
-  const isKey = index === 0 || !ordered[index]!.groupWithPrevious;
+  const isKey = index === 0 || !ordered[index].groupWithPrevious;
   const follower = ordered[index + 1];
   return isKey && follower ? [follower.id] : [];
 }
@@ -221,7 +221,7 @@ function slotAfter(ordered: { id: string; position: string }[], afterStepId: str
   if (afterStepId === null) return positionBetween(null, ordered[0]?.position ?? null);
   const index = ordered.findIndex((s) => s.id === afterStepId);
   if (index < 0) throw new NotFoundError("Step");
-  return positionBetween(ordered[index]!.position, ordered[index + 1]?.position ?? null);
+  return positionBetween(ordered[index].position, ordered[index + 1]?.position ?? null);
 }
 
 // Inserts new lines, updates kept ones and soft-deletes the Step's lines that are gone.

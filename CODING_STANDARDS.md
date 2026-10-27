@@ -27,6 +27,7 @@ Repo facts for anyone writing or reviewing code here. `code-review` checks the d
 
 ## CI
 
-- Run `npm run format` before committing. CI checks formatting first and fails on any file Prettier would change.
-- CI (`.github/workflows/ci.yml`) runs the format check, typecheck, build, `npm run test:coverage` and the SonarCloud gate, but not the e2e. The `main: require CI check` ruleset blocks merging until the `check` job passes.
+- Run `npm run format` and `npm run lint` before committing. CI checks formatting first, then lint, and fails on any file Prettier would change or any ESLint error.
+- Lint rules live in `eslint.config.js`. Fix the code rather than switching a rule off. A disable comment names the rule and says on the line above why the rule is wrong there.
+- CI (`.github/workflows/ci.yml`) runs the format check, lint, typecheck, build, `npm run test:coverage` and the SonarCloud gate, but not the e2e. The `main: require CI check` ruleset blocks merging until the `check` job passes.
 - Pin each third-party action to its full commit SHA, with the tag in a comment. Keep `--ignore-scripts` on `npm ci`. Keep SonarCloud's Automatic Analysis off.

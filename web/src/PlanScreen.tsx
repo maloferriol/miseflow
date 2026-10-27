@@ -64,7 +64,7 @@ function usePinTask(serviceId: string) {
       mutate(crypto.randomUUID(), "pinTask", {
         serviceId,
         owner: task.owner,
-        firstStepId: task.steps[0]!.id,
+        firstStepId: task.steps[0].id,
         start,
       }),
     onMutate: async ({ task, start }) => {

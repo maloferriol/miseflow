@@ -52,7 +52,7 @@ export function parseStepText(text: string): StepTextPart[] {
   let plain = "";
   let i = 0;
   while (i < text.length) {
-    const before = i === 0 ? "" : text[i - 1]!;
+    const before = i === 0 ? "" : text[i - 1];
     if (text[i] === "@" && !/[\p{L}\p{N}_]/u.test(before)) {
       const rest = text.slice(i + 1);
       const braced = BRACED.exec(rest);

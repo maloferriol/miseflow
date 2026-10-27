@@ -35,7 +35,7 @@ function fixedSize(
   region: Region,
 ): { kind: "mass" | "volume"; size: number } | null {
   if (unit === null || unitTier(unit) !== "fixed") return null;
-  if (unit in MASS) return { kind: "mass", size: MASS[unit]! };
+  if (unit in MASS) return { kind: "mass", size: MASS[unit] };
   const volume = VOLUME_BASE[unit] ?? VOLUME_REGION[region][unit];
   return volume === undefined ? null : { kind: "volume", size: volume };
 }

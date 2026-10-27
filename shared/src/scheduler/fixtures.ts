@@ -92,7 +92,7 @@ export function generatedService(n: number, seed = 1, days = 7): PlanningModel {
   const links = [];
   for (let i = 0; i < n - 1; i++) {
     if (random() < 0.5)
-      links.push({ before: keys[i]!, after: keys[i + 1 + pick(Math.min(10, n - i - 1))]! });
+      links.push({ before: keys[i], after: keys[i + 1 + pick(Math.min(10, n - i - 1))] });
   }
   return model({ service: { dayStart: at(days, 0, 0), at: at(days, 19, 30) }, free, tasks, links });
 }

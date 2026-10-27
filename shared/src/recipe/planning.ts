@@ -98,12 +98,12 @@ export function findPlanningCycle(steps: GroupedStep[], links: Link[]): string[]
 
 // The Step ids a chain of links passes through, closed back on its first Step.
 function pathOf(links: Link[]): string[] {
-  const path = [links[0]!.beforeStepId];
+  const path = [links[0].beforeStepId];
   for (const link of links) {
     if (path.at(-1) !== link.beforeStepId) path.push(link.beforeStepId);
     path.push(link.afterStepId);
   }
-  if (path.at(-1) !== path[0]) path.push(path[0]!);
+  if (path.at(-1) !== path[0]) path.push(path[0]);
   return path;
 }
 

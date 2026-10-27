@@ -33,7 +33,7 @@ export function requireAuth({ issuer, keys }: AuthConfig): MiddlewareHandler<Aut
   });
   return async (c, next) =>
     verifyToken(c, async () => {
-      const ownerId: unknown = c.get("jwtPayload")?.sub;
+      const ownerId = (c.get("jwtPayload") as { sub?: unknown } | undefined)?.sub;
       if (typeof ownerId !== "string" || !uuidPattern.test(ownerId)) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
@@ -88,7 +88,7 @@ export function createJwksCache(
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
       if (!res.ok) throw new Error(`Failed to fetch JWKS from ${url}: ${res.status}`);
-      const body: { keys?: unknown } = await res.json();
+      const body = (await res.json()) as { keys?: unknown };
       if (!Array.isArray(body.keys)) throw new Error(`Invalid JWKS from ${url}: no keys array`);
       keys = body.keys as Jwk[];
       fetchedAt = now();

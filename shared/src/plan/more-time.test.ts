@@ -80,7 +80,7 @@ describe("smallestOverride on the walkthrough", () => {
         time: SERVICE_TIME,
       });
       const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
-      const rows = await loadPlanRows(tx, ownerId, service!);
+      const rows = await loadPlanRows(tx, ownerId, service);
       const key = taskKey({ kind: "dish", dishId: w.dishes.tarte }, w.steps.T1);
       expect(schedule(toPlanningModel(rows, timeZone).model).unplaced.map((u) => u.key)).toEqual([
         key,
@@ -120,7 +120,7 @@ describe("smallestOverride on a BlockedByPin Task", () => {
         start: fri1915,
       });
       const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
-      const rows = await loadPlanRows(tx, ownerId, service!);
+      const rows = await loadPlanRows(tx, ownerId, service);
       const key = taskKey(tarte, w.steps.T1);
       expect(reasonOf(rows, key)).toBe("BlockedByPin");
 
@@ -162,7 +162,7 @@ function recipe(
     })),
     dependencies: steps
       .slice(1)
-      .map((s, i) => ({ id: `l${i}`, beforeStepId: steps[i]!.id, afterStepId: s.id })),
+      .map((s, i) => ({ id: `l${i}`, beforeStepId: steps[i].id, afterStepId: s.id })),
   };
 }
 
@@ -284,9 +284,7 @@ describe("smallestOverride: the combinations grid", () => {
     expect(p).toEqual({ date: "2026-10-31", start: h(9), end: h(10, 20) });
     expectSmallest(r, key, p!, "none");
     // Either range widened by the 10 minutes it lacks, but kept apart, would place it: one override can't.
-    expect(placesAlone({ ...r, weekly: [two[0]!, { ...two[1]!, end: h(10, 30) }] }, key)).toBe(
-      true,
-    );
+    expect(placesAlone({ ...r, weekly: [two[0], { ...two[1], end: h(10, 30) }] }, key)).toBe(true);
 
     // With a day ahead allowed and Friday free of hours, 30 new minutes on Friday beat the 40-minute gap.
     const ahead = rows(

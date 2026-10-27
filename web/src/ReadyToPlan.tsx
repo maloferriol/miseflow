@@ -17,7 +17,7 @@ export function ReadyToPlan({ recipe }: { recipe: Recipe }) {
   const { steps, readyToPlan } = recipe;
   const index = new Map(steps.map((s, i) => [s.id, i]));
   const lines = new Map(steps.flatMap((s) => s.lines).map((l) => [l.id, l]));
-  const label = (stepId: string) => stepLabel(steps[index.get(stepId)!]!, index.get(stepId)!);
+  const label = (stepId: string) => stepLabel(steps[index.get(stepId)!], index.get(stepId)!);
   const items = [
     ...readyToPlan.missingDuration.map((stepId) => ({
       key: `missing-${stepId}`,

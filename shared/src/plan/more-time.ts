@@ -60,7 +60,7 @@ export function smallestOverride(
   const unplaced = base.unplaced.find((u) => u.key === key);
   if (!unplaced || unplaced.reason.kind === "WindowTooTight") return null;
   const window = unplaced.reason.searched;
-  const specs = new Map(model.tasks.map((t) => [taskKey(t.owner, t.steps[0]!.stepId), t]));
+  const specs = new Map(model.tasks.map((t) => [taskKey(t.owner, t.steps[0].stepId), t]));
   const task = shapeOf(specs.get(key)!);
   const lo = Math.ceil(window.start / GRID) * GRID;
   const hi = Math.floor((window.end - task.duration) / GRID) * GRID;
@@ -87,7 +87,7 @@ export function smallestOverride(
   };
 
   const overrides = new Map(rows.overrides.map((o) => [o.date, o.hours]));
-  const free = model.cooks[0]!.free;
+  const free = model.cooks[0].free;
   // Each date in the window, latest first: its hours now, each minute of day as an instant, and the free time of every other date.
   const days: { date: LocalDate; hours: Hours[]; at: Minute[]; others: Interval[] }[] = [];
   for (
@@ -107,7 +107,7 @@ export function smallestOverride(
       date,
       hours,
       at,
-      others: free.filter((iv) => iv.start < at[0]! || iv.start >= at.at(-1)!),
+      others: free.filter((iv) => iv.start < at[0] || iv.start >= at.at(-1)!),
     });
   }
 
@@ -120,7 +120,7 @@ export function smallestOverride(
         date,
         start,
         end,
-        range: { start: at[start / GRID]!, end: at[end / GRID]! },
+        range: { start: at[start / GRID], end: at[end / GRID] },
         others,
       });
       if (!hours.length) {

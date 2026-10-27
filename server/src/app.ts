@@ -1,4 +1,4 @@
-import { mutators as defaultMutators, type Mutator } from "@miseflow/shared";
+import { mutators as defaultMutators, type AnyMutator } from "@miseflow/shared";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { type AuthConfig, type AuthEnv, requireAuth } from "./auth.ts";
@@ -16,7 +16,7 @@ export type AppOptions = {
   auth: AuthConfig;
   db: Db;
   /** Defaults to every mutator in `shared`. Tests inject extra ones. */
-  mutators?: Record<string, Mutator<any>>;
+  mutators?: Record<string, AnyMutator>;
   /** The kitchen's IANA time zone (D2). */
   timeZone: string;
   /** The server's clock, for Step events and behind (#88). Tests inject a fixed one. */

@@ -20,6 +20,12 @@ export type Mutator<Args = unknown> = {
   run(tx: Tx, args: Args, ctx: MutatorContext): Promise<void>;
 };
 
+// Any mutator, whatever its Args: what a registry keyed by name holds. Callers parse args with
+// the mutator's own schema before `run`. `any`, because `run` takes Args, so an `unknown` or
+// `never` Args would reject either the registry's entries or the parsed args.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AnyMutator = Mutator<any>;
+
 // Infers the args type from the schema, so `run` gets the parsed, typed args.
 export function defineMutator<Args>(mutator: Mutator<Args>): Mutator<Args> {
   return mutator;

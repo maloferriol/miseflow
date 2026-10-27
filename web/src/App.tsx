@@ -41,7 +41,7 @@ export function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    void supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
     return () => data.subscription.unsubscribe();
   }, []);
@@ -71,7 +71,7 @@ export function App() {
         <h1>MiseFlow</h1>
         {session && (
           <>
-            <button type="button" onClick={() => supabase.auth.signOut()}>
+            <button type="button" onClick={() => void supabase.auth.signOut()}>
               Sign out
             </button>
             <nav>

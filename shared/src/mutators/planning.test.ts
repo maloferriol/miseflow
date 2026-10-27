@@ -49,7 +49,7 @@ async function revisions(tx: Tx, recipeId: string) {
     .select()
     .from(recipeRevisions)
     .where(eq(recipeRevisions.recipeId, recipeId));
-  return { latest: recipe!.latestRevision, count: rows.length, rows };
+  return { latest: recipe.latestRevision, count: rows.length, rows };
 }
 
 describe("setMakeAhead", () => {
@@ -106,8 +106,8 @@ describe("setMakeAhead", () => {
       });
 
       const snapshot = await loadRecipeSnapshot(tx, ownerId, recipeId);
-      expect(snapshot.steps[0]!.makeAhead).toBeNull();
-      expect(effectiveMakeAhead(snapshot.steps[0]!, snapshot)).toEqual({
+      expect(snapshot.steps[0].makeAhead).toBeNull();
+      expect(effectiveMakeAhead(snapshot.steps[0], snapshot)).toEqual({
         beforeDays: 3,
         shelfLifeDays: 4,
         from: "recipe",
@@ -187,7 +187,7 @@ describe("setStepTimes", () => {
 });
 
 // Runs a mutation that should be refused in a savepoint, so the checks after it can still run.
-async function refused(tx: Tx, name: string, args: unknown, error: new (...a: any[]) => Error) {
+async function refused(tx: Tx, name: string, args: unknown, error: new (...a: never[]) => Error) {
   let thrown: unknown;
   await tx.transaction(async (sp) => run(sp, name, args)).catch((e) => (thrown = e));
   expect(thrown).toBeInstanceOf(error);
@@ -342,7 +342,7 @@ describe("planning changes and their Revision", () => {
         [
           "setStepTimes",
           { stepId: one, activeMinutes: 20, passiveMinutes: 40 },
-          (s) => s.steps[0]!.passiveMinutes === 40,
+          (s) => s.steps[0].passiveMinutes === 40,
         ],
         [
           "setMakeAhead",
@@ -352,12 +352,12 @@ describe("planning changes and their Revision", () => {
         [
           "setMakeAhead",
           { target: { kind: "step", stepId: two }, window: { beforeDays: 1, shelfLifeDays: 2 } },
-          (s) => s.steps[1]!.makeAhead?.beforeDays === 1,
+          (s) => s.steps[1].makeAhead?.beforeDays === 1,
         ],
         [
           "setGroupWithPrevious",
           { stepId: three, value: true },
-          (s) => s.steps[2]!.groupWithPrevious,
+          (s) => s.steps[2].groupWithPrevious,
         ],
         [
           "addStepDependency",

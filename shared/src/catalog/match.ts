@@ -25,12 +25,12 @@ export function normaliseName(name: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
-    .replace(/[œæß]/g, (c) => LIGATURES[c]!)
+    .replace(/[œæß]/g, (c) => LIGATURES[c])
     .replace(/[‘’]/g, "'")
     .trim()
     .replace(/\s+/g, " ");
   const words = folded.split(" ");
-  words[words.length - 1] = singular(words[words.length - 1]!);
+  words[words.length - 1] = singular(words[words.length - 1]);
   return words.join(" ");
 }
 

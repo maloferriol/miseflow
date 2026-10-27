@@ -95,7 +95,7 @@ async function latestRevision(tx: Tx, recipeId: string) {
     .select()
     .from(recipeRevisions)
     .where(eq(recipeRevisions.recipeId, recipeId));
-  return { latest: recipe!.latestRevision, count: revisions.length, revisions };
+  return { latest: recipe.latestRevision, count: revisions.length, revisions };
 }
 
 describe("addStep", () => {
@@ -357,7 +357,7 @@ describe("editStep", () => {
 
       const snapshot = await loadRecipeSnapshot(tx, ownerId, f.recipeId);
       expect(snapshot.steps.map((s) => s.id)).toEqual([stepId]);
-      expect(snapshot.steps[0]!.lines.map((l) => [l.id, l.quantity, l.unit])).toEqual([
+      expect(snapshot.steps[0].lines.map((l) => [l.id, l.quantity, l.unit])).toEqual([
         [first.shallotLine, 3, null],
         [newLine, 1, "tbsp"],
       ]);
@@ -365,7 +365,7 @@ describe("editStep", () => {
         .select()
         .from(ingredientLines)
         .where(eq(ingredientLines.id, first.butterLine));
-      expect(dropped!.deletedAt).not.toBeNull();
+      expect(dropped.deletedAt).not.toBeNull();
       expect(await latestRevision(tx, f.recipeId)).toMatchObject({
         latest: 3,
         count: 3,
@@ -477,7 +477,7 @@ describe("editStep", () => {
         quantity: "30",
         unit: "g",
       });
-      expect(line!.stepId).not.toBe(stepId);
+      expect(line.stepId).not.toBe(stepId);
       expect(await latestRevision(tx, f.recipeId)).toMatchObject({
         latest: 2,
         count: 2,
@@ -545,7 +545,7 @@ describe("removeStep", () => {
       await run(tx, "removeStep", { stepId, revisionId: crypto.randomUUID() });
 
       const [step] = await tx.select().from(steps).where(eq(steps.id, stepId));
-      expect(step!.deletedAt).not.toBeNull();
+      expect(step.deletedAt).not.toBeNull();
       const live = await tx
         .select()
         .from(ingredientLines)
@@ -577,7 +577,7 @@ describe("removeStep", () => {
         run(tx, "removeStep", { stepId, revisionId: crypto.randomUUID() }, crypto.randomUUID()),
       ).rejects.toThrow(NotFoundError);
       const [step] = await tx.select().from(steps).where(eq(steps.id, stepId));
-      expect(step!.deletedAt).toBeNull();
+      expect(step.deletedAt).toBeNull();
     });
   });
 });

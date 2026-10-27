@@ -81,14 +81,14 @@ const writes = async (tx: Tx, table: string) =>
   Number(
     (
       (await tx.execute(sql`select n_tup_ins + n_tup_upd + n_tup_del as n
-      from pg_stat_xact_user_tables where relname = ${table}`)) as unknown as Row[]
+      from pg_stat_xact_user_tables where relname = ${table}`)) as Row[]
     )[0]?.n ?? 0,
   );
 const versions = async (tx: Tx, serviceId: string) =>
   new Map(
     (
       (await tx.execute(sql`select first_step_id, ctid::text as v
-      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as unknown as Row[]
+      from task_placements where service_id = ${serviceId} and deleted_at is null`)) as Row[]
     ).map((r) => [r.first_step_id as string, r.v as string]),
   );
 
@@ -108,10 +108,10 @@ describe("Batches in the re-plan", () => {
         },
       ]);
       const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
-      expect(plan.batches[0]!.label).toBe(
+      expect(plan.batches[0].label).toBe(
         `Chicken stock ${s} ×1.5 · for: Velouté ${s}, Beurre blanc ${s}`,
       );
-      expect(plan.batches[1]!.label).toBe(
+      expect(plan.batches[1].label).toBe(
         `Beurre blanc ${s} ×1 · for: Duck breast with beurre blanc ${s}`,
       );
     });
@@ -149,7 +149,7 @@ describe("Batches in the re-plan", () => {
         .where(eq(dishes.id, w.dishes.duck));
       await run(tx, "replanService", { serviceId });
       const [row] = await tx.select().from(batches).where(eq(batches.id, stockId));
-      expect(row!.deletedAt).not.toBeNull();
+      expect(row.deletedAt).not.toBeNull();
       const live = [...(await placements(tx, serviceId)).values()];
       expect(live.filter((p) => p.batchId !== null)).toEqual([]);
     });
@@ -171,7 +171,7 @@ describe("Batches in the re-plan", () => {
         ...plain("Reduce the shallots in wine"),
       });
       const [gone] = await tx.select().from(batches).where(eq(batches.id, stockId));
-      expect(gone!.deletedAt).not.toBeNull();
+      expect(gone.deletedAt).not.toBeNull();
       expect(
         [...(await placements(tx, serviceId)).values()].some((p) => p.batchId === stockId),
       ).toBe(false);
@@ -204,7 +204,7 @@ describe("Batches in the re-plan", () => {
       const st = w.steps;
       const stockSteps = [st.S1!, st.S2!, st.S3!];
       const [service] = await tx.select().from(services).where(eq(services.id, serviceId));
-      const rows = await loadPlanRows(tx, ownerId, service!);
+      const rows = await loadPlanRows(tx, ownerId, service);
       const { model, tasks } = toPlanningModel(rows, timeZone);
       const end = (stepId: string) => {
         const p = at.get(stepId)!;
@@ -270,7 +270,7 @@ async function refused(
   tx: Tx,
   name: string,
   args: unknown,
-  error: new (...a: any[]) => Error,
+  error: new (...a: never[]) => Error,
   owner = ownerId,
 ) {
   let thrown: unknown;
@@ -281,7 +281,7 @@ async function refused(
 const scaleOf = async (tx: Tx, dishId: string) =>
   (
     await tx.select({ scaleFactor: dishes.scaleFactor }).from(dishes).where(eq(dishes.id, dishId))
-  )[0]!.scaleFactor;
+  )[0].scaleFactor;
 
 describe("setDishScale", () => {
   it("stores a factor, portions over the Recipe's servings, and clears back to the guest count", async () => {
@@ -340,7 +340,7 @@ describe("setDishScale", () => {
         dishId: w.dishes.veloute,
         scale: { kind: "factor", factor: 3 },
       });
-      expect((await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW)).batches[0]!.label).toBe(
+      expect((await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW)).batches[0].label).toBe(
         `Chicken stock ${s} ×2.63 · for: Velouté ${s}, Beurre blanc ${s}`,
       );
       expect(await versions(tx, serviceId)).toEqual(rows);
@@ -364,10 +364,10 @@ describe("Batch conflicts and fixes", () => {
       expect(plan.unplaced).toEqual([]);
       const v3 = `dish:${w.dishes.veloute}:${w.steps.V3}`;
       // Only the finished stock (S3, the Batch's last Task) must keep; S1 and S2 feed S3.
-      expect(plan.conflicts.map((c) => [c.steps[0]!.id, c.kind, c.use.key])).toEqual([
+      expect(plan.conflicts.map((c) => [c.steps[0].id, c.kind, c.use.key])).toEqual([
         [w.steps.S3, "ShelfLifeExceeded", v3],
       ]);
-      expect(plan.conflicts.find((c) => c.steps[0]!.id === w.steps.S3)!.sentence).toBe(
+      expect(plan.conflicts.find((c) => c.steps[0].id === w.steps.S3)!.sentence).toBe(
         `Strain the stock (Chicken stock ${s} ×1.5) keeps until Fri 21:30, but Blend and season (Velouté ${s}) uses it at Sat 18:50`,
       );
     });
@@ -403,7 +403,7 @@ describe("Batch conflicts and fixes", () => {
       }
       const plan = await readPlan(tx, ownerId, serviceId, timeZone, FIXED_NOW);
       expect(plan.unplaced).toEqual([]);
-      expect(plan.conflicts.map((c) => [c.steps[0]!.id, c.kind])).toEqual([
+      expect(plan.conflicts.map((c) => [c.steps[0].id, c.kind])).toEqual([
         [w.steps.S3, "ShelfLifeExceeded"],
       ]);
     });
@@ -511,8 +511,8 @@ describe("Batch rows and Recipe locks", () => {
       });
       const [starter] = (await db.execute(
         sql`select course_id from dishes where id = ${w!.dishes.veloute}`,
-      )) as unknown as Row[];
-      const [{ pid: pidOfA }] = (await clients[0]!`select pg_backend_pid() as pid`) as unknown as {
+      )) as Row[];
+      const [{ pid: pidOfA }] = (await clients[0]`select pg_backend_pid() as pid`) as unknown as {
         pid: number;
       }[];
 
@@ -540,7 +540,7 @@ describe("Batch rows and Recipe locks", () => {
           run(
             tx,
             "addDish",
-            { dishId: crypto.randomUUID(), courseId: starter!.course_id, recipeId: soupId },
+            { dishId: crypto.randomUUID(), courseId: starter.course_id, recipeId: soupId },
             owner,
           ),
         )
@@ -548,7 +548,7 @@ describe("Batch rows and Recipe locks", () => {
       while (!settled) {
         const [row] = (await db.execute(
           sql`select wait_event_type from pg_stat_activity where pid = ${pidOfA}`,
-        )) as unknown as Row[];
+        )) as Row[];
         if (row?.wait_event_type === "Lock") break;
       }
       goOn();
@@ -561,7 +561,7 @@ describe("Batch rows and Recipe locks", () => {
       ).toEqual(["ok", "ok"]);
       const [batch] = (await db.execute(
         sql`select deleted_at from batches where service_id = ${serviceId} and sub_recipe_id = ${stockId}`,
-      )) as unknown as Row[];
+      )) as Row[];
       expect(batch).toEqual({ deleted_at: null });
     } finally {
       await db.execute(

@@ -63,7 +63,9 @@ describe("auth claims", () => {
     ]);
     privateJwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
     const publicJwk = await crypto.subtle.exportKey("jwk", pair.publicKey);
-    app = testApp({ auth: { issuer, keys: async () => [{ ...publicJwk, kid, alg: "ES256" }] } });
+    app = testApp({
+      auth: { issuer, keys: () => Promise.resolve([{ ...publicJwk, kid, alg: "ES256" }]) },
+    });
   });
 
   const valid = () => ({

@@ -15,6 +15,13 @@ export type KeptLine = {
   subRecipe?: { id: string } | null;
 };
 
+// A Missing sub-recipe (no live target) counts as unlinked (Q9).
+function keptTarget(line: KeptLine): Target | undefined {
+  if (line.ingredient) return { ingredientId: line.ingredient.id };
+  if (line.subRecipe) return { subRecipeId: line.subRecipe.id };
+  return undefined;
+}
+
 /** The catalog's answer for one ref name: Ingredients, and the kitchen's Recipes that match. */
 export type Lookup<I, R> = (
   name: string,
@@ -51,21 +58,21 @@ export async function resolveStepLinks<
         (l) => normaliseName(l.wording ?? "") === normaliseName(ref.name),
       );
       const line = index >= 0 ? unused.splice(index, 1)[0] : undefined;
-      // A Missing sub-recipe (no live target) counts as unlinked (Q9).
-      const target: Target | undefined = line?.ingredient
-        ? { ingredientId: line.ingredient.id }
-        : line?.subRecipe
-          ? { subRecipeId: line.subRecipe.id }
-          : undefined;
-      return { ref, keptLineId: line?.id, target };
+      return { ref, keptLineId: line?.id, target: line && keptTarget(line) };
     });
+
+  // Each wording that still needs the catalog, once, in order; looked up in parallel.
+  const asking = new Map<string, Ref>();
+  for (const { ref, target } of kept) {
+    const key = normaliseName(ref.name);
+    if (!target && !links.has(key) && !asking.has(key)) asking.set(key, ref);
+  }
+  const answers = await Promise.all([...asking.values()].map((ref) => lookup(ref.name)));
 
   const found = new Map(links);
   const missing: Unlinked<I, R>[] = [];
-  for (const { ref, target } of kept) {
-    const key = normaliseName(ref.name);
-    if (target || found.has(key) || missing.some((m) => normaliseName(m.name) === key)) continue;
-    const { ingredients, recipes } = await lookup(ref.name);
+  for (const [index, [key, ref]] of [...asking].entries()) {
+    const { ingredients, recipes } = answers[index];
     const exact = ingredients.find((r) => r.exact);
     const exactRecipes = recipes.filter((h) => h.exact);
     if (exact && !exactRecipes.length) found.set(key, { ingredientId: exact.id });
@@ -131,12 +138,16 @@ export function catalogLookup<I, R extends { id: string; name: string }>(
   loadRecipes: () => Promise<R[]>,
   findIngredients: (name: string) => Promise<I[]>,
 ) {
-  let entries: (R & { source: "own"; aliases: [] })[] | undefined;
+  // A promise, so lookups running in parallel share one load.
+  let entries: Promise<(R & { source: "own"; aliases: [] })[]> | undefined;
   const lookup: Lookup<I, R & { source: "own"; aliases: [] }> = async (name) => {
-    entries ??= (await loadRecipes())
-      .filter((r) => r.id !== recipeId)
-      .map((r) => ({ ...r, source: "own" as const, aliases: [] as [] }));
-    return { ingredients: await findIngredients(name), recipes: searchCatalog(entries, name, 5) };
+    entries ??= loadRecipes().then((recipes) =>
+      recipes
+        .filter((r) => r.id !== recipeId)
+        .map((r) => ({ ...r, source: "own" as const, aliases: [] as [] })),
+    );
+    const [ingredients, catalog] = await Promise.all([findIngredients(name), entries]);
+    return { ingredients, recipes: searchCatalog(catalog, name, 5) };
   };
   return lookup;
 }

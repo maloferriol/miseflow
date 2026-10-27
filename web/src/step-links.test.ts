@@ -348,7 +348,7 @@ describe("sendLinkChoice", () => {
 });
 
 describe("catalogLookup", () => {
-  it("searches Ingredients by name and the kitchen's other Recipes, loading them once", async () => {
+  it("searches Ingredients by name and the kitchen's other Recipes, loading them once for parallel lookups", async () => {
     let loads = 0;
     const lookup = catalogLookup(
       "this-recipe",
@@ -363,8 +363,7 @@ describe("catalogLookup", () => {
       (name) => Promise.resolve([{ id: `${name}-id`, name, exact: true }]),
     );
 
-    const first = await lookup("stock");
-    await lookup("sauce");
+    const [first] = await Promise.all([lookup("stock"), lookup("sauce")]);
 
     expect(first.ingredients).toEqual([{ id: "stock-id", name: "stock", exact: true }]);
     expect(first.recipes.map((h) => [h.entry.id, h.exact])).toEqual([["stock-recipe", true]]);

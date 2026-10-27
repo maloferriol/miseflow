@@ -144,7 +144,7 @@ function StepForm({
         opened,
         text,
         links,
-        loadRecipes: () => queryClient.fetchQuery({ queryKey: ["recipes"], queryFn: fetchRecipes }),
+        loadRecipes: () => queryClient.query({ queryKey: ["recipes"], queryFn: fetchRecipes }),
         findIngredients: fetchIngredients,
         intent,
         send: mutate,

@@ -1,13 +1,23 @@
 import { expect, test } from "@playwright/test";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+
+let user: TestUser;
+
+test.beforeAll(async () => {
+  user = await createTestUser("menu");
+});
+
+test.afterAll(async () => {
+  if (user) await deleteTestUser(user);
+});
 
 test("signs in, builds a Menu, keeps it after a reload, and opens it again from the list", async ({
   page,
 }) => {
-  // The local test user keeps its Menus between runs, so this run's Menu gets its own name.
-  const menuName = `Saturday dinner ${crypto.randomUUID().slice(0, 8)}`;
+  const menuName = "Saturday dinner";
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await page.getByLabel("Menu name").fill(menuName);

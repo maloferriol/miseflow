@@ -385,6 +385,55 @@ describe("Ingredient line links (Revision)", () => {
   });
 });
 
+describe("A Step save replayed by its mutation id (ADR 0007)", () => {
+  // The web's retry after a lost response sends the same mutation again.
+  async function replay(name: string, args: Record<string, unknown>) {
+    const mutation = { id: crypto.randomUUID(), name, args };
+    const first = await send("POST", "/mutate", mutation);
+    const second = await send("POST", "/mutate", mutation);
+    return [first.status, second.status];
+  }
+
+  it("answers a replayed addStep with 200 and appends no second Revision", async () => {
+    const recipeId = await newRecipe();
+    const lineId = crypto.randomUUID();
+
+    const statuses = await replay("addStep", {
+      recipeId,
+      stepId: crypto.randomUUID(),
+      revisionId: crypto.randomUUID(),
+      body: [{ type: "line", lineId }],
+      lines: [{ lineId, ingredientId: seedId("butter"), amount: "30%g", wording: "butter" }],
+    });
+
+    expect(statuses).toEqual([200, 200]);
+    expect(await revisionState(recipeId)).toEqual({ latest: 2, count: 2 });
+  });
+
+  it("answers a replayed editStep with 200 and appends no second Revision", async () => {
+    const recipeId = await newRecipe();
+    const stepId = crypto.randomUUID();
+    await ok("addStep", {
+      recipeId,
+      stepId,
+      revisionId: crypto.randomUUID(),
+      body: [{ type: "text", text: "Stir" }],
+      lines: [],
+    });
+    const lineId = crypto.randomUUID();
+
+    const statuses = await replay("editStep", {
+      stepId,
+      revisionId: crypto.randomUUID(),
+      body: [{ type: "line", lineId }],
+      lines: [{ lineId, ingredientId: seedId("butter"), amount: "40%g", wording: "butter" }],
+    });
+
+    expect(statuses).toEqual([200, 200]);
+    expect(await revisionState(recipeId)).toEqual({ latest: 3, count: 3 });
+  });
+});
+
 describe("Planning pass (read and /mutate)", () => {
   // "Chicken stock <tag>": Dice the shallots / Sweat @shallots{2}(diced) / Strain.
   async function chickenStock() {

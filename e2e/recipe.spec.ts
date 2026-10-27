@@ -145,6 +145,8 @@ test("won't save an unmatched name until it is linked: a near match adds an alia
       from recipes r
       where r.id = ${recipeId} and i.owner_id = r.owner_id
         and i.name = ${fresh} and i.deleted_at is null`;
+    // And this Recipe, whose line points at that Ingredient, so no live line is left dangling.
+    await sql`update recipes set deleted_at = now() where id = ${recipeId}`;
     await sql.end();
   }
 });
@@ -175,19 +177,29 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
     }
   });
   const save = page.getByRole("button", { name: "Save", exact: true });
+  // The failed save already refetches the Step, so wait for the retry's answer and the form to close.
+  const retry = async (name: string) => {
+    const answered = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/mutate") && response.request().postDataJSON()?.name === name,
+    );
+    await save.click();
+    expect((await answered).ok()).toBe(true);
+    await expect(page.getByLabel("Step text")).toHaveCount(0);
+  };
 
   await page.getByRole("button", { name: "Add Step" }).click();
   await page.getByLabel("Step text").fill("Melt @butter{30%g}");
   await save.click();
   await expect(page.getByRole("alert")).toBeVisible();
-  await save.click();
+  await retry("addStep");
   await expect(page.getByRole("button", { name: "butter 30 g" })).toBeVisible();
 
   await page.getByRole("button", { name: "Edit" }).click();
   await page.getByLabel("Step text").fill("Melt @butter{40%g}");
   await save.click();
   await expect(page.getByRole("alert")).toBeVisible();
-  await save.click();
+  await retry("editStep");
   await expect(page.getByRole("button", { name: "butter 40 g" })).toBeVisible();
   expect([...dropped]).toEqual(["addStep", "editStep"]);
 
@@ -209,6 +221,39 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
   } finally {
     await sql.end();
   }
+});
+
+test("after a lost addStep response, Cancel shows the Step the server saved, without a reload", async ({
+  page,
+}) => {
+  const name = `E2E lost ${Date.now()}`;
+  await page.goto("/");
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Recipes" }).click();
+  await page.getByLabel("Recipe name").fill(name);
+  await page.getByRole("button", { name: "Create Recipe" }).click();
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+
+  // The server applies the addStep, but the browser never sees the answer.
+  await page.route("**/api/mutate", async (route) => {
+    if ((route.request().postDataJSON() as { name: string }).name === "addStep") {
+      await route.fetch();
+      await route.abort("failed");
+    } else {
+      await route.continue();
+    }
+  });
+  await page.getByRole("button", { name: "Add Step" }).click();
+  await page.getByLabel("Step text").fill("Melt @butter{30%g}");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  // Without a reload: the failed save refetched the Recipe.
+  await expect(page.getByRole("button", { name: "butter 30 g" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Add Step" })).toBeVisible();
 });
 
 test("the servings input allows what the server takes: 0 is stopped in the browser, 0.01 saves", async ({

@@ -104,3 +104,25 @@ A cloud `.env` needs four names only:
 Run `npm run db:migrate`, then `npm run seed -w server` (the shared Ingredient seed), against it.
 Do not run `npm test`, `npm run e2e` or `npm run setup:local` in a checkout whose `.env` holds
 cloud values; they refuse to.
+
+## Working with agents
+
+The work runs through the [mattpocock skills](https://github.com/mattpocock/skills). You type the
+flow skills; an agent can't start them by itself.
+
+1. **Not sure what to build yet:** `/wayfinder` keeps a map issue of decision tickets (research,
+   prototype, grilling or task). Each run claims one unblocked ticket and resolves it, through
+   `/research`, `/prototype`, or `/grilling` with `/domain-modeling`. It doesn't build anything.
+2. **`/to-spec`**, in the session that holds the context, turns the map's decisions or the
+   conversation into a spec issue labelled `ready-for-agent`. It checks the testing seams with
+   you: that's where your questions get answered.
+3. **`/to-tickets <spec #>`** splits the spec into tracer-bullet tickets (sub-issues with native
+   blocking links), and checks the breakdown with you before publishing.
+4. **`/implement-spec <spec #>`** builds the whole spec on one integration branch, with one PR per
+   spec: an implementer subagent per ticket with `tdd`, a merger subagent, then `code-review`.
+   For a single small ticket, use `/implement <ticket #>`.
+
+Clear the context between specs. Other entry points: `/triage` for incoming issues,
+`/diagnosing-bugs`, `/improve-codebase-architecture` and `/retro`. For an unattended run, type
+`/goal The PR for spec #<n> is ready for review and its URL is in the last message, or the last
+message says why the run can't go on.`

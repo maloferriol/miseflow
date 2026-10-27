@@ -2,9 +2,12 @@
 
 ## Agent skills
 
-### Ticket workflow
+### Building
 
-Read `docs/agents/workflow.md` before starting, resuming or briefing work on a ticket. It covers running the stages, branch bases and stacking, setting up a worktree or a cloud session, running tests, writing Plans, and row locks.
+- Every implementer follows `CODING_STANDARDS.md` (setup, tests, code rules), so give it to each implementer subagent.
+- Tickets marked `ready-for-agent` are fully specified. Build them without stopping for a per-ticket Plan.
+- The integration branch is `spec/<n>-<slug>`. In a cloud session, push only to the session's `claude/...` branch and use it as the integration branch.
+- Each push cancels the running CI (about 5 minutes), so batch fixes into one push.
 
 ### Issue tracker
 

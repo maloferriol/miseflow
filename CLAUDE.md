@@ -1,5 +1,7 @@
 # MiseFlow
 
+@AGENTS.md
+
 ## Delegating narrow tasks to Haiku subagents
 
 Run these through a subagent on the Haiku model (`model: "haiku"` on the Agent tool). Use the `Explore` agent type for searches.

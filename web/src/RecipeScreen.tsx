@@ -1,10 +1,10 @@
 import { SERVINGS } from "@miseflow/shared/src/recipe/servings.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { fetchRecipe, mutate } from "./api.ts";
 import { ExtractToSubRecipe } from "./ExtractToSubRecipe.tsx";
-import { useIntent } from "./intent.ts";
 import { PlanningPass } from "./PlanningPass.tsx";
+import { recipeEdits } from "./recipe-edits.ts";
 import { amountText, StepEditor } from "./StepEditor.tsx";
 import { YieldField } from "./YieldField.tsx";
 
@@ -33,38 +33,25 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
     window.history.replaceState(null, "", `?${params}`);
     setMode(next);
   };
-  // One set of ids per intended edit, so a retry after a lost response replays it (useIntent).
-  const intent = useIntent();
-  const ids = (name: string, args: object) => {
-    const key = JSON.stringify([name, args]);
-    return { mutationId: intent.id(key, "mutation"), revisionId: intent.id(key, "revision") };
-  };
-  const changed = async () => {
-    intent.reset();
+  // Each edit replays on a retry after a lost response, with its own ids (recipe-edits.ts).
+  const edits = useMemo(() => recipeEdits(recipeId, mutate), [recipeId]);
+  // After a failure too: the server may hold the edit though the response was lost (#127 B).
+  const refetch = async () => {
     await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
     await queryClient.invalidateQueries({ queryKey: ["recipes"] });
   };
 
   const editRecipe = useMutation({
-    mutationFn: async (args: { name: string; servings: number | null }) => {
-      const { mutationId, revisionId } = ids("editRecipe", args);
-      await mutate(mutationId, "editRecipe", { recipeId, revisionId, ...args });
-    },
-    onSuccess: changed,
+    mutationFn: edits.editRecipe,
+    onSettled: refetch,
   });
   const moveStep = useMutation({
-    mutationFn: async (args: { stepId: string; afterStepId: string | null }) => {
-      const { mutationId, revisionId } = ids("moveStep", args);
-      await mutate(mutationId, "moveStep", { revisionId, ...args });
-    },
-    onSuccess: changed,
+    mutationFn: edits.moveStep,
+    onSettled: refetch,
   });
   const removeStep = useMutation({
-    mutationFn: async (stepId: string) => {
-      const { mutationId, revisionId } = ids("removeStep", { stepId });
-      await mutate(mutationId, "removeStep", { stepId, revisionId });
-    },
-    onSuccess: changed,
+    mutationFn: edits.removeStep,
+    onSettled: refetch,
   });
 
   if (recipe.isPending) return <p>Loading…</p>;

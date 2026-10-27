@@ -1,40 +1,34 @@
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
-// The local database isn't reset between runs. Load the seed (idempotent) and soft-delete the
-// test user's "Espelette pepper" and its aliases from an earlier run, so creating it again isn't
-// refused as a duplicate. Local stack only.
+let user: TestUser;
+
 test.beforeAll(async () => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  const sql = postgres(process.env.DATABASE_URL!, {
-    max: 1,
-    onnotice: () => {},
-  });
+  user = await createTestUser("catalog");
+});
+
+// Soft-deletes the Ingredients and aliases this run's user made ("Espelette pepper"), then the user. Local stack only.
+test.afterAll(async () => {
+  if (!user) return;
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
   try {
-    const [user] =
-      await sql`select id from auth.users where email = ${process.env.TEST_USER_EMAIL!}`;
-    if (!user)
-      throw new Error("No local test user. Run npm run setup:local first.");
-    const mine = await sql`
-      update ingredients set deleted_at = now()
-      where owner_id = ${user.id} and lower(name) = 'espelette pepper' and deleted_at is null
-      returning id`;
-    await sql`
-      update ingredient_aliases set deleted_at = now()
-      where owner_id = ${user.id} and deleted_at is null
-        and (ingredient_id = any(${mine.map((row) => row.id)}::uuid[]) or lower(name) = 'piment d''espelette')`;
+    await sql`update ingredient_aliases set deleted_at = now() where owner_id = ${user.id} and deleted_at is null`;
+    await sql`update ingredients set deleted_at = now() where owner_id = ${user.id} and deleted_at is null`;
   } finally {
     await sql.end();
   }
+  await deleteTestUser(user);
 });
 
 test("creates an Ingredient 'Espelette pepper' in Spices and finds it by a new alias", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("button", { name: "Catalog" }).click();
 

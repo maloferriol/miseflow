@@ -1,19 +1,23 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // Names carry a stamp, so a rerun never exact-matches an earlier run's Recipe (Q10).
 const s = String(Date.now());
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
+let user: TestUser;
 
 // Seeds the same way recipe.spec.ts does (idempotent).
-test.beforeAll(() => {
+test.beforeAll(async () => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
+  user = await createTestUser("subrecipes");
 });
 
-// Soft-deletes the Recipes this run made. Local stack only.
+// Soft-deletes the Recipes this run made, then the user. Local stack only.
 test.afterAll(async () => {
   await sql`update recipes set deleted_at = now() where name like ${`% ${s}`} and deleted_at is null`;
+  if (user) await deleteTestUser(user);
   await sql.end();
 });
 
@@ -35,8 +39,8 @@ test("makes Chicken stock with Create sub-recipe from Velouté, uses it again fr
   page,
 }) => {
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   const stockChip = new RegExp(`^chicken stock ${s} .* · sub-recipe`, "i");
 

@@ -8,15 +8,17 @@ import {
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The walkthrough with its stock (ADR 0004), its Service and Availability, built through POST /mutate.
-// Overwrites the test user's Availability. The tick below is stored at the server's real time, so
+// Sets this spec's own user's Availability. The tick below is stored at the server's real time, so
 // once the real date is past the Plan's Thursday it may move what follows; nothing here asserts
 // placements after the tick.
 const s = String(Date.now());
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
+let user: TestUser;
 
 type Task = {
   start: string;
@@ -30,7 +32,8 @@ let days: { date: string; tasks: Task[] }[];
 
 test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], { encoding: "utf8" }).trim();
+  user = await createTestUser("today");
+  const { token } = user;
   const run = async (name: string, args: Record<string, unknown>) => {
     const res = await request.post("http://localhost:8787/mutate", {
       headers: { Authorization: `Bearer ${token}` },
@@ -55,6 +58,7 @@ test.afterAll(async () => {
     await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
     await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes) as string[])}`;
   }
+  if (user) await deleteTestUser(user);
   await sql.end();
 });
 
@@ -73,8 +77,8 @@ const line = (task: Task, date: string) =>
 
 async function signIn(page: Page) {
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
 }

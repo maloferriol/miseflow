@@ -1,53 +1,48 @@
 import { execFileSync } from "node:child_process";
-import { type APIRequestContext, expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import { buildWalkthrough, SERVICE_TIME, setWalkthroughAvailability, type Walkthrough } from "../shared/test/walkthrough.ts";
+import {
+  buildWalkthrough,
+  SERVICE_DATE,
+  SERVICE_TIME,
+  setWalkthroughAvailability,
+  type Walkthrough,
+} from "../shared/test/walkthrough.ts";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The Unplaced Task quick fixes (#90 AC6): the walkthrough Menu, its Service and Availability are
 // built through POST /mutate; Friday is shortened through the Availability screen, as in
-// plan.spec.ts. Overwrites the test user's weekly hours (D12).
-//
-// The walkthrough a week later (Service Sat 7 Nov, Friday 6 Nov 19:00–21:00 as the walkthrough's
-// Friday override): the other specs run in parallel on the same user and plan Sat 31 Oct, so
-// shortening Fri 30 Oct here would leave their pastry Unplaced (and their Availability saves would
-// put ours back). Nothing else plans around Fri 6 Nov.
-const SERVICE_DATE = "2026-11-07";
-const FRIDAY = "2026-11-06";
-const h = (hours: number, minutes = 0) => hours * 60 + minutes;
+// plan.spec.ts.
+const FRIDAY = "2026-10-30";
 const s = String(Date.now());
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
-let token: string;
-
-// POST /mutate as the test user, through `request`.
-const post = (request: APIRequestContext) => async (name: string, args: Record<string, unknown>) => {
-  const res = await request.post("http://localhost:8787/mutate", {
-    headers: { Authorization: `Bearer ${token}` },
-    data: { id: crypto.randomUUID(), name, args },
-  });
-  expect(res.status(), await res.text()).toBe(200);
-};
+let user: TestUser;
 
 test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], { encoding: "utf8" }).trim();
-  const run = post(request);
+  user = await createTestUser("quick-fixes");
+  const run = async (name: string, args: Record<string, unknown>) => {
+    const res = await request.post("http://localhost:8787/mutate", {
+      headers: { Authorization: `Bearer ${user.token}` },
+      data: { id: crypto.randomUUID(), name, args },
+    });
+    expect(res.status(), await res.text()).toBe(200);
+  };
   w = await buildWalkthrough(run, s);
   await setWalkthroughAvailability(run);
-  await run("setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: FRIDAY, availability: { kind: "hours", start: h(19), end: h(21) } });
   await run("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
 });
 
-// Puts Fri 6 Nov back to the weekly hours, then soft-deletes the Service, the Menu and the
-// Recipes this run made. Local stack only.
-test.afterAll(async ({ request }) => {
+// Soft-deletes the Service, the Menu and the Recipes this run made, then the user. Local stack only.
+test.afterAll(async () => {
   if (w) {
-    await post(request)("setAvailabilityOverride", { overrideId: crypto.randomUUID(), date: FRIDAY, availability: { kind: "weekly" } });
     await sql`update services set deleted_at = now() where id = ${serviceId}`;
     await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
     await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes))}`;
   }
+  if (user) await deleteTestUser(user);
   await sql.end();
 });
 
@@ -67,8 +62,8 @@ async function starts(gantt: Locator) {
 
 test("AC6: Friday shortened leaves the pastry Unplaced with Plan trouble 1; Give the Cook more time brings it back and moves nothing else", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
 

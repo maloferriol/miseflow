@@ -1,10 +1,18 @@
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // Seeds the same way recipe.spec.ts does (idempotent).
-test.beforeAll(() => {
+let user: TestUser;
+
+test.beforeAll(async () => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
+  user = await createTestUser("planning");
+});
+
+test.afterAll(async () => {
+  if (user) await deleteTestUser(user);
 });
 
 test("sets times on every Step but one, sees it in ready to plan, fills it in, and the checklist empties", async ({
@@ -12,8 +20,8 @@ test("sets times on every Step but one, sees it in ready to plan, fills it in, a
 }) => {
   const name = `Chicken stock ${Date.now()}`;
   await page.goto("/");
-  await page.getByLabel("Email").fill(process.env.TEST_USER_EMAIL!);
-  await page.getByLabel("Password").fill(process.env.TEST_USER_PASSWORD!);
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await page.getByRole("button", { name: "Recipes" }).click();

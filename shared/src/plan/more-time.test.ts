@@ -47,14 +47,16 @@ function found(rows: PlanRows, key: string): OverrideProposal {
   return result.proposal;
 }
 
-// A refusal, proven or capped, within the cap's schedule() runs and the time budget.
+// A refusal, proven or capped, within the cap's schedule() runs and a loose time backstop. The run
+// count is the real gate: under CI's coverage, 50 schedule() runs over a 30-day window take ~1.6 s.
+const TIME_BUDGET_MS = 3000;
 function expectBoundedRefusal(rows: PlanRows, key: string) {
   const started = performance.now();
   const result = smallestOverride(rows, timeZone, key);
   const elapsed = performance.now() - started;
   expect(result.kind).not.toBe("found");
   expect(result.runs).toBeLessThanOrEqual(MAX_TRIALS);
-  expect(elapsed).toBeLessThan(1000);
+  expect(elapsed).toBeLessThan(TIME_BUDGET_MS);
   return result;
 }
 

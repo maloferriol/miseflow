@@ -55,14 +55,7 @@ export function areConsecutive(ordered: string[], selected: string[]): boolean {
 /** "1.5 L", "24", "500%g". Refuses a vague amount, a range, the "=" flag and zero (Q6). */
 export function parseYield(text: string): Yield {
   const q = parseQuantity(text);
-  if (
-    q.value === null ||
-    q.max !== null ||
-    q.fixed ||
-    q.tier === "vague" ||
-    !isValidQuantity(q) ||
-    q.value <= 0
-  )
+  if (q.value === null || q.max !== null || q.fixed || q.tier === "vague" || !isValidQuantity(q))
     throw new Error("A yield is one amount, like 1.5 L, 500 g or 24: not vague, a range, or fixed");
   return { quantity: q.value, unit: q.unit };
 }

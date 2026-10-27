@@ -210,3 +210,44 @@ test("a Save retried after a lost response replays the same mutation: no 409, on
     await sql.end();
   }
 });
+
+test("the servings input allows what the server takes: 0 is stopped in the browser, 0.01 saves", async ({
+  page,
+}) => {
+  const name = `E2E servings ${Date.now()}`;
+  await page.goto("/");
+  await page.getByLabel("Email").fill(user.email);
+  await page.getByLabel("Password").fill(user.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Recipes" }).click();
+  await page.getByLabel("Recipe name").fill(name);
+  await page.getByRole("button", { name: "Create Recipe" }).click();
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+
+  const edits: unknown[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/mutate") && request.postDataJSON()?.name === "editRecipe")
+      edits.push(request.postDataJSON());
+  });
+  const servings = page.getByLabel("Servings");
+  const saveRecipe = page.getByRole("button", { name: "Save Recipe" });
+
+  await servings.fill("0");
+  await saveRecipe.click();
+  expect(await servings.evaluate((input: HTMLInputElement) => input.validity.rangeUnderflow)).toBe(
+    true,
+  );
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(edits).toEqual([]);
+
+  await servings.fill("0.01");
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/mutate") &&
+      response.request().postDataJSON()?.name === "editRecipe",
+  );
+  await saveRecipe.click();
+  expect((await saved).ok()).toBe(true);
+  await page.reload();
+  await expect(page.getByLabel("Servings")).toHaveValue("0.01");
+});

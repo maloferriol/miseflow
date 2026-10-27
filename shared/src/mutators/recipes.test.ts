@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
+import { SERVINGS } from "../recipe/servings.ts";
 import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipeRevisions, recipes } from "../schema.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
@@ -135,5 +136,14 @@ describe("editRecipe", () => {
     const ids = { recipeId: crypto.randomUUID(), revisionId: crypto.randomUUID() };
     expect(args.safeParse(ids).success).toBe(false);
     expect(args.safeParse({ ...ids, servings: null }).success).toBe(true);
+  });
+
+  it("takes servings from 0.01 to 10 000, the range the Recipe screen's input allows", () => {
+    const args = getMutator("editRecipe")!.args;
+    const ids = { recipeId: crypto.randomUUID(), revisionId: crypto.randomUUID() };
+    const ok = (servings: number) => args.safeParse({ ...ids, servings }).success;
+    expect([0, 0.005, 10_000.5].map(ok)).toEqual([false, false, false]);
+    expect([0.01, 2.5, 10_000].map(ok)).toEqual([true, true, true]);
+    expect(SERVINGS).toEqual({ min: 0.01, max: 10_000 });
   });
 });

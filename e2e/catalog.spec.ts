@@ -14,8 +14,7 @@ test.beforeAll(async () => {
   try {
     const [user] =
       await sql`select id from auth.users where email = ${process.env.TEST_USER_EMAIL!}`;
-    if (!user)
-      throw new Error("No local test user. Run npm run setup:local first.");
+    if (!user) throw new Error("No local test user. Run npm run setup:local first.");
     const mine = await sql`
       update ingredients set deleted_at = now()
       where owner_id = ${user.id} and lower(name) = 'espelette pepper' and deleted_at is null
@@ -43,9 +42,7 @@ test("creates an Ingredient 'Espelette pepper' in Spices and finds it by a new a
   await page.getByLabel("Shopping category").selectOption({ label: "Spices" });
   await page.getByRole("button", { name: "Create Ingredient" }).click();
 
-  const created = page
-    .getByRole("listitem")
-    .filter({ hasText: "Espelette pepper" });
+  const created = page.getByRole("listitem").filter({ hasText: "Espelette pepper" });
   await expect(created).toBeVisible();
   await created.getByLabel("Alias").fill("Piment d'Espelette");
   await created.getByRole("button", { name: "Add alias" }).click();
@@ -53,9 +50,7 @@ test("creates an Ingredient 'Espelette pepper' in Spices and finds it by a new a
 
   await page.getByLabel("Search ingredients").fill("piment d'espelette");
 
-  const results = page
-    .getByRole("list", { name: "Ingredients" })
-    .getByRole("listitem");
+  const results = page.getByRole("list", { name: "Ingredients" }).getByRole("listitem");
   await expect(results).toHaveCount(1);
   await expect(results.first()).toContainText("Espelette pepper");
   await expect(results.first()).toContainText("Spices");

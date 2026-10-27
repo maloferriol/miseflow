@@ -7,7 +7,8 @@ const WEEK = 7 * 1440;
 
 function clock(minute: Minute, timeZone: string, withDate: boolean): string {
   const date = new Date(minute * 60_000);
-  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone, ...options }).format(date);
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-GB", { timeZone, ...options }).format(date);
   const day = part({ weekday: "short" });
   const time = part({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   return withDate ? `${day} ${part({ day: "numeric", month: "short" })} ${time}` : `${day} ${time}`;
@@ -34,7 +35,9 @@ export function describeUnplaced(
 ): string {
   switch (reason.kind) {
     case "NoAvailability": {
-      const passive = task.passiveMinutes ? `, with ${formatMinutes(task.passiveMinutes)} of passive time after` : "";
+      const passive = task.passiveMinutes
+        ? `, with ${formatMinutes(task.passiveMinutes)} of passive time after`
+        : "";
       return `No Cook has ${task.activeMinutes} free minutes ${between(reason.searched, timeZone)}${passive}`;
     }
     case "WindowTooTight":
@@ -45,13 +48,20 @@ export function describeUnplaced(
 }
 
 /** A conflict as a sentence; `labelOf` names a Task ("Blend and season (Velouté)"). */
-export function describeConflict(conflict: Conflict, labelOf: (key: TaskKey) => string, timeZone: string): string {
+export function describeConflict(
+  conflict: Conflict,
+  labelOf: (key: TaskKey) => string,
+  timeZone: string,
+): string {
   const what = labelOf(conflict.key);
   const when = (minute: Minute) => clock(minute, timeZone, false);
   if (conflict.kind === "Outrun")
     return `${what} starts at ${when(conflict.start)}, but ${labelOf(conflict.by)} ran late and is only ready at ${when(conflict.readyAt)}`;
   if (conflict.kind === "EarliestUseTooLate")
     return `${what} is ready at ${when(conflict.readyAt)}, but ${labelOf(conflict.use)} starts at ${when(conflict.useAt)}`;
-  const use = conflict.use === null ? `Service is at ${when(conflict.useAt)}` : `${labelOf(conflict.use)} uses it at ${when(conflict.useAt)}`;
+  const use =
+    conflict.use === null
+      ? `Service is at ${when(conflict.useAt)}`
+      : `${labelOf(conflict.use)} uses it at ${when(conflict.useAt)}`;
   return `${what} keeps until ${when(conflict.keepsUntil)}, but ${use}`;
 }

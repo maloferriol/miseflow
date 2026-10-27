@@ -76,8 +76,7 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name") ?? "").trim();
     const servings = String(data.get("servings") ?? "").trim();
-    if (name)
-      editRecipe.mutate({ name, servings: servings ? Number(servings) : null });
+    if (name) editRecipe.mutate({ name, servings: servings ? Number(servings) : null });
   }
 
   return (
@@ -86,13 +85,7 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
       {/* Keyed on the Revision, so the fields show the saved values after each edit. */}
       <form key={recipe.data.latestRevision} onSubmit={onSubmit}>
         <label>
-          Recipe name{" "}
-          <input
-            name="name"
-            defaultValue={recipe.data.name}
-            maxLength={200}
-            required
-          />
+          Recipe name <input name="name" defaultValue={recipe.data.name} maxLength={200} required />
         </label>
         <label>
           Servings{" "}

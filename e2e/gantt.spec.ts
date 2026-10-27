@@ -19,12 +19,15 @@ const s = String(Date.now());
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 const timeZone = "Europe/Paris";
-const at = (date: string, hours: number, minutes = 0) => zonedMinute(date, hours * 60 + minutes, timeZone);
+const at = (date: string, hours: number, minutes = 0) =>
+  zonedMinute(date, hours * 60 + minutes, timeZone);
 let w: Walkthrough;
 
 test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
-  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], { encoding: "utf8" }).trim();
+  const token = execFileSync("npm", ["run", "-s", "token", "-w", "server"], {
+    encoding: "utf8",
+  }).trim();
   const run = async (name: string, args: Record<string, unknown>) => {
     const res = await request.post("http://localhost:8787/mutate", {
       headers: { Authorization: `Bearer ${token}` },
@@ -34,7 +37,12 @@ test.beforeAll(async ({ request }) => {
   };
   w = await buildWalkthrough(run, s, { stock: true });
   await setWalkthroughAvailability(run);
-  await run("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+  await run("createService", {
+    serviceId,
+    menuId: w.menuId,
+    date: SERVICE_DATE,
+    time: SERVICE_TIME,
+  });
 });
 
 // Soft-deletes the Service, its Batches, the Menu and the Recipes this run made. Local stack only.
@@ -67,7 +75,12 @@ async function dragTo(page: Page, gantt: Locator, bar: Locator, target: number) 
   const bands = await gantt.locator("[data-band]").evaluateAll((els) =>
     els.map((el) => {
       const box = el.getBoundingClientRect();
-      return { from: Number(el.getAttribute("data-from")), to: Number(el.getAttribute("data-to")), x: box.x, width: box.width };
+      return {
+        from: Number(el.getAttribute("data-from")),
+        to: Number(el.getAttribute("data-to")),
+        x: box.x,
+        width: box.width,
+      };
     }),
   );
   const band = bands.find((b) => b.from <= target && target <= b.to);
@@ -83,10 +96,15 @@ async function dragTo(page: Page, gantt: Locator, bar: Locator, target: number) 
 
 // Every bar's start by Task key (copies of one Task must agree).
 async function starts(gantt: Locator) {
-  const bars = await gantt.locator("[data-key]").evaluateAll((els) => els.map((el) => [el.getAttribute("data-key")!, el.getAttribute("data-start")!]));
+  const bars = await gantt
+    .locator("[data-key]")
+    .evaluateAll((els) =>
+      els.map((el) => [el.getAttribute("data-key")!, el.getAttribute("data-start")!]),
+    );
   const out: Record<string, string> = {};
   for (const [key, start] of bars) {
-    if (key in out && out[key] !== start) throw new Error(`Copies of ${key} disagree: ${out[key]} and ${start}`);
+    if (key in out && out[key] !== start)
+      throw new Error(`Copies of ${key} disagree: ${out[key]} and ${start}`);
     out[key] = start!;
   }
   return out;
@@ -127,13 +145,24 @@ const watchStarts = (page: Page, key: string) =>
   page.evaluate((key) => {
     const seen: string[] = [];
     (window as unknown as { seen: string[] }).seen = seen;
-    const record = () => document.querySelectorAll(`[data-key="${key}"]`).forEach((el) => seen.push(el.getAttribute("data-start")!));
-    new MutationObserver(record).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-start"] });
+    const record = () =>
+      document
+        .querySelectorAll(`[data-key="${key}"]`)
+        .forEach((el) => seen.push(el.getAttribute("data-start")!));
+    new MutationObserver(record).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["data-start"],
+    });
     record();
   }, key);
-const seenStarts = (page: Page) => page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+const seenStarts = (page: Page) =>
+  page.evaluate(() => (window as unknown as { seen: string[] }).seen);
 
-test("AC2 and AC3: the stock shows under the Velouté and, greyed, under the Beurre blanc; dragging the ghost moves both; collapsing the Velouté folds it in", async ({ page }) => {
+test("AC2 and AC3: the stock shows under the Velouté and, greyed, under the Beurre blanc; dragging the ghost moves both; collapsing the Velouté folds it in", async ({
+  page,
+}) => {
   const gantt = await openPlan(page);
   const stock = `Chicken stock ${s}`;
   const roast = gantt.getByRole("button", { name: /Roast the bones/ });
@@ -141,7 +170,11 @@ test("AC2 and AC3: the stock shows under the Velouté and, greyed, under the Beu
   const ghost = roast.and(gantt.locator('[data-ghost="true"]'));
   await expect(ghost).toHaveCount(1);
   await expect(ghost).toHaveCSS("opacity", "0.4");
-  await expect(gantt.getByRole("group", { name: `${stock} (also shown above)`, exact: true }).getByRole("button", { name: /Roast the bones/ })).toHaveCount(1);
+  await expect(
+    gantt
+      .getByRole("group", { name: `${stock} (also shown above)`, exact: true })
+      .getByRole("button", { name: /Roast the bones/ }),
+  ).toHaveCount(1);
 
   // Dragging the ghost copy to Thursday 18:00 moves and pins both copies.
   const thursday18 = at("2026-10-29", 18);
@@ -164,9 +197,13 @@ test("AC2 and AC3: the stock shows under the Velouté and, greyed, under the Beu
   await expect(veloute.getByRole("button", { name: /Roast the bones/ })).toHaveCount(0);
 });
 
-test("AC4: dragging Roast the bones to Wednesday 18:03 snaps to 18:05, pins it and re-fits the rest before the server answers; after reload it is still there", async ({ page }) => {
+test("AC4: dragging Roast the bones to Wednesday 18:03 snaps to 18:05, pins it and re-fits the rest before the server answers; after reload it is still there", async ({
+  page,
+}) => {
   const gantt = await openPlan(page);
-  const roast = gantt.getByRole("button", { name: /Roast the bones/ }).and(gantt.locator('[data-ghost="false"]'));
+  const roast = gantt
+    .getByRole("button", { name: /Roast the bones/ })
+    .and(gantt.locator('[data-ghost="false"]'));
   const wednesday1805 = at("2026-10-28", 18, 5);
   const release = await holdMutations(page);
   const answered = page.waitForResponse((r) => r.url().endsWith("/api/mutate"));
@@ -205,9 +242,13 @@ test("AC4: dragging Roast the bones to Wednesday 18:03 snaps to 18:05, pins it a
   expect(await starts(gantt)).toEqual(refitted);
 });
 
-test("AC5: two quick drags leave the Plan matching the second, never showing the first's start again", async ({ page }) => {
+test("AC5: two quick drags leave the Plan matching the second, never showing the first's start again", async ({
+  page,
+}) => {
   const gantt = await openPlan(page);
-  const roast = gantt.getByRole("button", { name: /Roast the bones/ }).and(gantt.locator('[data-ghost="false"]'));
+  const roast = gantt
+    .getByRole("button", { name: /Roast the bones/ })
+    .and(gantt.locator('[data-ghost="false"]'));
   const key = (await roast.getAttribute("data-key"))!;
   const [first, second] = [at("2026-10-28", 19), at("2026-10-28", 20)];
   const release = await holdMutations(page);
@@ -237,13 +278,20 @@ test("AC5: two quick drags leave the Plan matching the second, never showing the
   await expect(roast).toHaveAttribute("data-pinned", "true");
 });
 
-test("AC5: coming back to the tab while the second drag is still saving doesn't show the first's start", async ({ page }) => {
+test("AC5: coming back to the tab while the second drag is still saving doesn't show the first's start", async ({
+  page,
+}) => {
   const gantt = await openPlan(page);
-  const roast = gantt.getByRole("button", { name: /Roast the bones/ }).and(gantt.locator('[data-ghost="false"]'));
+  const roast = gantt
+    .getByRole("button", { name: /Roast the bones/ })
+    .and(gantt.locator('[data-ghost="false"]'));
   const key = (await roast.getAttribute("data-key"))!;
   const [first, second] = [at("2026-10-28", 21), at("2026-10-28", 19, 30)];
   const release = await holdEachMutation(page);
-  const answer = (n: number) => page.waitForResponse((r) => r.url().endsWith("/api/mutate") && r.request().postData()!.includes(String(n)));
+  const answer = (n: number) =>
+    page.waitForResponse(
+      (r) => r.url().endsWith("/api/mutate") && r.request().postData()!.includes(String(n)),
+    );
 
   await dragTo(page, gantt, roast, first);
   await expect(roast).toHaveAttribute("data-start", String(first));
@@ -256,7 +304,9 @@ test("AC5: coming back to the tab while the second drag is still saving doesn't 
   const firstAnswered = answer(first);
   release(0);
   expect((await firstAnswered).status()).toBe(200);
-  const refetched = page.waitForResponse((r) => r.url().includes(`/api/services/${serviceId}/plan`), { timeout: 2000 }).catch(() => null);
+  const refetched = page
+    .waitForResponse((r) => r.url().includes(`/api/services/${serviceId}/plan`), { timeout: 2000 })
+    .catch(() => null);
   await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
   await refetched;
   await expect(roast).toHaveAttribute("data-start", String(second));

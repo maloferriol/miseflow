@@ -1,7 +1,12 @@
 import { batches, menus, recipes, services, shoppingMarks } from "@miseflow/shared";
 import { inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME, type Walkthrough } from "../../shared/test/walkthrough.ts";
+import {
+  buildWalkthrough,
+  SERVICE_DATE,
+  SERVICE_TIME,
+  type Walkthrough,
+} from "../../shared/test/walkthrough.ts";
 import { loadSeed, readSeed } from "../src/seed.ts";
 import { db, getToken, testApp } from "./helpers.ts";
 
@@ -36,23 +41,48 @@ const theirServiceId = crypto.randomUUID();
 const s = crypto.randomUUID().slice(0, 8);
 let w: Walkthrough;
 afterAll(async () => {
-  await db.update(shoppingMarks).set({ deletedAt: sql`now()` }).where(inArray(shoppingMarks.serviceId, [serviceId]));
-  await db.update(services).set({ deletedAt: sql`now()` }).where(inArray(services.id, [serviceId, theirServiceId]));
-  await db.update(menus).set({ deletedAt: sql`now()` }).where(inArray(menus.id, [theirMenuId]));
+  await db
+    .update(shoppingMarks)
+    .set({ deletedAt: sql`now()` })
+    .where(inArray(shoppingMarks.serviceId, [serviceId]));
+  await db
+    .update(services)
+    .set({ deletedAt: sql`now()` })
+    .where(inArray(services.id, [serviceId, theirServiceId]));
+  await db
+    .update(menus)
+    .set({ deletedAt: sql`now()` })
+    .where(inArray(menus.id, [theirMenuId]));
   if (!w) return;
-  await db.update(batches).set({ deletedAt: sql`now()` }).where(inArray(batches.serviceId, [serviceId]));
-  await db.update(menus).set({ deletedAt: sql`now()` }).where(inArray(menus.id, [w.menuId]));
-  await db.update(recipes).set({ deletedAt: sql`now()` }).where(inArray(recipes.id, Object.values(w.recipes) as string[]));
+  await db
+    .update(batches)
+    .set({ deletedAt: sql`now()` })
+    .where(inArray(batches.serviceId, [serviceId]));
+  await db
+    .update(menus)
+    .set({ deletedAt: sql`now()` })
+    .where(inArray(menus.id, [w.menuId]));
+  await db
+    .update(recipes)
+    .set({ deletedAt: sql`now()` })
+    .where(inArray(recipes.id, Object.values(w.recipes) as string[]));
 });
 
 beforeAll(async () => {
   await loadSeed(db);
   w = await buildWalkthrough(ok, s, { shopping: ids });
-  await ok("createService", { serviceId, menuId: w.menuId, date: SERVICE_DATE, time: SERVICE_TIME });
+  await ok("createService", {
+    serviceId,
+    menuId: w.menuId,
+    date: SERVICE_DATE,
+    time: SERVICE_TIME,
+  });
   // Another owner's Menu and Service, written directly.
   const owner = crypto.randomUUID();
   await db.insert(menus).values({ id: theirMenuId, ownerId: owner, name: "Theirs" });
-  await db.insert(services).values({ id: theirServiceId, ownerId: owner, menuId: theirMenuId, date: SERVICE_DATE });
+  await db
+    .insert(services)
+    .values({ id: theirServiceId, ownerId: owner, menuId: theirMenuId, date: SERVICE_DATE });
 });
 
 describe("GET /services/:serviceId/shopping-list", () => {
@@ -65,8 +95,20 @@ describe("GET /services/:serviceId/shopping-list", () => {
     expect(res.status).toBe(200);
     const { shoppingList } = await res.json();
     expect(shoppingList.service).toEqual({ id: serviceId, menuId: w.menuId });
-    type Row = { name: string; need: number | null; unit: string | null; approximate: boolean; vague: string[]; got: boolean };
-    expect(shoppingList.categories.map((c: { name: string; rows: Row[] }) => [c.name, c.rows.map((r) => [r.name, r.need, r.unit, r.approximate, r.vague, r.got])])).toEqual([
+    type Row = {
+      name: string;
+      need: number | null;
+      unit: string | null;
+      approximate: boolean;
+      vague: string[];
+      got: boolean;
+    };
+    expect(
+      shoppingList.categories.map((c: { name: string; rows: Row[] }) => [
+        c.name,
+        c.rows.map((r) => [r.name, r.need, r.unit, r.approximate, r.vague, r.got]),
+      ]),
+    ).toEqual([
       [
         "Produce",
         [

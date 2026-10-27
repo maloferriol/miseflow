@@ -18,17 +18,13 @@ export type AuthConfig = {
 
 export type AuthEnv = { Variables: JwtVariables & { ownerId: string } };
 
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Checks the Supabase access token against the project's published keys, without calling
 // Supabase per user (ADR 0008), then exposes its `sub` as `ownerId`. The keys come from a
 // cache, so the JWKS is fetched once per TTL rather than on every request.
 // Source: https://hono.dev/docs/middleware/builtin/jwk (`keys` may be a function of the context)
-export function requireAuth({
-  issuer,
-  keys,
-}: AuthConfig): MiddlewareHandler<AuthEnv> {
+export function requireAuth({ issuer, keys }: AuthConfig): MiddlewareHandler<AuthEnv> {
   const keySource = keys ?? sharedJwksCache(`${issuer}/.well-known/jwks.json`);
   const verifyToken = jwk({
     keys: (c) => keySource(tokenKid(c)),
@@ -91,11 +87,9 @@ export function createJwksCache(
     attemptedAt = now();
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-      if (!res.ok)
-        throw new Error(`Failed to fetch JWKS from ${url}: ${res.status}`);
+      if (!res.ok) throw new Error(`Failed to fetch JWKS from ${url}: ${res.status}`);
       const body: { keys?: unknown } = await res.json();
-      if (!Array.isArray(body.keys))
-        throw new Error(`Invalid JWKS from ${url}: no keys array`);
+      if (!Array.isArray(body.keys)) throw new Error(`Invalid JWKS from ${url}: no keys array`);
       keys = body.keys as Jwk[];
       fetchedAt = now();
       return keys;
@@ -121,8 +115,7 @@ export function createJwksCache(
 
   return async (kid) => {
     if (!keys) return refresh();
-    const unknownKid =
-      kid !== undefined && !keys.some((key) => key.kid === kid);
+    const unknownKid = kid !== undefined && !keys.some((key) => key.kid === kid);
     // Only a lookup the cached keys can't answer waits on a fetch; a known kid never does.
     if (inFlight) return unknownKid ? inFlight : keys;
     if (now() - attemptedAt < REFETCH_COOLDOWN_MS) return keys;

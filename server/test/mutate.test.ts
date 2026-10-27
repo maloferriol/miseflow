@@ -39,7 +39,10 @@ describe("POST /mutate", () => {
     expect(await second.json()).toEqual({ ok: true, id: mutation.id });
     const menuRows = await db.select().from(menus).where(eq(menus.id, mutation.args.menuId));
     expect(menuRows).toHaveLength(1);
-    const applied = await db.select().from(appliedMutations).where(eq(appliedMutations.id, mutation.id));
+    const applied = await db
+      .select()
+      .from(appliedMutations)
+      .where(eq(appliedMutations.id, mutation.id));
     expect(applied).toMatchObject([{ name: "createMenu" }]);
   });
 
@@ -79,7 +82,11 @@ describe("POST /mutate", () => {
       },
     });
     const app = testApp({ mutators: { ...mutators, createMenuThenFail: failing } });
-    const mutation = { id: crypto.randomUUID(), name: "createMenuThenFail", args: { menuId: crypto.randomUUID() } };
+    const mutation = {
+      id: crypto.randomUUID(),
+      name: "createMenuThenFail",
+      args: { menuId: crypto.randomUUID() },
+    };
 
     const res = await postMutation(mutation, app);
 
@@ -118,20 +125,24 @@ describe("positions", () => {
     const courseIds = Array.from({ length: 5 }, () => crypto.randomUUID());
 
     const statuses = await Promise.all(
-      courseIds.map(async (courseId, i) =>
-        (
-          await postMutation({
-            id: crypto.randomUUID(),
-            name: "addCourse",
-            args: { courseId, menuId, name: `Course ${i}` },
-          })
-        ).status,
+      courseIds.map(
+        async (courseId, i) =>
+          (
+            await postMutation({
+              id: crypto.randomUUID(),
+              name: "addCourse",
+              args: { courseId, menuId, name: `Course ${i}` },
+            })
+          ).status,
       ),
     );
 
     expect(statuses).toEqual(Array(5).fill(200));
     const positions = (
-      await db.select({ position: courses.position }).from(courses).where(eq(courses.menuId, menuId))
+      await db
+        .select({ position: courses.position })
+        .from(courses)
+        .where(eq(courses.menuId, menuId))
     ).map((r) => r.position);
     expect(new Set(positions).size).toBe(5);
   });
@@ -148,20 +159,24 @@ describe("positions", () => {
     const dishIds = Array.from({ length: 5 }, () => crypto.randomUUID());
 
     const statuses = await Promise.all(
-      dishIds.map(async (dishId) =>
-        (
-          await postMutation({
-            id: crypto.randomUUID(),
-            name: "addDish",
-            args: { dishId, courseId, recipeId },
-          })
-        ).status,
+      dishIds.map(
+        async (dishId) =>
+          (
+            await postMutation({
+              id: crypto.randomUUID(),
+              name: "addDish",
+              args: { dishId, courseId, recipeId },
+            })
+          ).status,
       ),
     );
 
     expect(statuses).toEqual(Array(5).fill(200));
     const positions = (
-      await db.select({ position: dishes.position }).from(dishes).where(eq(dishes.courseId, courseId))
+      await db
+        .select({ position: dishes.position })
+        .from(dishes)
+        .where(eq(dishes.courseId, courseId))
     ).map((r) => r.position);
     expect(new Set(positions).size).toBe(5);
   });
@@ -194,7 +209,12 @@ describe("owner stamping", () => {
       ...(await db
         .select({ o: appliedMutations.ownerId })
         .from(appliedMutations)
-        .where(inArray(appliedMutations.id, sent.map((m) => m.id)))),
+        .where(
+          inArray(
+            appliedMutations.id,
+            sent.map((m) => m.id),
+          ),
+        )),
     ].map((r) => r.o);
     expect(owners).toEqual(Array(9).fill(sub));
   });

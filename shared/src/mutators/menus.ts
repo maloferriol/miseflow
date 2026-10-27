@@ -66,7 +66,10 @@ export const addDish = defineMutator({
       recipeId: args.recipeId,
       position: positionAfter(last?.position ?? null),
     });
-    const [course] = await tx.select({ menuId: courses.menuId }).from(courses).where(eq(courses.id, args.courseId));
+    const [course] = await tx
+      .select({ menuId: courses.menuId })
+      .from(courses)
+      .where(eq(courses.id, args.courseId));
     await replanAffected(tx, ctx, { menuId: course!.menuId });
   },
 });
@@ -98,7 +101,8 @@ export const setDishScale = defineMutator({
     if (args.scale.kind === "factor") factor = args.scale.factor;
     if (args.scale.kind === "portions") {
       const servings = dish.servings === null ? 0 : Number(dish.servings);
-      if (!(servings > 0)) throw new InvalidArgsError("This Recipe has no servings; set a factor instead");
+      if (!(servings > 0))
+        throw new InvalidArgsError("This Recipe has no servings; set a factor instead");
       factor = args.scale.portions / servings;
     }
     await tx
@@ -124,10 +128,15 @@ export const removeDish = defineMutator({
       .select({ id: dishes.id, menuId: courses.menuId })
       .from(dishes)
       .innerJoin(courses, eq(courses.id, dishes.courseId))
-      .where(and(eq(dishes.id, args.dishId), eq(dishes.ownerId, ctx.ownerId), isNull(dishes.deletedAt)))
+      .where(
+        and(eq(dishes.id, args.dishId), eq(dishes.ownerId, ctx.ownerId), isNull(dishes.deletedAt)),
+      )
       .for("no key update", { of: dishes });
     if (!dish) throw new NotFoundError("Dish");
-    await tx.update(dishes).set({ deletedAt: sql`now()`, updatedAt: sql`now()` }).where(eq(dishes.id, dish.id));
+    await tx
+      .update(dishes)
+      .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(eq(dishes.id, dish.id));
     await replanAffected(tx, ctx, { menuId: dish.menuId });
   },
 });

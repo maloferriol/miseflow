@@ -30,7 +30,10 @@ const VOLUME_REGION: Record<Region, Record<string, number>> = {
 };
 
 // Which kind of measure a Fixed unit is, and its size in that kind's base unit.
-function fixedSize(unit: string | null, region: Region): { kind: "mass" | "volume"; size: number } | null {
+function fixedSize(
+  unit: string | null,
+  region: Region,
+): { kind: "mass" | "volume"; size: number } | null {
   if (unit === null || unitTier(unit) !== "fixed") return null;
   if (unit in MASS) return { kind: "mass", size: MASS[unit]! };
   const volume = VOLUME_BASE[unit] ?? VOLUME_REGION[region][unit];

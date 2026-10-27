@@ -23,7 +23,13 @@ export type AppOptions = {
   now?: () => Date;
 };
 
-export function createApp({ auth, db, mutators = defaultMutators, timeZone, now = () => new Date() }: AppOptions) {
+export function createApp({
+  auth,
+  db,
+  mutators = defaultMutators,
+  timeZone,
+  now = () => new Date(),
+}: AppOptions) {
   const app = new Hono<AuthEnv>()
     // Public. Registered before the auth middleware, which guards every other route.
     .get("/health", (c) => c.json({ ok: true }))

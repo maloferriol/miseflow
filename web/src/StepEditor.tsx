@@ -29,9 +29,7 @@ type Ref = Extract<StepTextPart, { type: "ref" }>;
 type Target = { ingredientId: string } | { subRecipeId: string };
 
 /** "2", "30 g", "2-3 clove", "a pinch". */
-export function amountText(
-  line: Pick<RecipeLine, "quantity" | "quantityMax" | "unit">,
-) {
+export function amountText(line: Pick<RecipeLine, "quantity" | "quantityMax" | "unit">) {
   const number =
     line.quantity === null
       ? ""
@@ -80,12 +78,7 @@ export function StepEditor({
             if (token.type === "text") return <span key={i}>{token.text}</span>;
             const line = lines.get(token.lineId);
             return line ? (
-              <button
-                key={i}
-                type="button"
-                className="chip"
-                onClick={() => setEditing(true)}
-              >
+              <button key={i} type="button" className="chip" onClick={() => setEditing(true)}>
                 {chipText(line)}
               </button>
             ) : null;
@@ -122,9 +115,7 @@ function StepForm({
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [stepId] = useState(() => step?.id ?? crypto.randomUUID());
   const [text, setText] = useState(() =>
-    step
-      ? formatStepText(step.body, new Map(step.lines.map((l) => [l.id, l])))
-      : "",
+    step ? formatStepText(step.body, new Map(step.lines.map((l) => [l.id, l]))) : "",
   );
   // The "@" the picker replaces, while it is open.
   const [pickerAt, setPickerAt] = useState<number | null>(null);
@@ -181,11 +172,7 @@ function StepForm({
       let recipeEntries: (RecipeListItem & { source: "own"; aliases: [] })[] | undefined;
       for (const [ref, line] of resolved) {
         const key = normaliseName(ref.name);
-        if (
-          line.target ||
-          found.has(key) ||
-          missing.some((m) => normaliseName(m.name) === key)
-        )
+        if (line.target || found.has(key) || missing.some((m) => normaliseName(m.name) === key))
           continue;
         recipeEntries ??= (
           await queryClient.fetchQuery({ queryKey: ["recipes"], queryFn: fetchRecipes })
@@ -213,9 +200,7 @@ function StepForm({
       if (missing.length) return false;
 
       const body = parts.map((part) =>
-        part.type === "text"
-          ? part
-          : { type: "line" as const, lineId: resolved.get(part)!.lineId },
+        part.type === "text" ? part : { type: "line" as const, lineId: resolved.get(part)!.lineId },
       );
       const lines = [...resolved].map(([ref, line]) => ({
         lineId: line.lineId,
@@ -301,8 +286,8 @@ function StepForm({
       </label>
       <p>
         <small>
-          Type @ to add an Ingredient or a sub-recipe: @name{"{"}qty%unit{"}"}(preparation);
-          "=" fixes a quantity.
+          Type @ to add an Ingredient or a sub-recipe: @name{"{"}qty%unit{"}"}(preparation); "="
+          fixes a quantity.
         </small>
       </p>
       {pickerAt !== null && (
@@ -336,9 +321,7 @@ function kindFor(amount: string) {
   const q = parseQuantity(amount);
   if (q.tier === "ingredient") return "count";
   if (q.tier === "fixed")
-    return (UNITS_BY_KIND.volume as readonly string[]).includes(q.unit!)
-      ? "volume"
-      : "mass";
+    return (UNITS_BY_KIND.volume as readonly string[]).includes(q.unit!) ? "volume" : "mass";
   return "mass";
 }
 
@@ -430,7 +413,11 @@ function LinkChoice({
         <ul aria-label={`Near matches for ${name}`}>
           {near.map((ingredient) => (
             <li key={ingredient.id}>
-              <button type="button" disabled={addAlias.isPending} onClick={() => addAlias.mutate(ingredient)}>
+              <button
+                type="button"
+                disabled={addAlias.isPending}
+                onClick={() => addAlias.mutate(ingredient)}
+              >
                 Use {ingredient.name}
               </button>
             </li>
@@ -501,12 +488,8 @@ function LinkChoice({
         Create sub-recipe
       </button>
       {addAlias.error && <p role="alert">{addAlias.error.message}</p>}
-      {createIngredient.error && (
-        <p role="alert">{createIngredient.error.message}</p>
-      )}
-      {createSubRecipe.error && (
-        <p role="alert">{createSubRecipe.error.message}</p>
-      )}
+      {createIngredient.error && <p role="alert">{createIngredient.error.message}</p>}
+      {createSubRecipe.error && <p role="alert">{createSubRecipe.error.message}</p>}
     </fieldset>
   );
 }

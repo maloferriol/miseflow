@@ -95,7 +95,9 @@ describe("auth claims", () => {
   });
 
   it("rejects an expired token with 401", async () => {
-    expect((await mutateAs({ ...valid(), exp: Math.floor(Date.now() / 1000) - 60 })).status).toBe(401);
+    expect((await mutateAs({ ...valid(), exp: Math.floor(Date.now() / 1000) - 60 })).status).toBe(
+      401,
+    );
   });
 
   it("rejects a token without a sub with 401", async () => {

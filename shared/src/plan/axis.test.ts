@@ -5,7 +5,8 @@ import { zonedMinute } from "./time.ts";
 
 const timeZone = "Europe/Paris";
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
-const at = (date: string, hours: number, minutes = 0) => zonedMinute(date, h(hours, minutes), timeZone);
+const at = (date: string, hours: number, minutes = 0) =>
+  zonedMinute(date, h(hours, minutes), timeZone);
 
 // The ADR 0004 walkthrough's Availability: Thu and Fri 18:00–22:00, Sat 09:00–19:00, and the
 // override Fri 30 Oct 19:00–21:00, from the stock's earliest make-ahead date (Wed) to Service (Sat).
@@ -52,12 +53,39 @@ describe("the Gantt time axis", () => {
 
   it("B1: a date with no Availability spans the other dates' envelope, and a point in a night maps into the seam and back", () => {
     const axis = walkthroughAxis();
-    expect(axis.segments.map((s) => ({ date: s.date, start: s.start, end: s.end, available: s.available }))).toEqual([
+    expect(
+      axis.segments.map((s) => ({
+        date: s.date,
+        start: s.start,
+        end: s.end,
+        available: s.available,
+      })),
+    ).toEqual([
       // Wednesday has no Availability: 09:00 (Sat's start) to 22:00 (Thu's end).
-      { date: "2026-10-28", start: at("2026-10-28", 9), end: at("2026-10-28", 22), available: false },
-      { date: "2026-10-29", start: at("2026-10-29", 18), end: at("2026-10-29", 22), available: true },
-      { date: "2026-10-30", start: at("2026-10-30", 19), end: at("2026-10-30", 21), available: true },
-      { date: "2026-10-31", start: at("2026-10-31", 9), end: at("2026-10-31", 19), available: true },
+      {
+        date: "2026-10-28",
+        start: at("2026-10-28", 9),
+        end: at("2026-10-28", 22),
+        available: false,
+      },
+      {
+        date: "2026-10-29",
+        start: at("2026-10-29", 18),
+        end: at("2026-10-29", 22),
+        available: true,
+      },
+      {
+        date: "2026-10-30",
+        start: at("2026-10-30", 19),
+        end: at("2026-10-30", 21),
+        available: true,
+      },
+      {
+        date: "2026-10-31",
+        start: at("2026-10-31", 9),
+        end: at("2026-10-31", 19),
+        available: true,
+      },
     ]);
 
     const night = at("2026-10-29", 3);
@@ -71,7 +99,9 @@ describe("the Gantt time axis", () => {
   });
 
   it("snap5 rounds to the nearest 5 minutes", () => {
-    expect([1080, 1082, 1083, 1085, 1087, 1088].map(snap5)).toEqual([1080, 1080, 1085, 1085, 1085, 1090]);
+    expect([1080, 1082, 1083, 1085, 1087, 1088].map(snap5)).toEqual([
+      1080, 1080, 1085, 1085, 1085, 1090,
+    ]);
     expect(snap5(1082.5)).toBe(1085);
   });
 

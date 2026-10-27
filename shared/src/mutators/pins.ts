@@ -18,16 +18,27 @@ const owner = z.discriminatedUnion("kind", [
 /** Moves a placed Task to `start` (on the 5-minute grid) and pins it, then re-plans its Service. */
 export const pinTask = defineMutator({
   name: "pinTask",
-  args: z.strictObject({ serviceId: z.uuid(), owner, firstStepId: z.uuid(), start: z.int().multipleOf(5) }),
+  args: z.strictObject({
+    serviceId: z.uuid(),
+    owner,
+    firstStepId: z.uuid(),
+    start: z.int().multipleOf(5),
+  }),
   async run(tx, args, ctx) {
     // FOR NO KEY UPDATE on the Service (D6), before the placement row, as every re-plan does.
     const service = await lockService(tx, ctx.ownerId, args.serviceId);
     // A pin falls between the start of the day before the earliest make-ahead date can be and the
     // Service itself; nights and dates without Availability inside that are allowed.
-    const time = service.time === null ? (await loadDefaultServiceTime(tx, ctx.ownerId)).minuteOfDay : fromTimeColumn(service.time);
+    const time =
+      service.time === null
+        ? (await loadDefaultServiceTime(tx, ctx.ownerId)).minuteOfDay
+        : fromTimeColumn(service.time);
     const latest = zonedMinute(service.date, time, ctx.timeZone);
     const earliest = zonedMinute(addDays(service.date, -(MAX_BEFORE_DAYS + 1)), 0, ctx.timeZone);
-    if (args.start < earliest || args.start > latest) throw new InvalidArgsError("A pin must fall between a month before the Service and the Service");
+    if (args.start < earliest || args.start > latest)
+      throw new InvalidArgsError(
+        "A pin must fall between a month before the Service and the Service",
+      );
     const o = args.owner;
     // The Task's live placement in this Service: an Unplaced Task, or one of another Service, has none.
     const [row] = await tx
@@ -37,7 +48,9 @@ export const pinTask = defineMutator({
         and(
           eq(taskPlacements.serviceId, args.serviceId),
           eq(taskPlacements.ownerId, ctx.ownerId),
-          o.kind === "dish" ? eq(taskPlacements.dishId, o.dishId) : eq(taskPlacements.batchId, o.batchId),
+          o.kind === "dish"
+            ? eq(taskPlacements.dishId, o.dishId)
+            : eq(taskPlacements.batchId, o.batchId),
           eq(taskPlacements.firstStepId, args.firstStepId),
           isNull(taskPlacements.deletedAt),
         ),
@@ -69,7 +82,9 @@ export const unpinTask = defineMutator({
         and(
           eq(taskPlacements.serviceId, args.serviceId),
           eq(taskPlacements.ownerId, ctx.ownerId),
-          o.kind === "dish" ? eq(taskPlacements.dishId, o.dishId) : eq(taskPlacements.batchId, o.batchId),
+          o.kind === "dish"
+            ? eq(taskPlacements.dishId, o.dishId)
+            : eq(taskPlacements.batchId, o.batchId),
           eq(taskPlacements.firstStepId, args.firstStepId),
           eq(taskPlacements.pinned, true),
           isNull(taskPlacements.deletedAt),
@@ -77,7 +92,10 @@ export const unpinTask = defineMutator({
       );
     if (!row) throw new NotFoundError("Task");
     // The diff writes only start and Cook, so the pin is cleared here.
-    await tx.update(taskPlacements).set({ pinned: false, updatedAt: sql`now()` }).where(eq(taskPlacements.id, row.id));
+    await tx
+      .update(taskPlacements)
+      .set({ pinned: false, updatedAt: sql`now()` })
+      .where(eq(taskPlacements.id, row.id));
     // Only this Task's previous start is dropped, so it can move off the blocked Task's way (addendum 2).
     await replanReleasing(tx, ctx, args.serviceId, taskKey(o, args.firstStepId));
   },

@@ -1,7 +1,15 @@
 import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { fetchAvailability, fetchMenu, fetchMenus, type Menu, minuteOfDay, mutate, timeValue } from "./api.ts";
+import {
+  fetchAvailability,
+  fetchMenu,
+  fetchMenus,
+  type Menu,
+  minuteOfDay,
+  mutate,
+  timeValue,
+} from "./api.ts";
 import { useIntent } from "./intent.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
@@ -102,7 +110,11 @@ function MenuView({ menuId }: { menuId: string }) {
       <a href="/">All Menus</a>
       <h2>{menu.data.name}</h2>
       <p>{menu.data.guestCount} guests</p>
-      <ServiceForm key={JSON.stringify(menu.data.service)} menuId={menuId} service={menu.data.service} />
+      <ServiceForm
+        key={JSON.stringify(menu.data.service)}
+        menuId={menuId}
+        service={menu.data.service}
+      />
       {menu.data.courses.map((course) => (
         <CourseView key={course.id} course={course} onChanged={onSuccess} />
       ))}
@@ -166,7 +178,9 @@ function CourseView({
         {course.dishes.map((dish) => (
           <li key={dish.id}>
             {/* A full load: App reads the view from the URL. ?menu= stays for the way back. */}
-            <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: dish.recipe.id })}`}>
+            <a
+              href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: dish.recipe.id })}`}
+            >
               {dish.recipe.name}
             </a>{" "}
             {formatFactor(dish.scale.factor)}
@@ -174,7 +188,9 @@ function CourseView({
             {dish.fixes.map((fix) => (
               <p key={`${fix.subRecipe?.id ?? ""}:${fix.text}`}>
                 {fix.subRecipe ? (
-                  <a href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: fix.subRecipe.id })}`}>
+                  <a
+                    href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: fix.subRecipe.id })}`}
+                  >
                     {fix.subRecipe.name}: {fix.text}
                   </a>
                 ) : (
@@ -207,13 +223,27 @@ function CourseView({
 type ScaleKind = "guests" | "portions" | "factor";
 
 // A Dish's Scale factor: the guest count over servings, a portion count, or a factor (units spec §5).
-function DishScale({ dish, onChanged }: { dish: Menu["courses"][number]["dishes"][number]; onChanged: () => Promise<void> }) {
+function DishScale({
+  dish,
+  onChanged,
+}: {
+  dish: Menu["courses"][number]["dishes"][number];
+  onChanged: () => Promise<void>;
+}) {
   const queryClient = useQueryClient();
   const intent = useIntent();
   const [kind, setKind] = useState<ScaleKind>(dish.scale.source === "set" ? "factor" : "guests");
   const save = useMutation({
-    mutationFn: async (scale: { kind: "guests" } | { kind: "portions"; portions: number } | { kind: "factor"; factor: number }) =>
-      mutate(intent.id(JSON.stringify([dish.id, scale]), "mutation"), "setDishScale", { dishId: dish.id, scale }),
+    mutationFn: async (
+      scale:
+        | { kind: "guests" }
+        | { kind: "portions"; portions: number }
+        | { kind: "factor"; factor: number },
+    ) =>
+      mutate(intent.id(JSON.stringify([dish.id, scale]), "mutation"), "setDishScale", {
+        dishId: dish.id,
+        scale,
+      }),
     onSuccess: async () => {
       intent.reset();
       await Promise.all([onChanged(), queryClient.invalidateQueries({ queryKey: ["plan"] })]);
@@ -230,7 +260,11 @@ function DishScale({ dish, onChanged }: { dish: Menu["courses"][number]["dishes"
 
   return (
     <form onSubmit={onSubmit}>
-      <select aria-label={`Scale for ${dish.recipe.name}`} value={kind} onChange={(e) => setKind(e.target.value as ScaleKind)}>
+      <select
+        aria-label={`Scale for ${dish.recipe.name}`}
+        value={kind}
+        onChange={(e) => setKind(e.target.value as ScaleKind)}
+      >
         <option value="guests">Guests</option>
         <option value="portions">Portions</option>
         <option value="factor">Factor</option>
@@ -239,7 +273,11 @@ function DishScale({ dish, onChanged }: { dish: Menu["courses"][number]["dishes"
         <input
           name="value"
           type="number"
-          aria-label={kind === "portions" ? `Portions of ${dish.recipe.name}` : `Factor for ${dish.recipe.name}`}
+          aria-label={
+            kind === "portions"
+              ? `Portions of ${dish.recipe.name}`
+              : `Factor for ${dish.recipe.name}`
+          }
           min={kind === "portions" ? 1 : 0.01}
           max={kind === "portions" ? 10_000 : 1000}
           step={kind === "portions" ? 1 : "any"}
@@ -264,8 +302,17 @@ function ServiceForm({ menuId, service }: { menuId: string; service: Menu["servi
   const save = useMutation({
     mutationFn: async (args: { date: string; time: number | null }) => {
       const key = JSON.stringify([service?.id ?? null, args]);
-      if (service) await mutate(intent.id(key, "mutation"), "setServiceTime", { serviceId: service.id, ...args });
-      else await mutate(intent.id(key, "mutation"), "createService", { serviceId: intent.id(key, "service"), menuId, ...args });
+      if (service)
+        await mutate(intent.id(key, "mutation"), "setServiceTime", {
+          serviceId: service.id,
+          ...args,
+        });
+      else
+        await mutate(intent.id(key, "mutation"), "createService", {
+          serviceId: intent.id(key, "service"),
+          menuId,
+          ...args,
+        });
     },
     onSuccess: async () => {
       intent.reset();
@@ -283,7 +330,9 @@ function ServiceForm({ menuId, service }: { menuId: string; service: Menu["servi
     if (date) save.mutate({ date, time: minuteOfDay(form.get("time")) });
   }
 
-  const defaultTime = availability.data ? timeValue(availability.data.defaultServiceTime) : undefined;
+  const defaultTime = availability.data
+    ? timeValue(availability.data.defaultServiceTime)
+    : undefined;
   return (
     <form onSubmit={onSubmit}>
       <label>
@@ -303,9 +352,17 @@ function ServiceForm({ menuId, service }: { menuId: string; service: Menu["servi
       <button type="submit" disabled={save.isPending}>
         {service ? "Save Service" : "Add Service"}
       </button>
-      {service && <a href={`?${new URLSearchParams({ menu: menuId, view: "plan", service: service.id })}`}>Open Plan</a>}
       {service && (
-        <a href={`?${new URLSearchParams({ menu: menuId, view: "shopping", service: service.id })}`}>Open Shopping list</a>
+        <a href={`?${new URLSearchParams({ menu: menuId, view: "plan", service: service.id })}`}>
+          Open Plan
+        </a>
+      )}
+      {service && (
+        <a
+          href={`?${new URLSearchParams({ menu: menuId, view: "shopping", service: service.id })}`}
+        >
+          Open Shopping list
+        </a>
       )}
       {save.error && <p role="alert">{save.error.message}</p>}
     </form>

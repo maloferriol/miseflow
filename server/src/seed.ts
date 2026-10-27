@@ -18,9 +18,7 @@ const seedFile = new URL("../seed/ingredient-seed.json", import.meta.url);
 const kind = z.enum(["mass", "volume", "count"]);
 const seedSchema = z.strictObject({
   licence: z.strictObject({ notice: z.string(), odbl: z.url(), dbcl: z.url() }),
-  shoppingCategories: z.array(
-    z.strictObject({ id: z.uuid(), name: z.string().min(1) }),
-  ),
+  shoppingCategories: z.array(z.strictObject({ id: z.uuid(), name: z.string().min(1) })),
   ingredients: z.array(
     z.strictObject({
       id: z.uuid(),
@@ -28,9 +26,7 @@ const seedSchema = z.strictObject({
       fdcId: z.string().nullable(),
       preferredKind: kind,
       shoppingCategory: z.string(),
-      aliases: z.array(
-        z.strictObject({ id: z.uuid(), name: z.string().min(1) }),
-      ),
+      aliases: z.array(z.strictObject({ id: z.uuid(), name: z.string().min(1) })),
       conversions: z.array(
         z.strictObject({
           id: z.uuid(),
@@ -65,10 +61,7 @@ export type SeedResult = {
  * rewritten only when it differs from the file, so a second run writes nothing and keeps
  * `updated_at`. Rows dropped from the file are left alone.
  */
-export async function loadSeed(
-  db: Db,
-  seed: Seed = readSeed(),
-): Promise<SeedResult> {
+export async function loadSeed(db: Db, seed: Seed = readSeed()): Promise<SeedResult> {
   const categoryIds = new Map<string, string>();
   let position: string | null = null;
   const categoryRows = seed.shoppingCategories.map((category) => {
@@ -186,8 +179,7 @@ async function upsert<T extends PgTable & { id: PgColumn; ownerId: PgColumn }>(
   columns: PgColumn[],
 ): Promise<number> {
   if (rows.length === 0) return 0;
-  const excluded = (column: PgColumn) =>
-    sql`excluded.${sql.identifier(column.name)}`;
+  const excluded = (column: PgColumn) => sql`excluded.${sql.identifier(column.name)}`;
   const set: Record<string, SQL> = { updatedAt: sql`now()` };
   for (const column of columns) set[keyOf(table, column)] = excluded(column);
   const written = await tx
@@ -205,7 +197,15 @@ async function upsert<T extends PgTable & { id: PgColumn; ownerId: PgColumn }>(
   const [owned] = await tx
     .select({ id: table.id })
     .from(table as PgTable)
-    .where(and(inArray(table.id, rows.map((row) => row.id)), isNotNull(table.ownerId)))
+    .where(
+      and(
+        inArray(
+          table.id,
+          rows.map((row) => row.id),
+        ),
+        isNotNull(table.ownerId),
+      ),
+    )
     .limit(1);
   if (owned) throw new Error(`${owned.id} is not a seed row: it belongs to a user`);
   return written.length;

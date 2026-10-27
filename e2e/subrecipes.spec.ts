@@ -80,7 +80,9 @@ test("makes Chicken stock with Create sub-recipe from Velouté, uses it again fr
   }
   await page.goto(tarteTatin);
   await page.reload();
-  await expect(page.getByRole("button", { name: new RegExp(`^Pastry ${s} 1 · sub-recipe`) })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: new RegExp(`^Pastry ${s} 1 · sub-recipe`) }),
+  ).toBeVisible();
 
   // Chicken stock is used without a yield.
   const [stock] = await sql`select id from recipes where name = ${`Chicken stock ${s}`}`;
@@ -88,7 +90,8 @@ test("makes Chicken stock with Create sub-recipe from Velouté, uses it again fr
   await expect(page.getByText("needs a yield")).toBeVisible();
 
   // The two Steps moved with their ids, and each Recipe's latest Revision is stored.
-  const moved = await sql`select s.recipe_id, r.name from steps s join recipes r on r.id = s.recipe_id
+  const moved =
+    await sql`select s.recipe_id, r.name from steps s join recipes r on r.id = s.recipe_id
     where s.id in ${sql(extracted)}`;
   expect(moved.map((r) => r.name)).toEqual([`Pastry ${s}`, `Pastry ${s}`]);
   const revisions = await sql`select r.name, r.latest_revision, max(v.number) as max

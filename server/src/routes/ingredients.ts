@@ -23,10 +23,7 @@ export function ingredientsRoute(db: Db) {
       const parsed = searchQuery.safeParse(value);
       if (!parsed.success) {
         return c.json(
-          errorBody(
-            "INVALID_QUERY",
-            "Expected q (up to 200 characters) and limit (1 to 50)",
-          ),
+          errorBody("INVALID_QUERY", "Expected q (up to 200 characters) and limit (1 to 50)"),
           400,
         );
       }

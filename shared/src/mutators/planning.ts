@@ -1,10 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import {
-  findPlanningCycle,
-  makeAheadSchema,
-  stepPlainText,
-} from "../recipe/planning.ts";
+import { findPlanningCycle, makeAheadSchema, stepPlainText } from "../recipe/planning.ts";
 import { replanAffected } from "../plan/replan.ts";
 import { loadRecipeSnapshot, type RecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipes, stepDependencies, steps } from "../schema.ts";
@@ -72,10 +68,7 @@ export const setMakeAhead = defineMutator({
       await tx.update(recipes).set(values).where(eq(recipes.id, recipeId));
     } else {
       recipeId = (await lockStep(tx, ownerId, args.target.stepId)).recipeId;
-      await tx
-        .update(steps)
-        .set(values)
-        .where(eq(steps.id, args.target.stepId));
+      await tx.update(steps).set(values).where(eq(steps.id, args.target.stepId));
     }
     await appendRevision(tx, ownerId, recipeId, args.revisionId);
     await replanAffected(tx, ctx, { recipeId });
@@ -95,9 +88,7 @@ export const setGroupWithPrevious = defineMutator({
     if (args.value) {
       const snapshot = await loadRecipeSnapshot(tx, ownerId, step.recipeId);
       if (snapshot.steps[0]?.id === args.stepId)
-        throw new InvalidArgsError(
-          "The first Step has no previous Step to group with",
-        );
+        throw new InvalidArgsError("The first Step has no previous Step to group with");
       const grouped = snapshot.steps.map((s) =>
         s.id === args.stepId ? { ...s, groupWithPrevious: true } : s,
       );
@@ -135,11 +126,7 @@ export const addStepDependency = defineMutator({
     const snapshot = await loadRecipeSnapshot(tx, ownerId, recipeId);
     const live = snapshot.dependencies;
     if (
-      live.some(
-        (d) =>
-          d.beforeStepId === args.beforeStepId &&
-          d.afterStepId === args.afterStepId,
-      )
+      live.some((d) => d.beforeStepId === args.beforeStepId && d.afterStepId === args.afterStepId)
     )
       throw new ConflictError("These Steps are already linked");
     refuseCycle(snapshot, [...live, args]);
@@ -206,9 +193,7 @@ async function liveSteps(
     const [step] = await tx
       .select({ id: steps.id, recipeId: steps.recipeId })
       .from(steps)
-      .where(
-        and(eq(steps.id, id), eq(steps.ownerId, ownerId), isNull(steps.deletedAt)),
-      );
+      .where(and(eq(steps.id, id), eq(steps.ownerId, ownerId), isNull(steps.deletedAt)));
     if (!step) throw new NotFoundError("Step");
     return step;
   };

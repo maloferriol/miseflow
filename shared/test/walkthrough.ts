@@ -13,9 +13,20 @@ const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 // Ascending random UUIDs, so the scheduler's ties by key always break the same way (D11).
 const sortedIds = (n: number) => Array.from({ length: n }, () => crypto.randomUUID()).sort();
 
-type StepSpec = { text: string; active: number | null; passive?: number | null; makeAhead?: { beforeDays: number; shelfLifeDays: number } };
+type StepSpec = {
+  text: string;
+  active: number | null;
+  passive?: number | null;
+  makeAhead?: { beforeDays: number; shelfLifeDays: number };
+};
 
-const RECIPES: { key: "veloute" | "duck" | "tarte"; name: string; course: string; makeAhead?: { beforeDays: number; shelfLifeDays: number }; steps: StepSpec[] }[] = [
+const RECIPES: {
+  key: "veloute" | "duck" | "tarte";
+  name: string;
+  course: string;
+  makeAhead?: { beforeDays: number; shelfLifeDays: number };
+  steps: StepSpec[];
+}[] = [
   {
     key: "veloute",
     name: "Velouté",
@@ -31,7 +42,12 @@ const RECIPES: { key: "veloute" | "duck" | "tarte"; name: string; course: string
     name: "Duck breast with beurre blanc",
     course: "Main",
     steps: [
-      { text: "Dry-brine the duck", active: 10, passive: 1440, makeAhead: { beforeDays: 2, shelfLifeDays: 3 } },
+      {
+        text: "Dry-brine the duck",
+        active: 10,
+        passive: 1440,
+        makeAhead: { beforeDays: 2, shelfLifeDays: 3 },
+      },
       { text: "Score and season", active: 10 },
       { text: "Sear the duck", active: 15 },
       { text: "Make the beurre blanc", active: null },
@@ -57,7 +73,13 @@ const RECIPES: { key: "veloute" | "duck" | "tarte"; name: string; course: string
 // The Beurre blanc can be made 2 days ahead, so it fits before the dry-brine (D1) that waits for it.
 // S2's passive time is 120 minutes, not the #87 plan's illustrative 150: with the real scheduler the
 // whole chain S1–S3, B1, B2 must fit Thu 18:00 to D1's start at 21:50, and with 150 S1 is Unplaced.
-const SUB_RECIPES: { key: "stock" | "beurre"; name: string; yield: string; makeAhead: { beforeDays: number; shelfLifeDays: number }; steps: StepSpec[] }[] = [
+const SUB_RECIPES: {
+  key: "stock" | "beurre";
+  name: string;
+  yield: string;
+  makeAhead: { beforeDays: number; shelfLifeDays: number };
+  steps: StepSpec[];
+}[] = [
   {
     key: "stock",
     name: "Chicken stock",
@@ -84,9 +106,21 @@ const SUB_RECIPES: { key: "stock" | "beurre"; name: string; yield: string; makeA
 type Line = { amount: string; wording: string; subRecipe: "stock" | "beurre" };
 // Which walkthrough Step uses a sub-recipe, and how its text reads around the line.
 const USES: Record<string, { before: string; line: Line; after: string }> = {
-  V2: { before: "Add the ", line: { amount: "1.5%L", wording: "stock", subRecipe: "stock" }, after: " and simmer" },
-  D4: { before: "Make the ", line: { amount: "300%ml", wording: "beurre blanc", subRecipe: "beurre" }, after: "" },
-  B1: { before: "Reduce the shallots in the ", line: { amount: "750%ml", wording: "stock", subRecipe: "stock" }, after: "" },
+  V2: {
+    before: "Add the ",
+    line: { amount: "1.5%L", wording: "stock", subRecipe: "stock" },
+    after: " and simmer",
+  },
+  D4: {
+    before: "Make the ",
+    line: { amount: "300%ml", wording: "beurre blanc", subRecipe: "beurre" },
+    after: "",
+  },
+  B1: {
+    before: "Reduce the shallots in the ",
+    line: { amount: "750%ml", wording: "stock", subRecipe: "stock" },
+    after: "",
+  },
 };
 const SERVINGS: Partial<Record<string, number>> = { veloute: 4, duck: 6 };
 
@@ -120,11 +154,25 @@ type SubStepKey = "S1" | "S2" | "S3" | "B1" | "B2";
 
 export type Walkthrough = {
   menuId: string;
-  recipes: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string; pastry?: string };
+  recipes: {
+    veloute: string;
+    duck: string;
+    tarte: string;
+    stock?: string;
+    beurre?: string;
+    pastry?: string;
+  };
   dishes: { veloute: string; duck: string; tarte: string };
   /** V1–V3, D1–D4, T1–T3 (and with the stock S1–S3, B1–B2): each Recipe's Steps in order. */
   steps: Record<StepKey, string> & Partial<Record<SubStepKey, string>>;
-  names: { veloute: string; duck: string; tarte: string; stock?: string; beurre?: string; pastry?: string };
+  names: {
+    veloute: string;
+    duck: string;
+    tarte: string;
+    stock?: string;
+    beurre?: string;
+    pastry?: string;
+  };
 };
 
 export type WalkthroughOptions = {
@@ -134,14 +182,19 @@ export type WalkthroughOptions = {
 };
 
 /** The Recipes, their Planning pass, and the Menu with one Dish per Course. No Service. */
-export async function buildWalkthrough(run: Run, stamp: string, options: WalkthroughOptions = {}): Promise<Walkthrough> {
+export async function buildWalkthrough(
+  run: Run,
+  stamp: string,
+  options: WalkthroughOptions = {},
+): Promise<Walkthrough> {
   const { shopping } = options;
   const stock = options.stock || !!shopping;
   const revisionId = () => crypto.randomUUID();
   const menuId = crypto.randomUUID();
   const dishIds = sortedIds(3);
   const out = { menuId, recipes: {}, dishes: {}, steps: {}, names: {} } as Walkthrough;
-  const stepKey = (key: string, j: number) => `${key === "beurre" ? "B" : key === "stock" ? "S" : key[0]!.toUpperCase()}${j + 1}`;
+  const stepKey = (key: string, j: number) =>
+    `${key === "beurre" ? "B" : key === "stock" ? "S" : key[0]!.toUpperCase()}${j + 1}`;
 
   // One Recipe's Steps in order, each after the previous one, with any sub-recipe line it uses.
   const addSteps = async (key: string, recipeId: string, steps: StepSpec[]) => {
@@ -156,21 +209,43 @@ export async function buildWalkthrough(run: Run, stamp: string, options: Walkthr
       const content = uses
         ? ingredientContent(uses, shopping!)
         : use
-        ? {
-            body: [
-              { type: "text", text: use.before },
-              { type: "line", lineId },
-              ...(use.after ? [{ type: "text", text: use.after }] : []),
-            ],
-            lines: [{ lineId, subRecipeId: out.recipes[use.line.subRecipe], amount: use.line.amount, wording: use.line.wording }],
-          }
-        : { body: [{ type: "text", text: s.text }], lines: [] };
+          ? {
+              body: [
+                { type: "text", text: use.before },
+                { type: "line", lineId },
+                ...(use.after ? [{ type: "text", text: use.after }] : []),
+              ],
+              lines: [
+                {
+                  lineId,
+                  subRecipeId: out.recipes[use.line.subRecipe],
+                  amount: use.line.amount,
+                  wording: use.line.wording,
+                },
+              ],
+            }
+          : { body: [{ type: "text", text: s.text }], lines: [] };
       await run("addStep", { recipeId, stepId, revisionId: revisionId(), ...content });
       if (s.active !== null || s.passive != null)
-        await run("setStepTimes", { stepId, revisionId: revisionId(), activeMinutes: s.active, passiveMinutes: s.passive ?? null });
-      if (s.makeAhead) await run("setMakeAhead", { target: { kind: "step", stepId }, revisionId: revisionId(), window: s.makeAhead });
+        await run("setStepTimes", {
+          stepId,
+          revisionId: revisionId(),
+          activeMinutes: s.active,
+          passiveMinutes: s.passive ?? null,
+        });
+      if (s.makeAhead)
+        await run("setMakeAhead", {
+          target: { kind: "step", stepId },
+          revisionId: revisionId(),
+          window: s.makeAhead,
+        });
       if (j > 0)
-        await run("addStepDependency", { dependencyId: crypto.randomUUID(), revisionId: revisionId(), beforeStepId: stepIds[j - 1], afterStepId: stepId });
+        await run("addStepDependency", {
+          dependencyId: crypto.randomUUID(),
+          revisionId: revisionId(),
+          beforeStepId: stepIds[j - 1],
+          afterStepId: stepId,
+        });
     }
   };
 
@@ -181,7 +256,11 @@ export async function buildWalkthrough(run: Run, stamp: string, options: Walkthr
       out.recipes[r.key] = recipeId;
       out.names[r.key] = name;
       await run("createSubRecipe", { recipeId, revisionId: revisionId(), name, yield: r.yield });
-      await run("setMakeAhead", { target: { kind: "recipe", recipeId }, revisionId: revisionId(), window: r.makeAhead });
+      await run("setMakeAhead", {
+        target: { kind: "recipe", recipeId },
+        revisionId: revisionId(),
+        window: r.makeAhead,
+      });
       await addSteps(r.key, recipeId, r.steps);
     }
   }
@@ -193,8 +272,18 @@ export async function buildWalkthrough(run: Run, stamp: string, options: Walkthr
     out.recipes[r.key] = recipeId;
     out.names[r.key] = name;
     const servings = stock ? SERVINGS[r.key] : undefined;
-    await run("createRecipe", { recipeId, revisionId: revisionId(), name, ...(servings ? { servings } : {}) });
-    if (r.makeAhead) await run("setMakeAhead", { target: { kind: "recipe", recipeId }, revisionId: revisionId(), window: r.makeAhead });
+    await run("createRecipe", {
+      recipeId,
+      revisionId: revisionId(),
+      name,
+      ...(servings ? { servings } : {}),
+    });
+    if (r.makeAhead)
+      await run("setMakeAhead", {
+        target: { kind: "recipe", recipeId },
+        revisionId: revisionId(),
+        window: r.makeAhead,
+      });
     await addSteps(r.key, recipeId, r.steps);
     if (shopping && r.key === "tarte") {
       const pastryId = crypto.randomUUID();
@@ -222,7 +311,10 @@ export async function buildWalkthrough(run: Run, stamp: string, options: Walkthr
 }
 
 // A Step's text and Ingredient lines, from its parts in order.
-function ingredientContent(parts: (string | IngredientUse)[], ids: Record<ShoppingIngredient, string>) {
+function ingredientContent(
+  parts: (string | IngredientUse)[],
+  ids: Record<ShoppingIngredient, string>,
+) {
   const body: unknown[] = [];
   const lines: unknown[] = [];
   for (const part of parts) {
@@ -232,15 +324,27 @@ function ingredientContent(parts: (string | IngredientUse)[], ids: Record<Shoppi
     }
     const lineId = crypto.randomUUID();
     body.push({ type: "line", lineId });
-    lines.push({ lineId, ingredientId: ids[part.ingredient], amount: part.amount, wording: part.wording });
+    lines.push({
+      lineId,
+      ingredientId: ids[part.ingredient],
+      amount: part.amount,
+      wording: part.wording,
+    });
   }
   return { body, lines };
 }
 
 /** Thu and Fri 18:00–22:00, Sat 09:00–19:00, and the override Fri 30 Oct from `fridayStart` to 21:00. */
 export async function setWalkthroughAvailability(run: Run, fridayStart = h(19)) {
-  const row = (weekday: number, start: number, end: number) => ({ availabilityId: crypto.randomUUID(), weekday, start, end });
-  await run("setWeeklyAvailability", { hours: [row(4, h(18), h(22)), row(5, h(18), h(22)), row(6, h(9), h(19))] });
+  const row = (weekday: number, start: number, end: number) => ({
+    availabilityId: crypto.randomUUID(),
+    weekday,
+    start,
+    end,
+  });
+  await run("setWeeklyAvailability", {
+    hours: [row(4, h(18), h(22)), row(5, h(18), h(22)), row(6, h(9), h(19))],
+  });
   await run("setAvailabilityOverride", {
     overrideId: crypto.randomUUID(),
     date: "2026-10-30",

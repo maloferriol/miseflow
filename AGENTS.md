@@ -2,9 +2,9 @@
 
 ## Agent skills
 
-### Ticket workflow
+### Workflow
 
-To run a ticket, read `docs/agents/orchestrator.md`: it covers stages, branches, Plans, the review loop and the merge gate. Give every stage subagent `docs/agents/stage-brief.md`: it covers the worktree check, setup, tests, evidence and code rules.
+Work runs through the mattpocock skills: `/wayfinder`, then `/to-spec` → `/to-tickets` → `/implement-spec`. See `docs/agents/mattpocock.md`. Code rules, setup and test commands are in `CODING_STANDARDS.md`.
 
 ### Issue tracker
 

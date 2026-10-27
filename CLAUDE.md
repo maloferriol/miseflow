@@ -15,4 +15,4 @@ Narrow tasks have a clear spec and a checkable result:
 * Formatting or converting data
 * Reading or writing to GitHub (issues, PRs, comments) via `gh`
 
-Tell the subagent exactly what to run or change and what a passing result looks like, and ask it to return a short summary, not raw output. Ticket stages follow the Model column in `docs/agents/orchestrator.md`.
+Tell the subagent exactly what to run or change and what a passing result looks like, and ask it to return a short summary, not raw output.

@@ -17,6 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
+    "preflight": "node --experimental-strip-types scripts/preflight.ts",
     "setup:local": "npm run setup:local -w server",
     "db:migrate": "npm run db:migrate -w shared",
     "e2e": "playwright test"

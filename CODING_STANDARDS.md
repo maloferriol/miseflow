@@ -20,7 +20,9 @@ Repo facts for anyone writing or reviewing code here. `code-review` checks the d
 - Expected values come from a real run of the code, not from hand-worked numbers. ADR 0004's walkthrough ("Done looks like") is the fixture's source of truth, wording included.
 - When a result depends on several inputs the cook can set (Main unit, Conversion, Batch Scale, Fixed or Vague), test at least one case for each pair of inputs that meet in the code. Sums include an amount that isn't exact in binary, such as 0.1 × 3.
 - In e2e tests, wait for the `/api/mutate` response before any `reload()` or assertion about persistence. Prove the test goes red by delaying that route with `page.route`.
-- Web logic that a test should cover goes in `shared/` or a pure `web/src` module with a vitest test next to it. Components only render.
+- Web logic that a test should cover goes in `shared/` or a pure `web/src` module with a vitest test next to it: decisions, validation, formatting, and each mutation's name and args. A `useState` that only holds what the cook typed, or a value set once on open, can stay in the component. No reducers.
+- A screen with branches to test is split into core, hook and view (ADR 0011). The hook only calls `useQuery`, `useMutation` and `useIntent`, and has no test: if it grows a branch, move the branch into the core. The view takes props only.
+- View tests are `*.test.tsx` under jsdom. They find elements by role and visible text, check what callbacks are called with, and use no snapshots. Props for loading, error and pending states can be written by hand. A prop that holds a computed value comes from the walkthrough or a core function.
 - To run one file: `npm test -w <shared|server> -- <path> -t "<name>"`. `npm test` prints separate shared and server totals. The browser check is the Playwright e2e (no chrome-devtools MCP).
 
 ## Code

@@ -1,7 +1,12 @@
-import type { Recipe, RecipeStep } from "./api.ts";
+import type { Recipe, RecipeLine, RecipeStep } from "./api.ts";
+
+// Only what the list reads, so a view test can pass a Recipe snapshot and `readyToPlan()` on it.
+type ReadyToPlanStep = Pick<RecipeStep, "id" | "body"> & {
+  lines: Pick<RecipeLine, "id" | "wording" | "preparation">[];
+};
 
 /** "Step 2 · Simmer for four hours", cut short for a list. */
-export function stepLabel(step: RecipeStep, index: number) {
+export function stepLabel(step: ReadyToPlanStep, index: number) {
   const wording = new Map(step.lines.map((l) => [l.id, l.wording ?? ""]));
   const text = step.body
     .map((t) => (t.type === "text" ? t.text : (wording.get(t.lineId) ?? "")))
@@ -13,7 +18,11 @@ export function stepLabel(step: RecipeStep, index: number) {
 
 // What the scheduler still lacks, and likely duplicates, as the server computed them (#85 Q10).
 // Each item links to its Step's row in the Planning pass.
-export function ReadyToPlan({ recipe }: { recipe: Recipe }) {
+export function ReadyToPlan({
+  recipe,
+}: Readonly<{
+  recipe: { steps: ReadyToPlanStep[]; readyToPlan: Recipe["readyToPlan"] };
+}>) {
   const { steps, readyToPlan } = recipe;
   const index = new Map(steps.map((s, i) => [s.id, i]));
   const lines = new Map(steps.flatMap((s) => s.lines).map((l) => [l.id, l]));

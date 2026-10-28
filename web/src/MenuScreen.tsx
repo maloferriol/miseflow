@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
+import { MenuListView } from "./MenuViews.tsx";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
@@ -29,26 +30,13 @@ export function MenuScreen() {
   );
 }
 
-// The start screen: every saved Menu, each a link that opens it (?menu=<id>).
+/** The saved Menus. Only query hooks: no branches. */
+function useMenuList() {
+  return { menus: useQuery({ queryKey: ["menus"], queryFn: fetchMenus }) };
+}
+
 function MenuList() {
-  const menus = useQuery({ queryKey: ["menus"], queryFn: fetchMenus });
-
-  if (menus.isPending) return <p>Loading…</p>;
-  if (menus.isError) return <p role="alert">{menus.error.message}</p>;
-  if (!menus.data.length) return null;
-
-  return (
-    <nav aria-label="Your Menus">
-      <h2>Your Menus</h2>
-      <ul>
-        {menus.data.map((menu) => (
-          <li key={menu.id}>
-            <a href={`?menu=${menu.id}`}>{menu.name}</a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
+  return <MenuListView {...useMenuList()} />;
 }
 
 function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {

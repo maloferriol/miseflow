@@ -5,7 +5,8 @@ import { fetchRecipe, mutate } from "./api.ts";
 import { ExtractToSubRecipe } from "./ExtractToSubRecipe.tsx";
 import { PlanningPass } from "./PlanningPass.tsx";
 import { recipeEdits } from "./recipe-edits.ts";
-import { amountText, StepEditor } from "./StepEditor.tsx";
+import { amountText } from "./step-editor.ts";
+import { StepEditor } from "./StepEditor.tsx";
 import { YieldField } from "./YieldField.tsx";
 
 type Mode = "write" | "plan";

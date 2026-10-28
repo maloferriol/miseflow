@@ -1,33 +1,26 @@
-import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
+// The Menu screen (ADR 0011): each part's hook, and the part that renders its view with it.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
-import {
-  fetchAvailability,
-  fetchMenu,
-  fetchMenus,
-  type Menu,
-  minuteOfDay,
-  mutate,
-  timeValue,
-} from "./api.ts";
+import { useState } from "react";
+import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
+import { type DishScale, dishScaleSave, type ServiceInput, serviceSave } from "./menu-screen.ts";
+import {
+  CourseView,
+  DishScaleView,
+  MenuListView,
+  MenuView,
+  NewMenuView,
+  ServiceFormView,
+} from "./MenuViews.tsx";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
 function menuIdFromUrl() {
   return new URLSearchParams(window.location.search).get("menu");
 }
 
-function formText(event: FormEvent<HTMLFormElement>, name: string) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const value = String(new FormData(form).get(name) ?? "").trim();
-  form.reset();
-  return value;
-}
-
 export function MenuScreen() {
   const [menuId, setMenuId] = useState(menuIdFromUrl);
-  if (menuId) return <MenuView menuId={menuId} />;
+  if (menuId) return <OpenMenu menuId={menuId} />;
   return (
     <>
       <MenuList />
@@ -36,29 +29,17 @@ export function MenuScreen() {
   );
 }
 
-// The start screen: every saved Menu, each a link that opens it (?menu=<id>).
-function MenuList() {
-  const menus = useQuery({ queryKey: ["menus"], queryFn: fetchMenus });
-
-  if (menus.isPending) return <p>Loading…</p>;
-  if (menus.isError) return <p role="alert">{menus.error.message}</p>;
-  if (!menus.data.length) return null;
-
-  return (
-    <nav aria-label="Your Menus">
-      <h2>Your Menus</h2>
-      <ul>
-        {menus.data.map((menu) => (
-          <li key={menu.id}>
-            <a href={`?menu=${menu.id}`}>{menu.name}</a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
+/** The saved Menus. Only query hooks: no branches. */
+export function useMenuList() {
+  return { menus: useQuery({ queryKey: ["menus"], queryFn: fetchMenus }) };
 }
 
-function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
+function MenuList() {
+  return <MenuListView {...useMenuList()} />;
+}
+
+/** Creates a Menu and opens it. Only a mutation hook: no branches. */
+export function useNewMenu(onCreated: (menuId: string) => void) {
   const createMenu = useMutation({
     mutationFn: async (args: { menuId: string; name: string; guestCount: number }) =>
       mutate(crypto.randomUUID(), "createMenu", args),
@@ -67,93 +48,51 @@ function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
       onCreated(menuId);
     },
   });
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    const guestCount = Number(new FormData(event.currentTarget).get("guestCount"));
-    const name = formText(event, "name");
-    if (name) createMenu.mutate({ menuId: crypto.randomUUID(), name, guestCount });
-  }
-
-  return (
-    <form onSubmit={onSubmit}>
-      <h2>New Menu</h2>
-      <label>
-        Menu name <input name="name" required />
-      </label>
-      <label>
-        Guests <input name="guestCount" type="number" min={1} step={1} defaultValue={2} required />
-      </label>
-      <button type="submit" disabled={createMenu.isPending}>
-        Create Menu
-      </button>
-      {createMenu.error && <p role="alert">{createMenu.error.message}</p>}
-    </form>
-  );
+  return {
+    createPending: createMenu.isPending,
+    createError: createMenu.error,
+    onCreate: (menu: { name: string; guestCount: number }) =>
+      createMenu.mutate({ menuId: crypto.randomUUID(), ...menu }),
+  };
 }
 
-function MenuView({ menuId }: { menuId: string }) {
+function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
+  return <NewMenuView {...useNewMenu(onCreated)} />;
+}
+
+/** One Menu and its Add Course. Only query, mutation and query-client hooks: no branches. */
+export function useMenu(menuId: string) {
   const queryClient = useQueryClient();
   const menu = useQuery({ queryKey: ["menu", menuId], queryFn: () => fetchMenu(menuId) });
-  const onSuccess = () => queryClient.invalidateQueries({ queryKey: ["menu", menuId] });
-
+  const onChanged = () => queryClient.invalidateQueries({ queryKey: ["menu", menuId] });
   const addCourse = useMutation({
     mutationFn: async (name: string) =>
       mutate(crypto.randomUUID(), "addCourse", { courseId: crypto.randomUUID(), menuId, name }),
-    onSuccess,
+    onSuccess: onChanged,
   });
+  return {
+    menu,
+    addCoursePending: addCourse.isPending,
+    addCourseError: addCourse.error,
+    onAddCourse: (name: string) => addCourse.mutate(name),
+    onChanged,
+  };
+}
 
-  if (menu.isPending) return <p>Loading…</p>;
-  if (menu.isError) return <p role="alert">{menu.error.message}</p>;
-
+function OpenMenu({ menuId }: Readonly<{ menuId: string }>) {
+  const { onChanged, ...menu } = useMenu(menuId);
   return (
-    <section>
-      <a href="/">All Menus</a>
-      <h2>{menu.data.name}</h2>
-      <p>{menu.data.guestCount} guests</p>
-      <ServiceForm
-        key={JSON.stringify(menu.data.service)}
-        menuId={menuId}
-        service={menu.data.service}
-      />
-      {menu.data.courses.map((course) => (
-        <CourseView key={course.id} course={course} onChanged={onSuccess} />
-      ))}
-      <h3>Batches</h3>
-      {menu.data.batches.length ? (
-        <ul aria-label="Batches">
-          {menu.data.batches.map((batch) => (
-            <li key={batch.subRecipe.id}>{batch.label}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No Batches</p>
-      )}
-      <form
-        onSubmit={(event) => {
-          const name = formText(event, "name");
-          if (name) addCourse.mutate(name);
-        }}
-      >
-        <label>
-          Course name <input name="name" required />
-        </label>
-        <button type="submit" disabled={addCourse.isPending}>
-          Add Course
-        </button>
-        {addCourse.error && <p role="alert">{addCourse.error.message}</p>}
-      </form>
-    </section>
+    <MenuView
+      {...menu}
+      renderServiceForm={(service) => <ServiceForm menuId={menuId} service={service} />}
+      renderCourse={(course) => <Course menuId={menuId} course={course} onChanged={onChanged} />}
+    />
   );
 }
 
-function CourseView({
-  course,
-  onChanged,
-}: {
-  course: Menu["courses"][number];
-  onChanged: () => Promise<void>;
-}) {
-  // A new Dish is a new Recipe placed in this Course: two mutations, each with its own id.
+/** Adds a Dish: a new Recipe placed in this Course. Only a mutation hook: no branches. */
+export function useCourse(course: Menu["courses"][number], onChanged: () => Promise<void>) {
+  // Two mutations, each with its own id.
   const addDish = useMutation({
     mutationFn: async (name: string) => {
       const recipeId = crypto.randomUUID();
@@ -170,149 +109,72 @@ function CourseView({
     },
     onSuccess: onChanged,
   });
+  return {
+    addDishPending: addDish.isPending,
+    addDishError: addDish.error,
+    onAddDish: (name: string) => addDish.mutate(name),
+  };
+}
 
+function Course({
+  menuId,
+  course,
+  onChanged,
+}: Readonly<{
+  menuId: string;
+  course: Menu["courses"][number];
+  onChanged: () => Promise<void>;
+}>) {
   return (
-    <article>
-      <h3>{course.name}</h3>
-      <ul>
-        {course.dishes.map((dish) => (
-          <li key={dish.id}>
-            {/* A full load: App reads the view from the URL. ?menu= stays for the way back. */}
-            <a
-              href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: dish.recipe.id })}`}
-            >
-              {dish.recipe.name}
-            </a>{" "}
-            {formatFactor(dish.scale.factor)}
-            {/* Paragraphs, not a list, so each Dish stays one list item. */}
-            {dish.fixes.map((fix) => (
-              <p key={`${fix.subRecipe?.id ?? ""}:${fix.text}`}>
-                {fix.subRecipe ? (
-                  <a
-                    href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: fix.subRecipe.id })}`}
-                  >
-                    {fix.subRecipe.name}: {fix.text}
-                  </a>
-                ) : (
-                  `${dish.recipe.name}: ${fix.text}`
-                )}
-              </p>
-            ))}
-            <DishScale dish={dish} onChanged={onChanged} />
-          </li>
-        ))}
-      </ul>
-      <form
-        onSubmit={(event) => {
-          const name = formText(event, "name");
-          if (name) addDish.mutate(name);
-        }}
-      >
-        <label>
-          Recipe name <input name="name" required />
-        </label>
-        <button type="submit" disabled={addDish.isPending}>
-          Add Dish
-        </button>
-        {addDish.error && <p role="alert">{addDish.error.message}</p>}
-      </form>
-    </article>
+    <CourseView
+      {...useCourse(course, onChanged)}
+      menuId={menuId}
+      course={course}
+      renderDishScale={(dish) => <DishScaleForm dish={dish} onChanged={onChanged} />}
+    />
   );
 }
 
-type ScaleKind = "guests" | "portions" | "factor";
-
-// A Dish's Scale factor: the guest count over servings, a portion count, or a factor (units spec §5).
-function DishScale({
-  dish,
-  onChanged,
-}: {
-  dish: Menu["courses"][number]["dishes"][number];
-  onChanged: () => Promise<void>;
-}) {
+/** Sets one Dish's scale. Only query-client, intent and mutation hooks: no branches. */
+export function useDishScale(dishId: string, onChanged: () => Promise<void>) {
   const queryClient = useQueryClient();
   const intent = useIntent();
-  const [kind, setKind] = useState<ScaleKind>(dish.scale.source === "set" ? "factor" : "guests");
   const save = useMutation({
-    mutationFn: async (
-      scale:
-        | { kind: "guests" }
-        | { kind: "portions"; portions: number }
-        | { kind: "factor"; factor: number },
-    ) =>
-      mutate(intent.id(JSON.stringify([dish.id, scale]), "mutation"), "setDishScale", {
-        dishId: dish.id,
-        scale,
-      }),
+    mutationFn: async (scale: DishScale) => {
+      const call = dishScaleSave(dishId, scale, intent);
+      await mutate(call.id, call.name, call.args);
+    },
     onSuccess: async () => {
       intent.reset();
       await Promise.all([onChanged(), queryClient.invalidateQueries({ queryKey: ["plan"] })]);
     },
   });
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const value = Number(new FormData(event.currentTarget).get("value"));
-    if (kind === "guests") save.mutate({ kind });
-    else if (kind === "portions") save.mutate({ kind, portions: value });
-    else save.mutate({ kind, factor: value });
-  }
-
-  return (
-    <form onSubmit={onSubmit}>
-      <select
-        aria-label={`Scale for ${dish.recipe.name}`}
-        value={kind}
-        onChange={(e) => setKind(e.target.value as ScaleKind)}
-      >
-        <option value="guests">Guests</option>
-        <option value="portions">Portions</option>
-        <option value="factor">Factor</option>
-      </select>
-      {kind !== "guests" && (
-        <input
-          name="value"
-          type="number"
-          aria-label={
-            kind === "portions"
-              ? `Portions of ${dish.recipe.name}`
-              : `Factor for ${dish.recipe.name}`
-          }
-          min={kind === "portions" ? 1 : 0.01}
-          max={kind === "portions" ? 10_000 : 1000}
-          step={kind === "portions" ? 1 : "any"}
-          defaultValue={kind === "factor" ? dish.scale.factor : undefined}
-          required
-        />
-      )}
-      <button type="submit" disabled={save.isPending}>
-        Save scale
-      </button>
-      {save.error && <p role="alert">{save.error.message}</p>}
-    </form>
-  );
+  return {
+    savePending: save.isPending,
+    saveError: save.error,
+    onSave: (scale: DishScale) => save.mutate(scale),
+  };
 }
 
-// The Menu's one Service: a date and an optional time (empty: the kitchen's default). Saving it
-// re-plans on the server; Open Plan shows the result, Open Shopping list what to buy.
-function ServiceForm({ menuId, service }: { menuId: string; service: Menu["service"] }) {
+function DishScaleForm({
+  dish,
+  onChanged,
+}: Readonly<{
+  dish: Menu["courses"][number]["dishes"][number];
+  onChanged: () => Promise<void>;
+}>) {
+  return <DishScaleView {...useDishScale(dish.id, onChanged)} dish={dish} />;
+}
+
+/** Saves the Menu's one Service. Only query, query-client, intent and mutation hooks: no branches. */
+export function useServiceForm(menuId: string, service: Menu["service"]) {
   const queryClient = useQueryClient();
   const intent = useIntent();
   const availability = useQuery({ queryKey: ["availability"], queryFn: fetchAvailability });
   const save = useMutation({
-    mutationFn: async (args: { date: string; time: number | null }) => {
-      const key = JSON.stringify([service?.id ?? null, args]);
-      if (service)
-        await mutate(intent.id(key, "mutation"), "setServiceTime", {
-          serviceId: service.id,
-          ...args,
-        });
-      else
-        await mutate(intent.id(key, "mutation"), "createService", {
-          serviceId: intent.id(key, "service"),
-          menuId,
-          ...args,
-        });
+    mutationFn: async (input: ServiceInput) => {
+      const call = serviceSave(menuId, service, input, intent);
+      await mutate(call.id, call.name, call.args);
     },
     onSuccess: async () => {
       intent.reset();
@@ -322,49 +184,14 @@ function ServiceForm({ menuId, service }: { menuId: string; service: Menu["servi
       ]);
     },
   });
+  return {
+    availability: availability.data,
+    savePending: save.isPending,
+    saveError: save.error,
+    onSave: (input: ServiceInput) => save.mutate(input),
+  };
+}
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const date = String(form.get("date") ?? "");
-    if (date) save.mutate({ date, time: minuteOfDay(form.get("time")) });
-  }
-
-  const defaultTime = availability.data
-    ? timeValue(availability.data.defaultServiceTime)
-    : undefined;
-  return (
-    <form onSubmit={onSubmit}>
-      <label>
-        Service date <input name="date" type="date" defaultValue={service?.date ?? ""} required />
-      </label>
-      <label>
-        Service time (optional){" "}
-        <input
-          name="time"
-          type="time"
-          step={300}
-          defaultValue={service?.time == null ? "" : timeValue(service.time)}
-          placeholder={defaultTime}
-          title={defaultTime && `Empty: the kitchen's default, ${defaultTime}`}
-        />
-      </label>
-      <button type="submit" disabled={save.isPending}>
-        {service ? "Save Service" : "Add Service"}
-      </button>
-      {service && (
-        <a href={`?${new URLSearchParams({ menu: menuId, view: "plan", service: service.id })}`}>
-          Open Plan
-        </a>
-      )}
-      {service && (
-        <a
-          href={`?${new URLSearchParams({ menu: menuId, view: "shopping", service: service.id })}`}
-        >
-          Open Shopping list
-        </a>
-      )}
-      {save.error && <p role="alert">{save.error.message}</p>}
-    </form>
-  );
+function ServiceForm({ menuId, service }: { menuId: string; service: Menu["service"] }) {
+  return <ServiceFormView {...useServiceForm(menuId, service)} menuId={menuId} service={service} />;
 }

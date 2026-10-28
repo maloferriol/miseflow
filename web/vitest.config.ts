@@ -1,7 +1,21 @@
 import { defineConfig } from "vitest/config";
 import { coverage } from "../scripts/coverage.ts";
 
-// Unit tests for the web's pure logic only; the Playwright e2e covers rendering.
+// Two projects (ADR 0011): the pure logic's `*.test.ts` run in Node, and the views' `*.test.tsx`
+// run under jsdom with Testing Library. The Playwright e2e is the only test in a real browser.
+// Source: https://vitest.dev/guide/projects
 export default defineConfig({
-  test: { coverage },
+  test: {
+    coverage,
+    projects: [
+      {
+        extends: true,
+        test: { name: "logic", include: ["src/**/*.test.ts"], environment: "node" },
+      },
+      {
+        extends: true,
+        test: { name: "view", include: ["src/**/*.test.tsx"], environment: "jsdom" },
+      },
+    ],
+  },
 });

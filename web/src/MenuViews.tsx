@@ -1,8 +1,14 @@
 // The Menu screen's views (ADR 0011): props only, so their tests render them without the API.
 import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
-import { type FormEvent, Fragment, type ReactNode } from "react";
+import { type FormEvent, Fragment, type ReactNode, useState } from "react";
 import type { fetchMenus, Menu } from "./api.ts";
-import { newMenuInput } from "./menu-screen.ts";
+import {
+  type DishScale,
+  dishScale,
+  newMenuInput,
+  openingScaleKind,
+  type ScaleKind,
+} from "./menu-screen.ts";
 
 /** A form field's trimmed text; the form is cleared for the next entry. */
 function formText(event: FormEvent<HTMLFormElement>, name: string) {
@@ -192,5 +198,57 @@ export function CourseView({
         {addDishError && <p role="alert">{addDishError.message}</p>}
       </form>
     </article>
+  );
+}
+
+export type DishScaleViewProps = {
+  dish: Pick<Dish, "recipe" | "scale">;
+  savePending: boolean;
+  saveError: Error | null;
+  onSave: (scale: DishScale) => void;
+};
+
+/** A Dish's Scale factor: the guest count over servings, a portion count, or a factor (units spec §5). */
+export function DishScaleView({ dish, savePending, saveError, onSave }: DishScaleViewProps) {
+  // What the cook picked, opening on the Dish's saved scale.
+  const [kind, setKind] = useState(() => openingScaleKind(dish.scale));
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSave(dishScale(kind, String(new FormData(event.currentTarget).get("value") ?? "")));
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <select
+        aria-label={`Scale for ${dish.recipe.name}`}
+        value={kind}
+        onChange={(e) => setKind(e.target.value as ScaleKind)}
+      >
+        <option value="guests">Guests</option>
+        <option value="portions">Portions</option>
+        <option value="factor">Factor</option>
+      </select>
+      {kind !== "guests" && (
+        <input
+          name="value"
+          type="number"
+          aria-label={
+            kind === "portions"
+              ? `Portions of ${dish.recipe.name}`
+              : `Factor for ${dish.recipe.name}`
+          }
+          min={kind === "portions" ? 1 : 0.01}
+          max={kind === "portions" ? 10_000 : 1000}
+          step={kind === "portions" ? 1 : "any"}
+          defaultValue={kind === "factor" ? dish.scale.factor : undefined}
+          required
+        />
+      )}
+      <button type="submit" disabled={savePending}>
+        Save scale
+      </button>
+      {saveError && <p role="alert">{saveError.message}</p>}
+    </form>
   );
 }

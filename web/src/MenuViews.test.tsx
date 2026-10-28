@@ -5,6 +5,8 @@ import type { Menu } from "./api.ts";
 import {
   CourseView,
   type CourseViewProps,
+  DishScaleView,
+  type DishScaleViewProps,
   MenuListView,
   MenuView,
   type MenuViewProps,
@@ -188,5 +190,44 @@ describe("Course", () => {
   it("shows a failed add as an alert with its message", () => {
     courseView({ addDishError: new Error("Could not add the Dish (500)") });
     expect(screen.getByRole("alert").textContent).toBe("Could not add the Dish (500)");
+  });
+});
+
+describe("Dish scale", () => {
+  const dishScale = (props: Partial<DishScaleViewProps> = {}) =>
+    renderView(
+      <DishScaleView
+        dish={velouté}
+        savePending={false}
+        saveError={null}
+        onSave={() => {}}
+        {...props}
+      />,
+    );
+
+  it("saves a portion count", () => {
+    const onSave = vi.fn();
+    dishScale({ onSave });
+    fireEvent.change(screen.getByRole("combobox", { name: "Scale for Velouté" }), {
+      target: { value: "portions" },
+    });
+    type("Portions of Velouté", "8");
+    fireEvent.click(button("Save scale"));
+    expect(onSave).toHaveBeenCalledWith({ kind: "portions", portions: 8 });
+  });
+
+  it("opens on the factor the cook set", () => {
+    dishScale({ dish: { ...velouté, scale: { factor: 1.5, source: "set" } } });
+    expect(screen.getByLabelText<HTMLInputElement>("Factor for Velouté").value).toBe("1.5");
+  });
+
+  it("disables Save scale while a save is pending", () => {
+    dishScale({ savePending: true });
+    expect(button("Save scale").hasAttribute("disabled")).toBe(true);
+  });
+
+  it("shows a failed save as an alert with its message", () => {
+    dishScale({ saveError: new Error("Could not save the scale (500)") });
+    expect(screen.getByRole("alert").textContent).toBe("Could not save the scale (500)");
   });
 });

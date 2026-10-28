@@ -2,11 +2,15 @@
 import type { Intent } from "./intent.ts";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
+// HTML's valid floating-point number, what <input type=number> lets through: "2.0", "1e1".
+const NUMBER_FIELD = /^-?(?:\d+|\d*\.\d+)(?:[eE][-+]?\d+)?$/;
+
 /** The Guests field as a guest count, or null when it holds no whole number above zero. */
 export function parseGuests(text: string): number | null {
-  if (!/^\d+$/.test(text.trim())) return null;
-  const guests = Number(text);
-  return guests > 0 ? guests : null;
+  const trimmed = text.trim();
+  if (!NUMBER_FIELD.test(trimmed)) return null;
+  const guests = Number(trimmed);
+  return Number.isInteger(guests) && guests >= 1 ? guests : null;
 }
 
 /** The New Menu form's name and Guests, or null when either is missing. */

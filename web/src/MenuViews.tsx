@@ -19,13 +19,25 @@ function fieldText(form: FormData, name: string) {
   return typeof value === "string" ? value : "";
 }
 
-/** A form field's trimmed text; the form is cleared for the next entry. */
-function formText(event: SubmitEvent<HTMLFormElement>, name: string) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const value = fieldText(new FormData(form), name).trim();
-  form.reset();
-  return value;
+/**
+ * A submit handler: `send` reads the form's fields and says whether it sent them. Only a sent
+ * form is cleared for the next entry, so an invalid one keeps what the cook typed.
+ */
+function sendThenClear(send: (form: FormData) => boolean) {
+  return (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (send(new FormData(form))) form.reset();
+  };
+}
+
+/** A submit handler that sends the form's trimmed `name`, when there is one. */
+function sendName(onName: (name: string) => void) {
+  return sendThenClear((form) => {
+    const name = fieldText(form, "name").trim();
+    if (name) onName(name);
+    return name !== "";
+  });
 }
 
 /** A query as a view sees it: loading, failed, or loaded. A `useQuery` result is one. */
@@ -61,11 +73,11 @@ export type NewMenuViewProps = {
 };
 
 export function NewMenuView({ createPending, createError, onCreate }: Readonly<NewMenuViewProps>) {
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    const guests = fieldText(new FormData(event.currentTarget), "guestCount");
-    const menu = newMenuInput(formText(event, "name"), guests);
+  const onSubmit = sendThenClear((form) => {
+    const menu = newMenuInput(fieldText(form, "name"), fieldText(form, "guestCount"));
     if (menu) onCreate(menu);
-  }
+    return menu !== null;
+  });
 
   return (
     <form onSubmit={onSubmit}>
@@ -127,12 +139,7 @@ export function MenuView({
       ) : (
         <p>No Batches</p>
       )}
-      <form
-        onSubmit={(event) => {
-          const name = formText(event, "name");
-          if (name) onAddCourse(name);
-        }}
-      >
+      <form onSubmit={sendName(onAddCourse)}>
         <label>
           Course name <input name="name" required />
         </label>
@@ -194,12 +201,7 @@ export function CourseView({
           </li>
         ))}
       </ul>
-      <form
-        onSubmit={(event) => {
-          const name = formText(event, "name");
-          if (name) onAddDish(name);
-        }}
-      >
+      <form onSubmit={sendName(onAddDish)}>
         <label>
           Recipe name <input name="name" required />
         </label>

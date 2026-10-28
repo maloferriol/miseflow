@@ -15,6 +15,15 @@ describe("parseGuests", () => {
     expect(parseGuests("6")).toBe(6);
   });
 
+  // What <input type=number step=1> lets through, and the old Number(text) saved.
+  it.each([
+    ["2.0", 2],
+    ["1e1", 10],
+    [" 6 ", 6],
+  ])("reads %j as %i guests, as the browser's number field does", (text, guests) => {
+    expect(parseGuests(text)).toBe(guests);
+  });
+
   it.each(["", "0", "-2", "2.5", "six"])("reads no guest count from %j", (text) => {
     expect(parseGuests(text)).toBeNull();
   });

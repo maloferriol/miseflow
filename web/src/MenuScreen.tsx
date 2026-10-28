@@ -30,7 +30,7 @@ export function MenuScreen() {
 }
 
 /** The saved Menus. Only query hooks: no branches. */
-function useMenuList() {
+export function useMenuList() {
   return { menus: useQuery({ queryKey: ["menus"], queryFn: fetchMenus }) };
 }
 
@@ -39,7 +39,7 @@ function MenuList() {
 }
 
 /** Creates a Menu and opens it. Only a mutation hook: no branches. */
-function useNewMenu(onCreated: (menuId: string) => void) {
+export function useNewMenu(onCreated: (menuId: string) => void) {
   const createMenu = useMutation({
     mutationFn: async (args: { menuId: string; name: string; guestCount: number }) =>
       mutate(crypto.randomUUID(), "createMenu", args),
@@ -61,7 +61,7 @@ function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
 }
 
 /** One Menu and its Add Course. Only query, mutation and query-client hooks: no branches. */
-function useMenu(menuId: string) {
+export function useMenu(menuId: string) {
   const queryClient = useQueryClient();
   const menu = useQuery({ queryKey: ["menu", menuId], queryFn: () => fetchMenu(menuId) });
   const onChanged = () => queryClient.invalidateQueries({ queryKey: ["menu", menuId] });
@@ -91,7 +91,7 @@ function OpenMenu({ menuId }: { menuId: string }) {
 }
 
 /** Adds a Dish: a new Recipe placed in this Course. Only a mutation hook: no branches. */
-function useCourse(course: Menu["courses"][number], onChanged: () => Promise<void>) {
+export function useCourse(course: Menu["courses"][number], onChanged: () => Promise<void>) {
   // Two mutations, each with its own id.
   const addDish = useMutation({
     mutationFn: async (name: string) => {
@@ -136,7 +136,7 @@ function Course({
 }
 
 /** Sets one Dish's scale. Only query-client, intent and mutation hooks: no branches. */
-function useDishScale(dishId: string, onChanged: () => Promise<void>) {
+export function useDishScale(dishId: string, onChanged: () => Promise<void>) {
   const queryClient = useQueryClient();
   const intent = useIntent();
   const save = useMutation({
@@ -167,7 +167,7 @@ function DishScaleForm({
 }
 
 /** Saves the Menu's one Service. Only query, query-client, intent and mutation hooks: no branches. */
-function useServiceForm(menuId: string, service: Menu["service"]) {
+export function useServiceForm(menuId: string, service: Menu["service"]) {
   const queryClient = useQueryClient();
   const intent = useIntent();
   const availability = useQuery({ queryKey: ["availability"], queryFn: fetchAvailability });

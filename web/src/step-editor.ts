@@ -56,6 +56,18 @@ export function insertPick(text: string, at: number, pick: PickerChoice): Insert
 }
 
 /**
+ * The links with `link` added under its wording's normalised name, so one wording links to one
+ * target per Step; the same links when the picker closed without a pick. A new Map: React state.
+ */
+export function withLink(
+  links: ReadonlyMap<string, Target>,
+  link: { wording: string; target: Target } | undefined,
+): Map<string, Target> {
+  const next = new Map(links);
+  return link ? next.set(normaliseName(link.wording), link.target) : next;
+}
+
+/**
  * The names left unmatched by the last Save that still block the next one: those the text still
  * holds as a ref and the cook hasn't linked. `links` is keyed by normalised ref name.
  */
@@ -128,6 +140,16 @@ export function newIngredientKind(amount: string) {
   if (q.tier === "fixed")
     return (UNITS_BY_KIND.volume as readonly string[]).includes(q.unit!) ? "volume" : "mass";
   return "mass";
+}
+
+/** A new sub-recipe's name, from the ref: "chicken stock" → "Chicken stock". */
+export function subRecipeName(wording: string) {
+  return wording.charAt(0).toUpperCase() + wording.slice(1);
+}
+
+/** The Shopping category a new Ingredient goes under until the cook picks one: Other. */
+export function defaultShoppingCategory(categories: { id: string; name: string }[] | undefined) {
+  return categories?.find((c) => c.name === "Other")?.id;
 }
 
 /**

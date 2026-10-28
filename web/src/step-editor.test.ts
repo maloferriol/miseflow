@@ -4,11 +4,14 @@ import {
   blockingSave,
   chipText,
   type ChipLine,
+  defaultShoppingCategory,
   insertPick,
   newIngredientKind,
   pickerOpensAt,
   settleStepSave,
+  subRecipeName,
   unknownUnit,
+  withLink,
 } from "./step-editor.ts";
 
 // The "@" the picker replaces sits at 5 in "Dice @ finely".
@@ -140,6 +143,23 @@ describe("blockingSave", () => {
   });
 });
 
+describe("withLink", () => {
+  it("links a wording to its target under the wording's normalised name", () => {
+    const links = new Map([["stock", { subRecipeId: "r-stock" }]]);
+    const next = withLink(links, { wording: "Shallots", target: { ingredientId: "i-shallot" } });
+    expect([...next]).toEqual([
+      ["stock", { subRecipeId: "r-stock" }],
+      ["shallot", { ingredientId: "i-shallot" }],
+    ]);
+    expect([...links]).toEqual([["stock", { subRecipeId: "r-stock" }]]);
+  });
+
+  it("keeps the links as they are when the picker closed without a pick", () => {
+    const links = new Map([["stock", { subRecipeId: "r-stock" }]]);
+    expect([...withLink(links, undefined)]).toEqual([["stock", { subRecipeId: "r-stock" }]]);
+  });
+});
+
 // The braced amount of a ref, as the cook typed it: `@shallots{2%clove}` gives "2%clove".
 describe("newIngredientKind", () => {
   it("measures by mass for a mass unit and by volume for a volume unit", () => {
@@ -157,6 +177,29 @@ describe("newIngredientKind", () => {
     expect(newIngredientKind("%pinch")).toBe("mass");
     expect(newIngredientKind("2%blob")).toBe("mass");
     expect(newIngredientKind("")).toBe("mass");
+  });
+});
+
+describe("subRecipeName", () => {
+  it("names a new sub-recipe after the ref, capitalised as a Recipe's name", () => {
+    expect(subRecipeName("chicken stock")).toBe("Chicken stock");
+    expect(subRecipeName("Demi-glace")).toBe("Demi-glace");
+  });
+});
+
+describe("defaultShoppingCategory", () => {
+  const categories = [
+    { id: "c-veg", name: "Vegetables" },
+    { id: "c-other", name: "Other" },
+  ];
+
+  it("files a new Ingredient under Other until the cook picks a category", () => {
+    expect(defaultShoppingCategory(categories)).toBe("c-other");
+  });
+
+  it("has no default while the categories load, or when the kitchen has no Other", () => {
+    expect(defaultShoppingCategory(undefined)).toBeUndefined();
+    expect(defaultShoppingCategory([{ id: "c-veg", name: "Vegetables" }])).toBeUndefined();
   });
 });
 

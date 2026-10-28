@@ -1,6 +1,8 @@
-# Format check, lint, typecheck, build, tests with coverage, the Playwright e2e, then the SonarQube analysis
-# and its quality gate (README "CI and the quality gate"). Any failing step fails the check, except the e2e:
-# it reports its result but can't fail the job yet (CODING_STANDARDS "CI").
+# Three jobs on separate runners, started together (README "CI and the quality gate"): `static` runs the
+# format check, lint, typecheck and build; `test` runs the tests with coverage, then the SonarQube analysis
+# and its quality gate; `e2e` runs the Playwright e2e. The `check` job passes only when `static` and `test`
+# both did, and it is the check the `main: require CI check` ruleset requires. The e2e reports its result
+# but can't fail `check` yet (CODING_STANDARDS "CI").
 name: CI
 
 on:
@@ -15,8 +17,30 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Read by `npm run setup:local`: the Supabase services the tests and the e2e don't use, left out to
+  # start the stack faster. They use the database, auth, the API gateway and PostgREST (#158).
+  SUPABASE_START_EXCLUDE: studio,postgres-meta,realtime,storage-api,imgproxy,edge-runtime,logflare,vector,mailpit
+  # `-x` only skips the containers: the CLI still pulls the realtime and storage images to set up their
+  # schemas unless these turn the services off.
+  SUPABASE_REALTIME_ENABLED: false
+  SUPABASE_STORAGE_ENABLED: false
+  # The CLI tries public.ecr.aws first, which rate-limits the runners, then falls back to ghcr.io.
+  SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
+
 jobs:
-  check:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/install
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -27,18 +51,7 @@ jobs:
         with:
           # The analysis needs the full history for new-code detection and blame.
           fetch-depth: 0
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-
-      # No dependency needs its install script: esbuild's binary comes from its platform package.
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run build
+      - uses: ./.github/actions/install
 
       # The tests run against the local Supabase stack, as on a laptop: signing key, stack,
       # .env and test user, then the schema.
@@ -54,16 +67,36 @@ jobs:
           path: "*/coverage/lcov.info"
           if-no-files-found: warn
 
-      # No cache: the browser and its system packages install fresh on each run. Like the e2e, it runs
-      # when an earlier step failed, and it can't fail the job either.
+      # Reads the three lcov files above, so it stays in this job.
+      - name: SonarQube analysis and quality gate
+        if: ${{ env.SONAR_TOKEN != '' }}
+        # A third-party action, pinned to the commit behind its tag.
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          # SonarCloud unless the repository variable names a SonarQube server.
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        with:
+          args: >-
+            ${{ vars.SONAR_ORGANIZATION && format('-Dsonar.organization={0}', vars.SONAR_ORGANIZATION) || '' }}
+
+  # Its own Supabase stack. `check` doesn't need this job, so a red e2e, or a stack that won't start
+  # here, never blocks a merge.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/install
+      - run: npm run setup:local
+      - run: npm run db:migrate
+
+      # No cache: the browser and its system packages install fresh on each run.
       - name: Install Chromium for the e2e
-        if: ${{ !cancelled() }}
         continue-on-error: true
         run: npx playwright install --with-deps chromium
 
       # Non-blocking: a red e2e shows as an annotation and the job still passes.
       - name: e2e (non-blocking)
-        if: ${{ !cancelled() }}
         continue-on-error: true
         run: npm run e2e
 
@@ -75,13 +108,16 @@ jobs:
           path: playwright-report/
           if-no-files-found: warn
 
-      - name: SonarQube analysis and quality gate
-        if: ${{ env.SONAR_TOKEN != '' }}
-        # A third-party action, pinned to the commit behind its tag.
-        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+  # The required check. A needed job that failed, was skipped or was cancelled fails it.
+  check:
+    needs: [static, test]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Every needed job passed
         env:
-          # SonarCloud unless the repository variable names a SonarQube server.
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
-        with:
-          args: >-
-            ${{ vars.SONAR_ORGANIZATION && format('-Dsonar.organization={0}', vars.SONAR_ORGANIZATION) || '' }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' > /dev/null

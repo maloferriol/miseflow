@@ -1,0 +1,14 @@
+name: Install
+description: Node 24 with the npm cache, then the workspace dependencies. Runs after actions/checkout.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: npm
+
+    # No dependency needs its install script: esbuild's binary comes from its platform package.
+    - run: npm ci --ignore-scripts --no-audit --no-fund
+      shell: bash

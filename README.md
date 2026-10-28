@@ -52,12 +52,22 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
 
 ## CI and the quality gate
 
-`.github/workflows/ci.yml` runs on every pull request and every push to `main`: `npm ci`,
-`npm run format:check`, `npm run lint`, `npm run typecheck`, `npm run build`, then
-`npm run setup:local`, `npm run db:migrate` and `npm run test:coverage` against a local Supabase stack on the runner.
-Any failing step fails the check, except the e2e below. The three `lcov.info` files are uploaded as the run's `coverage` artifact. Then
-`npm run e2e` runs with one retry, as a non-blocking step: a failure shows as an annotation but doesn't fail the check.
-Its HTML and JSON reports are uploaded as the `e2e-reports` artifact. Then the SonarQube analysis runs on the coverage.
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`, as three jobs on separate
+runners that start together, each after `npm ci`:
+
+- `static`: `npm run format:check`, `npm run lint`, `npm run typecheck`, then `npm run build`.
+- `test`: `npm run setup:local`, `npm run db:migrate` and `npm run test:coverage` against a local Supabase stack
+  on the runner. The three `lcov.info` files are uploaded as the run's `coverage` artifact. Then the SonarQube
+  analysis runs on the coverage.
+- `e2e`: its own Supabase stack, then `npm run e2e` with one retry, as a non-blocking step: a failure shows as
+  an annotation but doesn't fail the check. Its HTML and JSON reports are uploaded as the `e2e-reports` artifact.
+
+CI starts the stack without the services these runs don't use: the workflow sets `SUPABASE_START_EXCLUDE`, which
+`setup:local` passes to `supabase start -x`, and turns Realtime and Storage off so the CLI doesn't pull their
+images to set up their schemas. Unset, as on a laptop, every service starts.
+
+The `check` job passes when `static` and `test` both pass, and fails otherwise. It is the check the `main`
+ruleset requires.
 
 **Connecting the analysis** (once, by the repo owner). The workflow skips the analysis until
 `SONAR_TOKEN` is set.

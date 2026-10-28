@@ -7,6 +7,7 @@ import {
   insertPick,
   newIngredientKind,
   pickerOpensAt,
+  settleStepSave,
   unknownUnit,
 } from "./step-editor.ts";
 
@@ -223,5 +224,38 @@ describe("chipText", () => {
     expect(chipText(chipLine({ wording: "stock", quantity: 1, missingSubRecipe: true }))).toBe(
       "Missing sub-recipe: stock",
     );
+  });
+});
+
+// What one Save does after `saveStep`: `refetch` reloads the Recipe and the Recipe list.
+describe("settleStepSave", () => {
+  function track(save: () => Promise<boolean>) {
+    const calls: string[] = [];
+    const settled = settleStepSave(
+      save,
+      async () => void calls.push("refetch"),
+      () => void calls.push("done"),
+    );
+    return { calls, settled };
+  }
+
+  it("refetches, then closes the form, once the Step is saved", async () => {
+    const { calls, settled } = track(async () => true);
+    await expect(settled).resolves.toBe(true);
+    expect(calls).toEqual(["refetch", "done"]);
+  });
+
+  it("leaves the form open with nothing refetched while a name waits for the cook", async () => {
+    const { calls, settled } = track(async () => false);
+    await expect(settled).resolves.toBe(false);
+    expect(calls).toEqual([]);
+  });
+
+  it("refetches after a failed save, which the server may hold, and keeps the form open", async () => {
+    const { calls, settled } = track(async () => {
+      throw new Error("Network down");
+    });
+    await expect(settled).rejects.toThrow("Network down");
+    expect(calls).toEqual(["refetch"]);
   });
 });

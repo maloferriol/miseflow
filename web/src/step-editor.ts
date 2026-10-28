@@ -129,3 +129,28 @@ export function newIngredientKind(amount: string) {
     return (UNITS_BY_KIND.volume as readonly string[]).includes(q.unit!) ? "volume" : "mass";
   return "mass";
 }
+
+/**
+ * One Save of the Step form around `save` (a `saveStep`): once the Step is saved, `refetch` the
+ * Recipe and the Recipe list, then `done` closes the form. A failed save refetches too: the server
+ * may hold it though the response was lost, and the next Save or Add Step must see that (#127 B).
+ * A save that stopped because a name still waits for the cook (false) does neither.
+ */
+export async function settleStepSave(
+  save: () => Promise<boolean>,
+  refetch: () => Promise<void>,
+  done: () => void,
+): Promise<boolean> {
+  let saved: boolean;
+  try {
+    saved = await save();
+  } catch (error) {
+    await refetch();
+    throw error;
+  }
+  if (saved) {
+    await refetch();
+    done();
+  }
+  return saved;
+}

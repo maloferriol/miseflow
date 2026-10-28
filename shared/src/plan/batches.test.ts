@@ -6,7 +6,7 @@ const line = (
   subRecipeId: string | null,
   quantity: number | null,
   unit: string | null,
-  o: { fixed?: boolean; max?: number } = {},
+  o: { fixedQuantity?: boolean; max?: number } = {},
 ): SnapshotLine => ({
   id: crypto.randomUUID(),
   ingredientId: null,
@@ -16,7 +16,7 @@ const line = (
   unit,
   wording: subRecipeId,
   preparation: null,
-  fixedQuantity: o.fixed ?? false,
+  fixedQuantity: o.fixedQuantity ?? false,
   position: "a0",
 });
 const recipe = (
@@ -94,7 +94,7 @@ describe("deriveBatches", () => {
     const recipes = new Map([
       [
         "veloute",
-        recipe("Velouté", { servings: 6, lines: [line("stock", 1, "L", { fixed: true })] }),
+        recipe("Velouté", { servings: 6, lines: [line("stock", 1, "L", { fixedQuantity: true })] }),
       ],
       ["stock", stock()],
     ]);

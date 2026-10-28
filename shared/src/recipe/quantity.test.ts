@@ -143,6 +143,7 @@ describe("formatQuantity", () => {
   it("writes the Cooklang shorthand", () => {
     expect(formatQuantity(parseQuantity("1 1/2 cups"))).toBe("1.5%cup");
     expect(formatQuantity(parseQuantity("=2-3 cloves"))).toBe("=2-3%clove");
+    expect(parseQuantity("=200 g")).toMatchObject({ value: 200, unit: "g", fixedQuantity: true });
     expect(formatQuantity(parseQuantity("=200 g"))).toBe("=200%g");
     expect(formatQuantity(parseQuantity("3"))).toBe("3");
   });

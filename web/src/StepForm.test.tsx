@@ -96,6 +96,13 @@ describe("Step form", () => {
     expect(textarea.value.slice(0, textarea.selectionStart)).toBe("Sweat @shallots{");
   });
 
+  it("saves when the cook presses Save", () => {
+    const onSave = vi.fn();
+    renderStepForm({ onSave });
+    fireEvent.click(save());
+    expect(onSave).toHaveBeenCalledOnce();
+  });
+
   it("calls back on Cancel without saving", () => {
     const onCancel = vi.fn();
     const onSave = vi.fn();

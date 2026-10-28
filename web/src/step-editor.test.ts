@@ -9,6 +9,7 @@ import {
   newIngredientKind,
   pickerOpensAt,
   settleStepSave,
+  stepFormText,
   subRecipeName,
   unknownUnit,
   withLink,
@@ -140,6 +141,30 @@ describe("blockingSave", () => {
 
   it("blocks nothing before the first Save", () => {
     expect(blockingSave([], new Map(), "Dice @shallots{}")).toEqual([]);
+  });
+});
+
+describe("stepFormText", () => {
+  it("opens a new Step empty", () => {
+    expect(stepFormText(undefined)).toBe("");
+  });
+
+  it("opens a saved Step as its shorthand, each line in place of its token", () => {
+    const line = {
+      id: "l-shallots",
+      wording: "shallots",
+      quantity: 2,
+      quantityMax: null,
+      unit: "clove",
+      fixedQuantity: false,
+      preparation: "diced",
+    };
+    const body = [
+      { type: "text" as const, text: "Sweat " },
+      { type: "line" as const, lineId: "l-shallots" },
+      { type: "text" as const, text: " gently" },
+    ];
+    expect(stepFormText({ body, lines: [line] })).toBe("Sweat @shallots{2%clove}(diced) gently");
   });
 });
 

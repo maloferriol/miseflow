@@ -2,7 +2,13 @@
 import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
 import { UNITS_BY_KIND } from "@miseflow/shared/src/catalog/units.ts";
 import { parseQuantity } from "@miseflow/shared/src/recipe/quantity.ts";
-import { parseStepText, refName } from "@miseflow/shared/src/recipe/tokens.ts";
+import {
+  formatStepText,
+  type LineText,
+  type StepToken,
+  parseStepText,
+  refName,
+} from "@miseflow/shared/src/recipe/tokens.ts";
 import type { CatalogIngredient, RecipeLine, RecipeListItem } from "./api.ts";
 import type { Ref, Target } from "./step-links.ts";
 
@@ -53,6 +59,13 @@ export function insertPick(text: string, at: number, pick: PickerChoice): Insert
   return unit
     ? { ...write(`${wording}{%${unit}}`, unit.length + 2), link }
     : { ...write(`${wording}{}`, 1), link };
+}
+
+/** The Step text the form opens with: a saved Step's shorthand, or nothing for a new Step. */
+export function stepFormText(
+  step: { body: StepToken[]; lines: (LineText & { id: string })[] } | undefined,
+): string {
+  return step ? formatStepText(step.body, new Map(step.lines.map((l) => [l.id, l]))) : "";
 }
 
 /**

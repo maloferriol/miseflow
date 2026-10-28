@@ -6,7 +6,13 @@ import {
   mutate,
   type RecipeListItem,
 } from "./api.ts";
-import { defaultShoppingCategory, newIngredientKind, subRecipeName } from "./step-editor.ts";
+import {
+  defaultShoppingCategory,
+  newIngredientKind,
+  newIngredientName,
+  newSubRecipeName,
+  subRecipeName,
+} from "./step-editor.ts";
 import { linkChoices, type Target } from "./step-links.ts";
 
 type LinkChoiceProps = {
@@ -163,7 +169,7 @@ export function LinkChoiceView({
         disabled={ingredientPending || !chosenCategory}
         onClick={() =>
           onCreateIngredient({
-            name: newName.trim() || name,
+            name: newIngredientName(newName, name),
             preferredKind: kind,
             shoppingCategoryId: chosenCategory!,
           })
@@ -178,7 +184,7 @@ export function LinkChoiceView({
       <button
         type="button"
         disabled={subRecipePending}
-        onClick={() => onCreateSubRecipe(recipeName.trim() || subRecipeName(name))}
+        onClick={() => onCreateSubRecipe(newSubRecipeName(recipeName, name))}
       >
         Create sub-recipe
       </button>

@@ -1,6 +1,11 @@
 // Quantity parsing (units spec §1). Accepts the cook's "200 g" and Cooklang's "200%g"; a leading
 // "=" sets the Fixed quantity flag (https://cooklang.org/docs/conventions/, "Use `=` to lock").
 
+/**
+ * How a unit converts, by glossary term: "fixed" is a Fixed unit (g, ml, cup), "ingredient" an
+ * Ingredient unit (clove, sprig), "vague" a Vague amount (a pinch), "unknown" a unit MiseFlow
+ * doesn't recognise. Not the Fixed quantity flag, which is `Quantity.fixedQuantity`.
+ */
 export type QuantityTier = "fixed" | "ingredient" | "vague" | "unknown";
 
 export type Quantity = {
@@ -11,7 +16,8 @@ export type Quantity = {
   /** Canonical for a recognised unit ("cups" → "cup"); raw when unrecognised; null = piece. */
   unit: string | null;
   tier: QuantityTier;
-  fixed: boolean;
+  /** Fixed quantity: a leading "=", so the line doesn't scale with the Scale factor. */
+  fixedQuantity: boolean;
 };
 
 // Canonical unit → spellings, matched regardless of case after trailing dots are dropped.
@@ -138,9 +144,9 @@ function readAmount(amount: string) {
 
 export function parseQuantity(input: string): Quantity {
   let text = input.trim();
-  const fixed = text.startsWith("=");
-  if (fixed) text = text.slice(1).trim();
-  if (text === "") return { value: null, max: null, unit: null, tier: "vague", fixed };
+  const fixedQuantity = text.startsWith("=");
+  if (fixedQuantity) text = text.slice(1).trim();
+  if (text === "") return { value: null, max: null, unit: null, tier: "vague", fixedQuantity };
 
   // Cooklang writes the unit after a "%".
   const percent = text.indexOf("%");
@@ -149,11 +155,11 @@ export function parseQuantity(input: string): Quantity {
 
   const { value, max, rest, numbered } = readAmount(amount);
   const { unit, tier } = parseUnit(unitText ?? rest);
-  if (tier === "vague") return { value: numbered ? value : null, max, unit, tier, fixed };
+  if (tier === "vague") return { value: numbered ? value : null, max, unit, tier, fixedQuantity };
   // Words with no number and no known unit ("some") stay as written.
   if (value === null && tier === "ingredient" && unit === null)
-    return { value: null, max: null, unit: null, tier: "vague", fixed };
-  return { value, max, unit, tier, fixed };
+    return { value: null, max: null, unit: null, tier: "vague", fixedQuantity };
+  return { value, max, unit, tier, fixedQuantity };
 }
 
 /**
@@ -172,5 +178,5 @@ export function isValidQuantity(q: Quantity): boolean {
 export function formatQuantity(q: Quantity): string {
   const number = q.value === null ? "" : String(q.value) + (q.max === null ? "" : `-${q.max}`);
   const unit = q.unit === null ? "" : number ? `%${q.unit}` : q.unit;
-  return (q.fixed ? "=" : "") + number + unit;
+  return (q.fixedQuantity ? "=" : "") + number + unit;
 }

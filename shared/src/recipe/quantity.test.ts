@@ -8,7 +8,7 @@ describe("parseQuantity", () => {
       max: null,
       unit: "cup",
       tier: "fixed",
-      fixed: false,
+      fixedQuantity: false,
     });
   });
 
@@ -18,12 +18,12 @@ describe("parseQuantity", () => {
       max: null,
       unit: "g",
       tier: "fixed",
-      fixed: false,
+      fixedQuantity: false,
     });
   });
 
   it('parses "2-3" and "2–3" as a range of pieces', () => {
-    const range = { value: 2, max: 3, unit: null, tier: "ingredient", fixed: false };
+    const range = { value: 2, max: 3, unit: null, tier: "ingredient", fixedQuantity: false };
     expect(parseQuantity("2-3")).toEqual(range);
     expect(parseQuantity("2–3")).toEqual(range);
   });
@@ -34,7 +34,7 @@ describe("parseQuantity", () => {
       max: null,
       unit: null,
       tier: "ingredient",
-      fixed: false,
+      fixedQuantity: false,
     });
   });
 
@@ -44,7 +44,7 @@ describe("parseQuantity", () => {
       max: null,
       unit: "clove",
       tier: "ingredient",
-      fixed: false,
+      fixedQuantity: false,
     });
   });
 
@@ -54,7 +54,7 @@ describe("parseQuantity", () => {
       max: null,
       unit: "pinch",
       tier: "vague",
-      fixed: false,
+      fixedQuantity: false,
     });
   });
 
@@ -64,17 +64,17 @@ describe("parseQuantity", () => {
       max: null,
       unit: null,
       tier: "vague",
-      fixed: false,
+      fixedQuantity: false,
     });
   });
 
-  it('sets the Fixed flag from a leading "=" ("=1%tsp")', () => {
+  it('sets Fixed quantity from a leading "=" ("=1%tsp")', () => {
     expect(parseQuantity("=1%tsp")).toEqual({
       value: 1,
       max: null,
       unit: "tsp",
       tier: "fixed",
-      fixed: true,
+      fixedQuantity: true,
     });
   });
 
@@ -93,7 +93,7 @@ describe("parseQuantity", () => {
       max: null,
       unit: "kg",
       tier: "fixed",
-      fixed: false,
+      fixedQuantity: false,
     });
     expect(parseQuantity("1,25-1,5 L")).toMatchObject({ value: 1.25, max: 1.5, unit: "L" });
   });
@@ -104,7 +104,7 @@ describe("parseQuantity", () => {
       max: null,
       unit: "knobs",
       tier: "unknown",
-      fixed: false,
+      fixedQuantity: false,
     });
   });
 
@@ -143,6 +143,8 @@ describe("formatQuantity", () => {
   it("writes the Cooklang shorthand", () => {
     expect(formatQuantity(parseQuantity("1 1/2 cups"))).toBe("1.5%cup");
     expect(formatQuantity(parseQuantity("=2-3 cloves"))).toBe("=2-3%clove");
+    expect(parseQuantity("=200 g")).toMatchObject({ value: 200, unit: "g", fixedQuantity: true });
+    expect(formatQuantity(parseQuantity("=200 g"))).toBe("=200%g");
     expect(formatQuantity(parseQuantity("3"))).toBe("3");
   });
 });

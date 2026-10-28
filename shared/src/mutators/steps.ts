@@ -274,7 +274,7 @@ async function writeLines(
       unit: q.unit,
       wording: line.wording,
       preparation: line.preparation || null,
-      fixedQuantity: q.fixed,
+      fixedQuantity: q.fixedQuantity,
       position,
     };
     // A lineId may only ever be this Step's own line. The guard sits on the upsert itself, so a

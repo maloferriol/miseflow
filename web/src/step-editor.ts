@@ -102,10 +102,11 @@ export function blockingSave<U extends { name: string }>(
 
 /** "2", "30 g", "2-3 clove", "a pinch". */
 export function amountText(line: Pick<RecipeLine, "quantity" | "quantityMax" | "unit">) {
-  const number =
-    line.quantity === null
-      ? ""
-      : `${line.quantity}${line.quantityMax === null ? "" : `-${line.quantityMax}`}`;
+  let number = "";
+  if (line.quantity !== null) {
+    number = String(line.quantity);
+    if (line.quantityMax !== null) number += `-${line.quantityMax}`;
+  }
   return [number, line.unit].filter(Boolean).join(" ");
 }
 
@@ -137,7 +138,7 @@ export function chipText(line: ChipLine) {
     line.fixedQuantity && "fixed",
     unknownUnit(line.unit) && "unknown unit",
     line.subRecipe && "sub-recipe",
-    line.subRecipe && line.subRecipe.yield === null && "needs a yield",
+    line.subRecipe?.yield === null && "needs a yield",
   ]
     .filter(Boolean)
     .join(" · ");

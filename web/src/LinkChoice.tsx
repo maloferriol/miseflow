@@ -190,7 +190,7 @@ export function LinkChoiceView({
 }
 
 /** One unmatched name's link choice, inside the Step form. */
-export function LinkChoice(props: LinkChoiceProps) {
+export function LinkChoice(props: Readonly<LinkChoiceProps>) {
   const choice = useLinkChoice(props.name, props.onLinked);
   return <LinkChoiceView {...props} {...choice} />;
 }

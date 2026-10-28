@@ -8,6 +8,7 @@ import {
   blockingSave,
   chipText,
   type Inserted,
+  type PickerChoice,
   pickerOpensAt,
   settleStepSave,
   stepFormText,
@@ -132,24 +133,40 @@ function StepForm({
   recipeId,
   step,
   onDone,
-}: {
+}: Readonly<{
   recipeId: string;
   step?: RecipeStep;
   onDone: () => void;
-}) {
+}>) {
   const { link, ...form } = useStepForm(recipeId, step, onDone);
   return (
     <StepFormView
       {...form}
-      picker={(choose) => (
-        <IngredientPicker
-          recipeId={recipeId}
-          onPick={(ingredient) => choose({ ingredient })}
-          onPickRecipe={(recipe) => choose({ recipe })}
-          onClose={(typed) => choose({ typed })}
-        />
-      )}
-      linkChoice={(u) => <LinkChoice {...u} onLinked={(target) => link(u.name, target)} />}
+      renderPicker={(choose) => <StepPicker recipeId={recipeId} choose={choose} />}
+      renderLinkChoice={(unmatched) => <StepLinkChoice unmatched={unmatched} link={link} />}
     />
   );
+}
+
+/** The `@` picker in the Step form: a pick, or what the cook typed on a close, goes to `choose`. */
+function StepPicker({
+  recipeId,
+  choose,
+}: Readonly<{ recipeId: string; choose: (pick: PickerChoice) => void }>) {
+  return (
+    <IngredientPicker
+      recipeId={recipeId}
+      onPick={(ingredient) => choose({ ingredient })}
+      onPickRecipe={(recipe) => choose({ recipe })}
+      onClose={(typed) => choose({ typed })}
+    />
+  );
+}
+
+/** One unmatched name's link choice, which links the name to the target the cook picks. */
+function StepLinkChoice({
+  unmatched,
+  link,
+}: Readonly<{ unmatched: Unmatched; link: (wording: string, target: Target) => void }>) {
+  return <LinkChoice {...unmatched} onLinked={(target) => link(unmatched.name, target)} />;
 }

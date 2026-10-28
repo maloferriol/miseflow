@@ -1,7 +1,8 @@
 // The Step editor's decisions (ADR 0011): pure functions the hook and the view pass through.
-import { refName } from "@miseflow/shared/src/recipe/tokens.ts";
+import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
+import { parseStepText, refName } from "@miseflow/shared/src/recipe/tokens.ts";
 import type { CatalogIngredient, RecipeListItem } from "./api.ts";
-import type { Target } from "./step-links.ts";
+import type { Ref, Target } from "./step-links.ts";
 
 /**
  * Where the "@" picker opens after an edit, or null when it stays shut. Typing one "@" at the
@@ -50,4 +51,24 @@ export function insertPick(text: string, at: number, pick: PickerChoice): Insert
   return unit
     ? { ...write(`${wording}{%${unit}}`, unit.length + 2), link }
     : { ...write(`${wording}{}`, 1), link };
+}
+
+/**
+ * The names left unmatched by the last Save that still block the next one: those the text still
+ * holds as a ref and the cook hasn't linked. `links` is keyed by normalised ref name.
+ */
+export function blockingSave<U extends { name: string }>(
+  unmatched: U[],
+  links: ReadonlyMap<string, Target>,
+  text: string,
+): U[] {
+  const refs = new Set(
+    parseStepText(text)
+      .filter((p): p is Ref => p.type === "ref")
+      .map((r) => normaliseName(r.name)),
+  );
+  return unmatched.filter((u) => {
+    const name = normaliseName(u.name);
+    return !links.has(name) && refs.has(name);
+  });
 }

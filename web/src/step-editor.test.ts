@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { insertPick, pickerOpensAt } from "./step-editor.ts";
+import { blockingSave, insertPick, pickerOpensAt } from "./step-editor.ts";
 
 // The "@" the picker replaces sits at 5 in "Dice @ finely".
 describe("insertPick", () => {
@@ -16,13 +16,11 @@ describe("insertPick", () => {
   });
 
   it("words an Ingredient the shorthand can't hold, and falls back when nothing is left", () => {
-    expect(insertPick("@", 0, { ingredient: { id: "i-pepper", name: "Pepper (black)" } })).toEqual(
-      {
-        text: "@Pepper black{}",
-        caret: 14,
-        link: { wording: "Pepper black", target: { ingredientId: "i-pepper" } },
-      },
-    );
+    expect(insertPick("@", 0, { ingredient: { id: "i-pepper", name: "Pepper (black)" } })).toEqual({
+      text: "@Pepper black{}",
+      caret: 14,
+      link: { wording: "Pepper black", target: { ingredientId: "i-pepper" } },
+    });
     expect(insertPick("@", 0, { ingredient: { id: "i-odd", name: "(@)" } }).link?.wording).toBe(
       "ingredient",
     );
@@ -98,5 +96,36 @@ describe("pickerOpensAt", () => {
 
   it("stays shut when text is deleted", () => {
     expect(pickerOpensAt("Dice @a", "Dice @", 6)).toBeNull();
+  });
+});
+
+// What the last Save left unmatched: names with their near matches (none needed here).
+const unmatched = (...names: string[]) =>
+  names.map((name) => ({ name, amount: "", near: [], nearRecipes: [] }));
+
+describe("blockingSave", () => {
+  it("blocks Save on each unmatched name the text still holds", () => {
+    expect(
+      blockingSave(unmatched("shallots", "stock"), new Map(), "Dice @shallots{2} into @stock{}"),
+    ).toEqual(unmatched("shallots", "stock"));
+  });
+
+  it("stops blocking on a name the cook has linked, whatever its case, plural or accents", () => {
+    // Links are keyed by normalised name, as `normaliseName("Shallots")` gives it.
+    const links = new Map([["shallot", { ingredientId: "i-shallot" }]]);
+    expect(blockingSave(unmatched("Shallots", "stock"), links, "@Shallots{} @stock{}")).toEqual(
+      unmatched("stock"),
+    );
+    expect(
+      blockingSave(unmatched("puree"), new Map(), "Stir in @Purée{}").map((u) => u.name),
+    ).toEqual(["puree"]);
+  });
+
+  it("stops blocking on a name the cook has taken out of the text", () => {
+    expect(blockingSave(unmatched("shallots"), new Map(), "Dice the shallots")).toEqual([]);
+  });
+
+  it("blocks nothing before the first Save", () => {
+    expect(blockingSave([], new Map(), "Dice @shallots{}")).toEqual([]);
   });
 });

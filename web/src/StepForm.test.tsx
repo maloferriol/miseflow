@@ -17,8 +17,8 @@ function stepForm(props: Partial<StepFormViewProps> = {}) {
     onInsert: () => {},
     onSave: () => {},
     onCancel: () => {},
-    picker: () => <p>Ingredient picker</p>,
-    linkChoice: (u) => <p>Link {u.name}</p>,
+    renderPicker: () => <p>Ingredient picker</p>,
+    renderLinkChoice: (u) => <p>Link {u.name}</p>,
     ...props,
   };
   return <StepFormView {...view} />;
@@ -77,7 +77,7 @@ describe("Step form", () => {
           setText(inserted.text);
           setPickerAt(null);
         },
-        picker: (choose) => (
+        renderPicker: (choose) => (
           <button
             type="button"
             onClick={() => choose({ ingredient: { id: "i-1", name: "shallots" } })}

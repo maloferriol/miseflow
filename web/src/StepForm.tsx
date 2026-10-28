@@ -25,9 +25,9 @@ export type StepFormViewProps = {
   onSave: () => void;
   onCancel: () => void;
   /** The `@` picker, handed what to call on a pick or a close. */
-  picker: (choose: (pick: PickerChoice) => void) => ReactNode;
+  renderPicker: (choose: (pick: PickerChoice) => void) => ReactNode;
   /** How the cook links one unmatched name. */
-  linkChoice: (unmatched: Unmatched) => ReactNode;
+  renderLinkChoice: (unmatched: Unmatched) => ReactNode;
 };
 
 /** The Step form: the shorthand's textarea, the `@` picker, a choice per unmatched name, Save. */
@@ -41,9 +41,9 @@ export function StepFormView({
   onInsert,
   onSave,
   onCancel,
-  picker,
-  linkChoice,
-}: StepFormViewProps) {
+  renderPicker,
+  renderLinkChoice,
+}: Readonly<StepFormViewProps>) {
   const textarea = useRef<HTMLTextAreaElement>(null);
 
   // Synchronous, so keys the cook types right after a pick already land in the textarea, at the
@@ -79,9 +79,9 @@ export function StepFormView({
           fixes a quantity.
         </small>
       </p>
-      {pickerAt !== null && <Slot render={picker} with={(pick) => insert(pickerAt, pick)} />}
+      {pickerAt !== null && <Slot render={renderPicker} with={(pick) => insert(pickerAt, pick)} />}
       {unmatched.map((u) => (
-        <Fragment key={normaliseName(u.name)}>{linkChoice(u)}</Fragment>
+        <Fragment key={normaliseName(u.name)}>{renderLinkChoice(u)}</Fragment>
       ))}
       <button type="submit" disabled={savePending || unmatched.length > 0}>
         Save

@@ -1,16 +1,9 @@
 import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import {
-  fetchAvailability,
-  fetchMenu,
-  fetchMenus,
-  type Menu,
-  minuteOfDay,
-  mutate,
-  timeValue,
-} from "./api.ts";
+import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
+import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
 function menuIdFromUrl() {

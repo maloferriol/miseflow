@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FormEvent } from "react";
-import { type Availability, fetchAvailability, minuteOfDay, mutate, timeValue } from "./api.ts";
+import { type Availability, fetchAvailability, mutate } from "./api.ts";
+import { minuteOfDay, timeValue } from "./time-of-day.ts";
 import { useIntent } from "./intent.ts";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

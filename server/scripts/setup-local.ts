@@ -7,6 +7,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { assertLocalEnv } from "../../scripts/local-only.ts";
+import { supabaseStartArgs } from "./supabase-start.ts";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const keysFile = fileURLToPath(new URL("../../supabase/signing_keys.json", import.meta.url));
@@ -32,8 +33,8 @@ if (!existsSync(keysFile)) {
   supabase("gen", "signing-key", "--algorithm", "ES256", "--append");
 }
 
-// 2. The stack. A no-op when it is already running.
-supabase("start");
+// 2. The stack. A no-op when it is already running. CI leaves out the services its runs don't use.
+supabase(...supabaseStartArgs(process.env.SUPABASE_START_EXCLUDE));
 
 // 3. The local .env, from the running stack's values and a fresh random test user password.
 if (existsSync(envFile)) {

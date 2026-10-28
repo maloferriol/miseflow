@@ -55,9 +55,10 @@ jobs:
           if-no-files-found: warn
 
       # No cache: the browser and its system packages install fresh on each run. Like the e2e, it runs
-      # when an earlier step failed.
+      # when an earlier step failed, and it can't fail the job either.
       - name: Install Chromium for the e2e
         if: ${{ !cancelled() }}
+        continue-on-error: true
         run: npx playwright install --with-deps chromium
 
       # Non-blocking: a red e2e shows as an annotation and the job still passes.

@@ -55,8 +55,9 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`: `npm ci`,
 `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm run build`, then
 `npm run setup:local`, `npm run db:migrate` and `npm run test:coverage` against a local Supabase stack on the runner.
-Any failing step fails the check. The three `lcov.info` files are uploaded as the run's `coverage` artifact, and then the
-SonarQube analysis runs on them.
+Any failing step fails the check, except the e2e below. The three `lcov.info` files are uploaded as the run's `coverage` artifact. Then
+`npm run e2e` runs with one retry, as a non-blocking step: a failure shows as an annotation but doesn't fail the check.
+Its HTML and JSON reports are uploaded as the `e2e-reports` artifact. Then the SonarQube analysis runs on the coverage.
 
 **Connecting the analysis** (once, by the repo owner). The workflow skips the analysis until
 `SONAR_TOKEN` is set.

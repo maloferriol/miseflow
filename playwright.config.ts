@@ -26,6 +26,18 @@ export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
+  // In CI a test that passes only on retry is reported as flaky. Local runs keep no retries.
+  retries: process.env.CI ? 1 : 0,
+  // CI writes the HTML and JSON reports for the workflow to upload, and annotates failures.
+  // Local runs keep the default reporter.
+  reporter: process.env.CI
+    ? [
+        ["github"],
+        ["list"],
+        ["html", { open: "never", outputFolder: "playwright-report" }],
+        ["json", { outputFile: "playwright-report/results.json" }],
+      ]
+    : undefined,
   use: { baseURL: `http://localhost:${ports.web}` },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [

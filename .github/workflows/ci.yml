@@ -1,5 +1,6 @@
-# Format check, lint, typecheck, build, tests with coverage, then the SonarQube analysis and its quality gate
-# (README "CI and the quality gate"). Any failing step fails the check.
+# Format check, lint, typecheck, build, tests with coverage, the Playwright e2e, then the SonarQube analysis
+# and its quality gate (README "CI and the quality gate"). Any failing step fails the check, except the e2e:
+# it reports its result but can't fail the job yet (CODING_STANDARDS "CI").
 name: CI
 
 on:
@@ -51,6 +52,27 @@ jobs:
         with:
           name: coverage
           path: "*/coverage/lcov.info"
+          if-no-files-found: warn
+
+      # No cache: the browser and its system packages install fresh on each run. Like the e2e, it runs
+      # when an earlier step failed, and it can't fail the job either.
+      - name: Install Chromium for the e2e
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: npx playwright install --with-deps chromium
+
+      # Non-blocking: a red e2e shows as an annotation and the job still passes.
+      - name: e2e (non-blocking)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: npm run e2e
+
+      - name: Upload e2e reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-reports
+          path: playwright-report/
           if-no-files-found: warn
 
       - name: SonarQube analysis and quality gate

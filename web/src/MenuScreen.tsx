@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
-import { MenuListView } from "./MenuViews.tsx";
+import { MenuListView, NewMenuView } from "./MenuViews.tsx";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
@@ -39,7 +39,8 @@ function MenuList() {
   return <MenuListView {...useMenuList()} />;
 }
 
-function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
+/** Creates a Menu and opens it. Only a mutation hook: no branches. */
+function useNewMenu(onCreated: (menuId: string) => void) {
   const createMenu = useMutation({
     mutationFn: async (args: { menuId: string; name: string; guestCount: number }) =>
       mutate(crypto.randomUUID(), "createMenu", args),
@@ -48,28 +49,16 @@ function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
       onCreated(menuId);
     },
   });
+  return {
+    createPending: createMenu.isPending,
+    createError: createMenu.error,
+    onCreate: (menu: { name: string; guestCount: number }) =>
+      createMenu.mutate({ menuId: crypto.randomUUID(), ...menu }),
+  };
+}
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    const guestCount = Number(new FormData(event.currentTarget).get("guestCount"));
-    const name = formText(event, "name");
-    if (name) createMenu.mutate({ menuId: crypto.randomUUID(), name, guestCount });
-  }
-
-  return (
-    <form onSubmit={onSubmit}>
-      <h2>New Menu</h2>
-      <label>
-        Menu name <input name="name" required />
-      </label>
-      <label>
-        Guests <input name="guestCount" type="number" min={1} step={1} defaultValue={2} required />
-      </label>
-      <button type="submit" disabled={createMenu.isPending}>
-        Create Menu
-      </button>
-      {createMenu.error && <p role="alert">{createMenu.error.message}</p>}
-    </form>
-  );
+function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
+  return <NewMenuView {...useNewMenu(onCreated)} />;
 }
 
 function MenuView({ menuId }: { menuId: string }) {

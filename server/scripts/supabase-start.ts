@@ -9,6 +9,3 @@ export function supabaseStartArgs(exclude: string | undefined): string[] {
     .filter(Boolean);
   return services.length ? ["start", "-x", services.join(",")] : ["start"];
 }
-
-// Throwaway for #158: proves a lint error turns `check` red. Reverted before merge.
-const throwawayUnused = 1;

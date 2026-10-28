@@ -20,9 +20,9 @@ export function stepLabel(step: ReadyToPlanStep, index: number) {
 // Each item links to its Step's row in the Planning pass.
 export function ReadyToPlan({
   recipe,
-}: {
+}: Readonly<{
   recipe: { steps: ReadyToPlanStep[]; readyToPlan: Recipe["readyToPlan"] };
-}) {
+}>) {
   const { steps, readyToPlan } = recipe;
   const index = new Map(steps.map((s, i) => [s.id, i]));
   const lines = new Map(steps.flatMap((s) => s.lines).map((l) => [l.id, l]));

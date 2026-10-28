@@ -14,9 +14,8 @@ test.beforeAll(async () => {
   user = await createTestUser("subrecipes");
 });
 
-// Soft-deletes the Recipes this run made, then the user. Local stack only.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  await sql`update recipes set deleted_at = now() where name like ${`% ${s}`} and deleted_at is null`;
   if (user) await deleteTestUser(user);
   await sql.end();
 });

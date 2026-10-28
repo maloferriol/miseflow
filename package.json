@@ -20,7 +20,7 @@
     "preflight": "node --experimental-strip-types scripts/preflight.ts",
     "setup:local": "npm run setup:local -w server",
     "db:migrate": "npm run db:migrate -w shared",
-    "e2e": "playwright test"
+    "e2e": "node --experimental-strip-types scripts/e2e-ports.ts && playwright test"
   },
   "engines": {
     "node": ">=24"

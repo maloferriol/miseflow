@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
-import postgres from "postgres";
 import {
   buildWalkthrough,
   SERVICE_DATE,
@@ -13,7 +12,6 @@ import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 // The walkthrough with its Chicken stock and Beurre blanc sub-recipes, its Service and Availability,
 // built through POST /mutate. Sets this spec's own user's Availability.
 const s = String(Date.now());
-const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
 let user: TestUser;
@@ -39,16 +37,9 @@ test.beforeAll(async ({ request }) => {
   });
 });
 
-// Soft-deletes the Service, its Batches, the Menu and the Recipes this run made. Local stack only.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  if (w) {
-    await sql`update batches set deleted_at = now() where service_id = ${serviceId} and deleted_at is null`;
-    await sql`update services set deleted_at = now() where id = ${serviceId}`;
-    await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
-    await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes) as string[])}`;
-  }
   if (user) await deleteTestUser(user);
-  await sql.end();
 });
 
 test("shows the stock Batch's label on the Menu and its Tasks on Thursday in the Plan", async ({

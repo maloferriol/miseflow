@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
-import postgres from "postgres";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 let user: TestUser;
@@ -10,17 +9,9 @@ test.beforeAll(async () => {
   user = await createTestUser("catalog");
 });
 
-// Soft-deletes the Ingredients and aliases this run's user made ("Espelette pepper"), then the user. Local stack only.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  if (!user) return;
-  const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
-  try {
-    await sql`update ingredient_aliases set deleted_at = now() where owner_id = ${user.id} and deleted_at is null`;
-    await sql`update ingredients set deleted_at = now() where owner_id = ${user.id} and deleted_at is null`;
-  } finally {
-    await sql.end();
-  }
-  await deleteTestUser(user);
+  if (user) await deleteTestUser(user);
 });
 
 test("creates an Ingredient 'Espelette pepper' in Spices and finds it by a new alias", async ({

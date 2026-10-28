@@ -48,15 +48,8 @@ test.beforeAll(async ({ request }) => {
   });
 });
 
-// Soft-deletes the marks, the Service, its Batches, the Menu and the Recipes this run made. Local stack only.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  if (w) {
-    await sql`update shopping_marks set deleted_at = now() where service_id = ${serviceId} and deleted_at is null`;
-    await sql`update batches set deleted_at = now() where service_id = ${serviceId} and deleted_at is null`;
-    await sql`update services set deleted_at = now() where id = ${serviceId}`;
-    await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
-    await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes) as string[])}`;
-  }
   if (user) await deleteTestUser(user);
   await sql.end();
 });

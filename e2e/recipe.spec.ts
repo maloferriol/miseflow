@@ -133,20 +133,6 @@ test("won't save an unmatched name until it is linked: a near match adds an alia
         and a.name = 'butte' and i.name = 'butter'`;
     expect(aliases).toHaveLength(1);
   } finally {
-    // So the next run's "butte" is still only a near match.
-    await sql`
-      update ingredient_aliases a set deleted_at = now()
-      from recipes r
-      where r.id = ${recipeId} and a.owner_id = r.owner_id
-        and a.name = 'butte' and a.deleted_at is null`;
-    // And the Ingredient this run created, so the test user's catalog doesn't grow every run.
-    await sql`
-      update ingredients i set deleted_at = now()
-      from recipes r
-      where r.id = ${recipeId} and i.owner_id = r.owner_id
-        and i.name = ${fresh} and i.deleted_at is null`;
-    // And this Recipe, whose line points at that Ingredient, so no live line is left dangling.
-    await sql`update recipes set deleted_at = now() where id = ${recipeId}`;
     await sql.end();
   }
 });

@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import postgres from "postgres";
 import { zonedMinute } from "../shared/src/plan/time.ts";
 import {
   buildWalkthrough,
@@ -17,7 +16,6 @@ import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 test.describe.configure({ mode: "serial" });
 
 const s = String(Date.now());
-const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 const timeZone = "Europe/Paris";
 const at = (date: string, hours: number, minutes = 0) =>
@@ -46,16 +44,9 @@ test.beforeAll(async ({ request }) => {
   });
 });
 
-// Soft-deletes the Service, its Batches, the Menu and the Recipes this run made. Local stack only.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  if (w) {
-    await sql`update batches set deleted_at = now() where service_id = ${serviceId} and deleted_at is null`;
-    await sql`update services set deleted_at = now() where id = ${serviceId}`;
-    await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
-    await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes) as string[])}`;
-  }
   if (user) await deleteTestUser(user);
-  await sql.end();
 });
 
 async function openPlan(page: Page) {

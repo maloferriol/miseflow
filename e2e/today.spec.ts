@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
-import postgres from "postgres";
 import {
   buildWalkthrough,
   SERVICE_DATE,
@@ -15,7 +14,6 @@ import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 // once the real date is past the Plan's Thursday it may move what follows; nothing here asserts
 // placements after the tick.
 const s = String(Date.now());
-const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
 let user: TestUser;
@@ -56,17 +54,9 @@ test.beforeAll(async ({ request }) => {
   days = (await res.json()).plan.days;
 });
 
-// Soft-deletes the Service, its Batches, the Menu and the Recipes this run made. Local stack only.
-// The Step events stay (append-only) on the soft-deleted Service.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  if (w) {
-    await sql`update batches set deleted_at = now() where service_id = ${serviceId} and deleted_at is null`;
-    await sql`update services set deleted_at = now() where id = ${serviceId}`;
-    await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
-    await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes) as string[])}`;
-  }
   if (user) await deleteTestUser(user);
-  await sql.end();
 });
 
 // "Thursday 29 October", as the web app heads a kitchen-zone date.

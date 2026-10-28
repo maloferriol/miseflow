@@ -10,7 +10,8 @@ export default defineConfig({
     // Source: https://vite.dev/config/server-options#server-proxy
     proxy: {
       "/api": {
-        target: "http://localhost:8787",
+        // npm run e2e points it at its own API; a dev server uses 8787.
+        target: `http://localhost:${process.env.API_PORT ?? 8787}`,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },

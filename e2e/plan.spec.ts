@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import { buildWalkthrough, type Walkthrough } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+import { apiUrl } from "../scripts/e2e-ports.ts";
 
 // The walkthrough Menu is built through POST /mutate; the Service and the Availability through the UI.
 // Sets this spec's own user's Availability (D12).
@@ -14,7 +15,7 @@ test.beforeAll(async ({ request }) => {
   user = await createTestUser("plan");
   const { token } = user;
   w = await buildWalkthrough(async (name, args) => {
-    const res = await request.post("http://localhost:8787/mutate", {
+    const res = await request.post(apiUrl("/mutate"), {
       headers: { Authorization: `Bearer ${token}` },
       data: { id: crypto.randomUUID(), name, args },
     });

@@ -1,8 +1,16 @@
+import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
-import { createTestUser, deleteTestUser, sweepTestUsers, type TestUser } from "./test-user.ts";
+import {
+  createTestUser,
+  deleteTestUser,
+  sweepTestUsers,
+  testUserLeftovers,
+  type TestUser,
+} from "./test-user.ts";
+import { apiUrl } from "../scripts/e2e-ports.ts";
 
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 
@@ -50,8 +58,11 @@ test("creates a fresh user whose token the API accepts, and deletes it so it can
   request,
 }) => {
   const user = await createTestUser("test-user");
-  expect(user.email).toMatch(/^e2e-test-user-[0-9a-f]+@miseflow\.test$/);
-  const res = await request.get("http://localhost:8787/menus", {
+  // The runner's pid, so a later run's sweep can tell whether this run is still going.
+  const runPid = process.env.E2E_RUN_PID;
+  expect(runPid).toMatch(/^\d+$/);
+  expect(user.email).toMatch(new RegExp(`^e2e-test-user-[0-9a-f]{12}-${runPid}@miseflow\\.test$`));
+  const res = await request.get(apiUrl("/menus"), {
     headers: { Authorization: `Bearer ${user.token}` },
   });
   expect(res.status(), await res.text()).toBe(200);
@@ -119,6 +130,9 @@ test("a delete that fails part-way leaves the user and every row it owns", async
 test("the sweep removes users an interrupted run left, with their rows, and no other owner's rows", async () => {
   // Scoped to this test's spec name, so it never sweeps the users of specs running alongside.
   const specName = `sweep-${randomBytes(4).toString("hex")}`;
+  const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const [left, deletedEarlier] = await Promise.all([
     createTestUser(specName),
     createTestUser(specName),
@@ -126,16 +140,24 @@ test("the sweep removes users an interrupted run left, with their rows, and no o
   await writeRecipe(left);
   await writeRecipe(deletedEarlier);
   // How deleteTestUser worked before #139: the auth user goes, its rows stay.
-  const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   const { error } = await admin.auth.admin.deleteUser(deletedEarlier.id);
   expect(error).toBeNull();
+  // A user from before #156, whose email names no run.
+  const legacyEmail = `e2e-${specName}-${randomBytes(6).toString("hex")}@miseflow.test`;
+  const legacy = await admin.auth.admin.createUser({ email: legacyEmail, email_confirm: true });
+  expect(legacy.error).toBeNull();
   // An owner that no longer exists and was never an e2e user, like an earlier cook@miseflow.test.
   const stranger = { ...left, id: randomUUID() };
   await writeRecipe(stranger);
 
-  expect(await sweepTestUsers(specName)).toBe(2);
+  // This run is still going, so only the user from before #156 goes.
+  expect(await sweepTestUsers(specName)).toBe(1);
+  expect(await sql`select 1 from auth.users where id = ${legacy.data.user!.id}`).toHaveLength(0);
+  expect(await rowsOwnedBy(left.id)).not.toEqual({});
+  expect(await rowsOwnedBy(deletedEarlier.id)).not.toEqual({});
+
+  // Once its run has ended, the rest go.
+  expect(await sweepTestUsers(specName, process.env, () => false)).toBe(2);
   expect(await rowsOwnedBy(left.id)).toEqual({});
   expect(await rowsOwnedBy(deletedEarlier.id)).toEqual({});
   expect(await sql`select 1 from auth.users where id = ${left.id}`).toHaveLength(0);
@@ -150,4 +172,27 @@ test("the sweep removes users an interrupted run left, with their rows, and no o
     for (const table of ["ingredient_lines", "steps", "recipes", "applied_mutations"])
       await tx`delete from ${tx(table)} where owner_id = ${stranger.id}`;
   });
+});
+
+test("the teardown counts only its own run's users, not another run's", async () => {
+  // A process of our own stands for a run still going in another worktree: it's live, and no
+  // other run uses its pid.
+  const otherRunner = spawn("sleep", ["60"]);
+  try {
+    const otherRun = { ...process.env, E2E_RUN_PID: `${otherRunner.pid}` };
+    const ours = await createTestUser("test-user");
+    expect(await testUserLeftovers(otherRun)).toEqual({ users: 0, rows: {} });
+
+    const theirs = await createTestUser("test-user", otherRun);
+    await writeRecipe(theirs);
+    expect(await testUserLeftovers(otherRun)).toEqual({
+      users: 1,
+      rows: { applied_mutations: 1, ingredient_lines: 1, recipes: 1, steps: 1 },
+    });
+
+    await Promise.all([deleteTestUser(ours), deleteTestUser(theirs)]);
+    expect(await testUserLeftovers(otherRun)).toEqual({ users: 0, rows: {} });
+  } finally {
+    otherRunner.kill();
+  }
 });

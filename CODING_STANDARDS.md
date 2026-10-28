@@ -10,8 +10,9 @@ Repo facts for anyone writing or reviewing code here. `code-review` checks the d
 - Preflight doesn't check Claude skills: a session needs the `mattpocock-skills` plugin installed in the user's Claude config.
 - Cloud session: the SessionStart hook starts `dockerd`, unsets the cloud database vars, and installs dependencies and Playwright chromium. If `env | grep DATABASE_URL` still shows a value, prefix each command with `env -u DATABASE_URL -u SUPABASE_URL -u VITE_SUPABASE_URL -u VITE_SUPABASE_PUBLISHABLE_KEY -u SUPABASE_PUBLISHABLE_KEY -u SUPABASE_SECRET_KEY`. Node older than 24 only warns (`EBADENGINE`).
 - `Invalid login credentials` from every server suite means another checkout reset the shared test user. Rerun `npm run setup:local` here. Don't read other checkouts' `.env` files.
-- Stop every dev server, this checkout's too, before `npm run e2e`. It starts its own API and web app, and fails before any test when 8787 or 5173 is taken.
-- Each e2e spec signs in with `createTestUser()` and calls `deleteTestUser()` in `afterAll`, which hard-deletes every row that user owns. Every row a spec writes needs that user as owner: the global teardown fails the run when an e2e user's rows are left or the rows with no owner changed.
+- Agent sessions start `npm run dev:server` and `npm run dev:web` with the Bash tool's `run_in_background`, never detached with `&`, `nohup` or `( … &)`, and stop them with TaskStop before ending the turn. A detached server can't be stopped later: the permission check refuses `kill` and `pkill`, because it can't tell who started the process. #165 tracks a scoped `dev:stop` and a cleanup hook.
+- `npm run e2e` starts its own API and web app on free ports it picks for the run, so it can run while dev servers or another worktree's e2e hold 8787 and 5173. Specs call the API through `apiUrl(path)` from `scripts/e2e-ports.ts`, never a `localhost` URL.
+- Each e2e spec signs in with `createTestUser()` and calls `deleteTestUser()` in `afterAll`, which hard-deletes every row that user owns. A user's email names its run's runner pid, so a run's setup sweeps only the users of runs that have ended. Every row a spec writes needs that user as owner: the global teardown fails the run when an e2e user's rows are left or the rows with no owner changed.
 
 ## Tests
 

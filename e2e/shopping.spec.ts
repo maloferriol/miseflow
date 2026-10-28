@@ -8,6 +8,7 @@ import {
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+import { apiUrl } from "../scripts/e2e-ports.ts";
 
 // The walkthrough with its Ingredient lines and Pastry (#91), and its Service, built through
 // POST /mutate with the seed's Ingredients.
@@ -22,7 +23,7 @@ test.beforeAll(async ({ request }) => {
   user = await createTestUser("shopping");
   const { token } = user;
   const run = async (name: string, args: Record<string, unknown>) => {
-    const res = await request.post("http://localhost:8787/mutate", {
+    const res = await request.post(apiUrl("/mutate"), {
       headers: { Authorization: `Bearer ${token}` },
       data: { id: crypto.randomUUID(), name, args },
     });

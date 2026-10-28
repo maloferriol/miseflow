@@ -8,6 +8,7 @@ import {
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+import { apiUrl } from "../scripts/e2e-ports.ts";
 
 // The walkthrough with its Chicken stock and Beurre blanc sub-recipes, its Service and Availability,
 // built through POST /mutate. Sets this spec's own user's Availability.
@@ -21,7 +22,7 @@ test.beforeAll(async ({ request }) => {
   user = await createTestUser("batches");
   const { token } = user;
   const run = async (name: string, args: Record<string, unknown>) => {
-    const res = await request.post("http://localhost:8787/mutate", {
+    const res = await request.post(apiUrl("/mutate"), {
       headers: { Authorization: `Bearer ${token}` },
       data: { id: crypto.randomUUID(), name, args },
     });

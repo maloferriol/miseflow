@@ -8,6 +8,7 @@ import {
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+import { apiUrl } from "../scripts/e2e-ports.ts";
 
 // The walkthrough with its stock (ADR 0004), its Service and Availability, built through POST /mutate.
 // Sets this spec's own user's Availability. The tick below is stored at the server's real time, so
@@ -33,7 +34,7 @@ test.beforeAll(async ({ request }) => {
   user = await createTestUser("today");
   const { token } = user;
   const run = async (name: string, args: Record<string, unknown>) => {
-    const res = await request.post("http://localhost:8787/mutate", {
+    const res = await request.post(apiUrl("/mutate"), {
       headers: { Authorization: `Bearer ${token}` },
       data: { id: crypto.randomUUID(), name, args },
     });
@@ -47,7 +48,7 @@ test.beforeAll(async ({ request }) => {
     date: SERVICE_DATE,
     time: SERVICE_TIME,
   });
-  const res = await request.get(`http://localhost:8787/services/${serviceId}/plan`, {
+  const res = await request.get(apiUrl(`/services/${serviceId}/plan`), {
     headers: { Authorization: `Bearer ${token}` },
   });
   expect(res.status()).toBe(200);

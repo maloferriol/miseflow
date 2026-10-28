@@ -8,6 +8,7 @@ import {
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+import { apiUrl } from "../scripts/e2e-ports.ts";
 
 // The Unplaced Task quick fixes (#90 AC6): the walkthrough Menu, its Service and Availability are
 // built through POST /mutate; Friday is shortened through the Availability screen, as in
@@ -22,7 +23,7 @@ test.beforeAll(async ({ request }) => {
   execFileSync("npm", ["run", "seed", "-w", "server"], { stdio: "ignore" });
   user = await createTestUser("quick-fixes");
   const run = async (name: string, args: Record<string, unknown>) => {
-    const res = await request.post("http://localhost:8787/mutate", {
+    const res = await request.post(apiUrl("/mutate"), {
       headers: { Authorization: `Bearer ${user.token}` },
       data: { id: crypto.randomUUID(), name, args },
     });

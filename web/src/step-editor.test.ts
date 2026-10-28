@@ -7,6 +7,8 @@ import {
   defaultShoppingCategory,
   insertPick,
   newIngredientKind,
+  newIngredientName,
+  newSubRecipeName,
   pickerOpensAt,
   settleStepSave,
   stepFormText,
@@ -209,6 +211,30 @@ describe("subRecipeName", () => {
   it("names a new sub-recipe after the ref, capitalised as a Recipe's name", () => {
     expect(subRecipeName("chicken stock")).toBe("Chicken stock");
     expect(subRecipeName("Demi-glace")).toBe("Demi-glace");
+  });
+});
+
+describe("newIngredientName", () => {
+  it("falls back to the ref's name when the cook clears the field or leaves only spaces", () => {
+    expect(newIngredientName("", "shallots")).toBe("shallots");
+    expect(newIngredientName("   ", "shallots")).toBe("shallots");
+  });
+
+  it("keeps what the cook typed, trimmed", () => {
+    expect(newIngredientName("Shallots", "shallots")).toBe("Shallots");
+    expect(newIngredientName("  Banana shallots ", "shallots")).toBe("Banana shallots");
+  });
+});
+
+describe("newSubRecipeName", () => {
+  it("falls back to the ref's name, capitalised, when the cook clears the field or leaves only spaces", () => {
+    expect(newSubRecipeName("", "chicken stock")).toBe("Chicken stock");
+    expect(newSubRecipeName("   ", "chicken stock")).toBe("Chicken stock");
+  });
+
+  it("keeps what the cook typed, trimmed and not capitalised", () => {
+    expect(newSubRecipeName("brown stock", "chicken stock")).toBe("brown stock");
+    expect(newSubRecipeName("  Brown stock ", "chicken stock")).toBe("Brown stock");
   });
 });
 

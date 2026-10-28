@@ -71,6 +71,20 @@ describe("New Menu", () => {
     expect(onCreate).toHaveBeenCalledWith({ name: "Saturday dinner", guestCount: 6 });
   });
 
+  it("keeps the typed name and creates nothing when Guests holds no whole number", () => {
+    const onCreate = vi.fn();
+    newMenu({ onCreate });
+    type("Menu name", "Saturday dinner");
+    type("Guests", "2.5");
+    // Submitted past the field's own step check, so the view's check is the one under test.
+    fireEvent.submit(button("Create Menu"));
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Menu name" })).toHaveProperty(
+      "value",
+      "Saturday dinner",
+    );
+  });
+
   it("disables Create Menu while a create is pending", () => {
     newMenu({ createPending: true });
     expect(button("Create Menu").hasAttribute("disabled")).toBe(true);

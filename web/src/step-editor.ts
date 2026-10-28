@@ -156,9 +156,19 @@ export function newIngredientKind(amount: string) {
   return "mass";
 }
 
+/** A new Ingredient's name: what the cook typed, trimmed, or the ref's name when that is blank. */
+export function newIngredientName(typed: string, name: string) {
+  return typed.trim() || name;
+}
+
 /** A new sub-recipe's name, from the ref: "chicken stock" → "Chicken stock". */
 export function subRecipeName(wording: string) {
   return wording.charAt(0).toUpperCase() + wording.slice(1);
+}
+
+/** A new sub-recipe's name: what the cook typed, trimmed, or `subRecipeName` of the ref when blank. */
+export function newSubRecipeName(typed: string, name: string) {
+  return typed.trim() || subRecipeName(name);
 }
 
 /** The Shopping category a new Ingredient goes under until the cook picks one: Other. */

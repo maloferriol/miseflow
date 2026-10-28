@@ -1,4 +1,5 @@
 // The Menu screen's views (ADR 0011): props only, so their tests render them without the API.
+import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { type FormEvent, Fragment, type ReactNode } from "react";
 import type { fetchMenus, Menu } from "./api.ts";
 import { newMenuInput } from "./menu-screen.ts";
@@ -124,5 +125,72 @@ export function MenuView({
         {addCourseError && <p role="alert">{addCourseError.message}</p>}
       </form>
     </section>
+  );
+}
+
+type Course = Menu["courses"][number];
+type Dish = Course["dishes"][number];
+
+export type CourseViewProps = {
+  menuId: string;
+  course: Course;
+  addDishPending: boolean;
+  addDishError: Error | null;
+  onAddDish: (name: string) => void;
+  /** The form that sets one Dish's scale. */
+  dishScale: (dish: Dish) => ReactNode;
+};
+
+/** One Course: its Dishes, each with its scale and quick fixes, and a form to add a Dish. */
+export function CourseView({
+  menuId,
+  course,
+  addDishPending,
+  addDishError,
+  onAddDish,
+  dishScale,
+}: CourseViewProps) {
+  // A full load: App reads the view from the URL. ?menu= stays for the way back.
+  const recipeHref = (recipeId: string) =>
+    `?${new URLSearchParams({ menu: menuId, view: "recipe", recipe: recipeId })}`;
+  return (
+    <article>
+      <h3>{course.name}</h3>
+      <ul>
+        {course.dishes.map((dish) => (
+          <li key={dish.id}>
+            <a href={recipeHref(dish.recipe.id)}>{dish.recipe.name}</a>{" "}
+            {formatFactor(dish.scale.factor)}
+            {/* Paragraphs, not a list, so each Dish stays one list item. */}
+            {dish.fixes.map((fix) => (
+              <p key={`${fix.subRecipe?.id ?? ""}:${fix.text}`}>
+                {fix.subRecipe ? (
+                  <a href={recipeHref(fix.subRecipe.id)}>
+                    {fix.subRecipe.name}: {fix.text}
+                  </a>
+                ) : (
+                  `${dish.recipe.name}: ${fix.text}`
+                )}
+              </p>
+            ))}
+            {dishScale(dish)}
+          </li>
+        ))}
+      </ul>
+      <form
+        onSubmit={(event) => {
+          const name = formText(event, "name");
+          if (name) onAddDish(name);
+        }}
+      >
+        <label>
+          Recipe name <input name="name" required />
+        </label>
+        <button type="submit" disabled={addDishPending}>
+          Add Dish
+        </button>
+        {addDishError && <p role="alert">{addDishError.message}</p>}
+      </form>
+    </article>
   );
 }

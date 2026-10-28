@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { renderView } from "../test/render-view.tsx";
 import type { Menu } from "./api.ts";
 import {
+  CourseView,
+  type CourseViewProps,
   MenuListView,
   MenuView,
   type MenuViewProps,
@@ -132,5 +134,59 @@ describe("Menu", () => {
   it("shows a failed add as an alert with its message", () => {
     menuView({ addCourseError: new Error("Could not add the Course (500)") });
     expect(screen.getByRole("alert").textContent).toBe("Could not add the Course (500)");
+  });
+});
+
+type Course = Menu["courses"][number];
+type Dish = Course["dishes"][number];
+
+// A Dish before the Menu has a scale for it: the server's assumed factor of 1.
+const velouté: Dish = {
+  id: "d-veloute",
+  position: "a0",
+  recipe: { id: "r-veloute", name: "Velouté" },
+  scale: { factor: 1, source: "assumed" },
+  fixes: [],
+};
+const starter: Course = { id: "c-starter", name: "Starter", position: "a0", dishes: [velouté] };
+
+describe("Course", () => {
+  const courseView = (props: Partial<CourseViewProps> = {}) =>
+    renderView(
+      <CourseView
+        menuId="m-dinner"
+        course={starter}
+        addDishPending={false}
+        addDishError={null}
+        onAddDish={() => {}}
+        dishScale={(dish) => <p>Scale for {dish.recipe.name}</p>}
+        {...props}
+      />,
+    );
+
+  it("links each Dish to its Recipe, keeping the way back to the Menu", () => {
+    courseView();
+    expect(screen.getByRole("link", { name: "Velouté" }).getAttribute("href")).toBe(
+      "?menu=m-dinner&view=recipe&recipe=r-veloute",
+    );
+    expect(screen.getByText("Scale for Velouté")).toBeTruthy();
+  });
+
+  it("adds a Dish by its Recipe's name", () => {
+    const onAddDish = vi.fn();
+    courseView({ onAddDish });
+    type("Recipe name", "Duck breast");
+    fireEvent.click(button("Add Dish"));
+    expect(onAddDish).toHaveBeenCalledWith("Duck breast");
+  });
+
+  it("disables Add Dish while an add is pending", () => {
+    courseView({ addDishPending: true });
+    expect(button("Add Dish").hasAttribute("disabled")).toBe(true);
+  });
+
+  it("shows a failed add as an alert with its message", () => {
+    courseView({ addDishError: new Error("Could not add the Dish (500)") });
+    expect(screen.getByRole("alert").textContent).toBe("Could not add the Dish (500)");
   });
 });

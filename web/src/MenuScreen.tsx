@@ -1,22 +1,13 @@
-import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
-import { MenuListView, MenuView, NewMenuView } from "./MenuViews.tsx";
+import { CourseView, MenuListView, MenuView, NewMenuView } from "./MenuViews.tsx";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
 function menuIdFromUrl() {
   return new URLSearchParams(window.location.search).get("menu");
-}
-
-function formText(event: FormEvent<HTMLFormElement>, name: string) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const value = String(new FormData(form).get(name) ?? "").trim();
-  form.reset();
-  return value;
 }
 
 export function MenuScreen() {
@@ -86,19 +77,14 @@ function OpenMenu({ menuId }: { menuId: string }) {
     <MenuView
       {...menu}
       serviceForm={(service) => <ServiceForm menuId={menuId} service={service} />}
-      course={(course) => <CourseView course={course} onChanged={onChanged} />}
+      course={(course) => <Course menuId={menuId} course={course} onChanged={onChanged} />}
     />
   );
 }
 
-function CourseView({
-  course,
-  onChanged,
-}: {
-  course: Menu["courses"][number];
-  onChanged: () => Promise<void>;
-}) {
-  // A new Dish is a new Recipe placed in this Course: two mutations, each with its own id.
+/** Adds a Dish: a new Recipe placed in this Course. Only a mutation hook: no branches. */
+function useCourse(course: Menu["courses"][number], onChanged: () => Promise<void>) {
+  // Two mutations, each with its own id.
   const addDish = useMutation({
     mutationFn: async (name: string) => {
       const recipeId = crypto.randomUUID();
@@ -115,53 +101,29 @@ function CourseView({
     },
     onSuccess: onChanged,
   });
+  return {
+    addDishPending: addDish.isPending,
+    addDishError: addDish.error,
+    onAddDish: (name: string) => addDish.mutate(name),
+  };
+}
 
+function Course({
+  menuId,
+  course,
+  onChanged,
+}: {
+  menuId: string;
+  course: Menu["courses"][number];
+  onChanged: () => Promise<void>;
+}) {
   return (
-    <article>
-      <h3>{course.name}</h3>
-      <ul>
-        {course.dishes.map((dish) => (
-          <li key={dish.id}>
-            {/* A full load: App reads the view from the URL. ?menu= stays for the way back. */}
-            <a
-              href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: dish.recipe.id })}`}
-            >
-              {dish.recipe.name}
-            </a>{" "}
-            {formatFactor(dish.scale.factor)}
-            {/* Paragraphs, not a list, so each Dish stays one list item. */}
-            {dish.fixes.map((fix) => (
-              <p key={`${fix.subRecipe?.id ?? ""}:${fix.text}`}>
-                {fix.subRecipe ? (
-                  <a
-                    href={`?${new URLSearchParams({ menu: menuIdFromUrl() ?? "", view: "recipe", recipe: fix.subRecipe.id })}`}
-                  >
-                    {fix.subRecipe.name}: {fix.text}
-                  </a>
-                ) : (
-                  `${dish.recipe.name}: ${fix.text}`
-                )}
-              </p>
-            ))}
-            <DishScale dish={dish} onChanged={onChanged} />
-          </li>
-        ))}
-      </ul>
-      <form
-        onSubmit={(event) => {
-          const name = formText(event, "name");
-          if (name) addDish.mutate(name);
-        }}
-      >
-        <label>
-          Recipe name <input name="name" required />
-        </label>
-        <button type="submit" disabled={addDish.isPending}>
-          Add Dish
-        </button>
-        {addDish.error && <p role="alert">{addDish.error.message}</p>}
-      </form>
-    </article>
+    <CourseView
+      {...useCourse(course, onChanged)}
+      menuId={menuId}
+      course={course}
+      dishScale={(dish) => <DishScale dish={dish} onChanged={onChanged} />}
+    />
   );
 }
 

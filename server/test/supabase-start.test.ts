@@ -16,8 +16,3 @@ describe("supabaseStartArgs", () => {
     ]);
   });
 });
-
-// Throwaway for #158: proves a failing test turns `check` red. Reverted before merge.
-it("throwaway failure", () => {
-  expect(supabaseStartArgs(undefined)).toEqual(["start", "-x"]);
-});

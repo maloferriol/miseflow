@@ -215,7 +215,7 @@ export const extractToSubRecipe = defineMutator({
       quantityMax: q.max === null ? null : String(q.max),
       unit: q.unit,
       wording: refName(args.name) || "sub-recipe",
-      fixedQuantity: q.fixed,
+      fixedQuantity: q.fixedQuantity,
       position: positionAfter(null),
     });
 

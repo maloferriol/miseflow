@@ -89,8 +89,9 @@ export function formatStepText(body: StepToken[], lines: Map<string, LineText>):
         value: line.quantity,
         max: line.quantityMax,
         unit: line.unit,
+        // A placeholder: formatQuantity doesn't read the tier.
         tier: "fixed",
-        fixed: line.fixedQuantity,
+        fixedQuantity: line.fixedQuantity,
       });
       return (
         `@${line.wording ?? ""}{${amount}}` + (line.preparation ? `(${line.preparation})` : "")

@@ -79,13 +79,13 @@ export function useMenu(menuId: string) {
   };
 }
 
-function OpenMenu({ menuId }: { menuId: string }) {
+function OpenMenu({ menuId }: Readonly<{ menuId: string }>) {
   const { onChanged, ...menu } = useMenu(menuId);
   return (
     <MenuView
       {...menu}
-      serviceForm={(service) => <ServiceForm menuId={menuId} service={service} />}
-      course={(course) => <Course menuId={menuId} course={course} onChanged={onChanged} />}
+      renderServiceForm={(service) => <ServiceForm menuId={menuId} service={service} />}
+      renderCourse={(course) => <Course menuId={menuId} course={course} onChanged={onChanged} />}
     />
   );
 }
@@ -120,17 +120,17 @@ function Course({
   menuId,
   course,
   onChanged,
-}: {
+}: Readonly<{
   menuId: string;
   course: Menu["courses"][number];
   onChanged: () => Promise<void>;
-}) {
+}>) {
   return (
     <CourseView
       {...useCourse(course, onChanged)}
       menuId={menuId}
       course={course}
-      dishScale={(dish) => <DishScaleForm dish={dish} onChanged={onChanged} />}
+      renderDishScale={(dish) => <DishScaleForm dish={dish} onChanged={onChanged} />}
     />
   );
 }
@@ -159,10 +159,10 @@ export function useDishScale(dishId: string, onChanged: () => Promise<void>) {
 function DishScaleForm({
   dish,
   onChanged,
-}: {
+}: Readonly<{
   dish: Menu["courses"][number]["dishes"][number];
   onChanged: () => Promise<void>;
-}) {
+}>) {
   return <DishScaleView {...useDishScale(dish.id, onChanged)} dish={dish} />;
 }
 

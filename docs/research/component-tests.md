@@ -114,4 +114,4 @@ From the 8 runs of `ci.yml` since the step landed, 28 Oct 2026: 2 on `main` (the
 
 **B is dropped (28 Oct 2026).** The hook tests, with `api.ts` mocked and a real QueryClient, already test against a faked API, and they already cover what B was kept for: the mutation and args sent, pending and error states, and which queries refetch. MSW would add only `api.ts`'s own code, which is about 100 lines of the same `if (!res.ok) throw` and runs on every e2e test against the real server. In return it would bring a third copy of each response, under the hook tests' fakes, written at the HTTP level. If `mutate()`'s error message ever needs a test below the e2e, a Node unit test of `api.ts` with `fetch` stubbed (`vi.stubGlobal`) is the cheaper check **(reasoned)**.
 
-So no follow-up issue for B. What still needs a follow-up is ADR 0011 and CODING_STANDARDS, which both still say a hook gets no test.
+So no follow-up issue for B. This PR (#177) also updates ADR 0011 and CODING_STANDARDS, which said a hook gets no test, to match the hook tests.

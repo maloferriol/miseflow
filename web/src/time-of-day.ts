@@ -8,7 +8,7 @@ export function timeValue(minuteOfDay: number) {
 
 /** An <input type="time"> value as a minute of day, or null when empty. */
 export function minuteOfDay(value: FormDataEntryValue | null): number | null {
-  const text = String(value ?? "");
+  const text = typeof value === "string" ? value : "";
   if (!/^\d{2}:\d{2}/.test(text)) return null;
   return Number(text.slice(0, 2)) * 60 + Number(text.slice(3, 5));
 }

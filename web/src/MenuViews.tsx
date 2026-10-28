@@ -1,6 +1,6 @@
 // The Menu screen's views (ADR 0011): props only, so their tests render them without the API.
 import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
-import { type FormEvent, Fragment, type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, type SubmitEvent, useState } from "react";
 import type { Availability, fetchMenus, Menu } from "./api.ts";
 import {
   type DishScale,
@@ -13,11 +13,17 @@ import {
 } from "./menu-screen.ts";
 import { timeValue } from "./time-of-day.ts";
 
+/** A form field's text, or "" when the field is missing or holds a file. */
+function fieldText(form: FormData, name: string) {
+  const value = form.get(name);
+  return typeof value === "string" ? value : "";
+}
+
 /** A form field's trimmed text; the form is cleared for the next entry. */
-function formText(event: FormEvent<HTMLFormElement>, name: string) {
+function formText(event: SubmitEvent<HTMLFormElement>, name: string) {
   event.preventDefault();
   const form = event.currentTarget;
-  const value = String(new FormData(form).get(name) ?? "").trim();
+  const value = fieldText(new FormData(form), name).trim();
   form.reset();
   return value;
 }
@@ -29,7 +35,7 @@ export type QueryState<T> =
 export type MenuListItem = Pick<Awaited<ReturnType<typeof fetchMenus>>[number], "id" | "name">;
 
 /** The start screen: every saved Menu, each a link that opens it (?menu=<id>). */
-export function MenuListView({ menus }: { menus: QueryState<MenuListItem[]> }) {
+export function MenuListView({ menus }: Readonly<{ menus: QueryState<MenuListItem[]> }>) {
   if (menus.status === "pending") return <p>Loading…</p>;
   if (menus.status === "error") return <p role="alert">{menus.error.message}</p>;
   if (!menus.data.length) return null;
@@ -54,9 +60,9 @@ export type NewMenuViewProps = {
   onCreate: (menu: { name: string; guestCount: number }) => void;
 };
 
-export function NewMenuView({ createPending, createError, onCreate }: NewMenuViewProps) {
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    const guests = String(new FormData(event.currentTarget).get("guestCount") ?? "");
+export function NewMenuView({ createPending, createError, onCreate }: Readonly<NewMenuViewProps>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    const guests = fieldText(new FormData(event.currentTarget), "guestCount");
     const menu = newMenuInput(formText(event, "name"), guests);
     if (menu) onCreate(menu);
   }
@@ -84,8 +90,8 @@ export type MenuViewProps = {
   addCourseError: Error | null;
   onAddCourse: (name: string) => void;
   /** The form for the Menu's one Service, remade when the saved Service changes. */
-  serviceForm: (service: Menu["service"]) => ReactNode;
-  course: (course: Menu["courses"][number]) => ReactNode;
+  renderServiceForm: (service: Menu["service"]) => ReactNode;
+  renderCourse: (course: Menu["courses"][number]) => ReactNode;
 };
 
 /** One Menu: its guests, its Service, its Courses and their Batches, and a form to add a Course. */
@@ -94,9 +100,9 @@ export function MenuView({
   addCoursePending,
   addCourseError,
   onAddCourse,
-  serviceForm,
-  course,
-}: MenuViewProps) {
+  renderServiceForm,
+  renderCourse,
+}: Readonly<MenuViewProps>) {
   if (menu.status === "pending") return <p>Loading…</p>;
   if (menu.status === "error") return <p role="alert">{menu.error.message}</p>;
 
@@ -105,9 +111,11 @@ export function MenuView({
       <a href="/">All Menus</a>
       <h2>{menu.data.name}</h2>
       <p>{menu.data.guestCount} guests</p>
-      <Fragment key={JSON.stringify(menu.data.service)}>{serviceForm(menu.data.service)}</Fragment>
+      <Fragment key={JSON.stringify(menu.data.service)}>
+        {renderServiceForm(menu.data.service)}
+      </Fragment>
       {menu.data.courses.map((c) => (
-        <Fragment key={c.id}>{course(c)}</Fragment>
+        <Fragment key={c.id}>{renderCourse(c)}</Fragment>
       ))}
       <h3>Batches</h3>
       {menu.data.batches.length ? (
@@ -147,7 +155,7 @@ export type CourseViewProps = {
   addDishError: Error | null;
   onAddDish: (name: string) => void;
   /** The form that sets one Dish's scale. */
-  dishScale: (dish: Dish) => ReactNode;
+  renderDishScale: (dish: Dish) => ReactNode;
 };
 
 /** One Course: its Dishes, each with its scale and quick fixes, and a form to add a Dish. */
@@ -157,8 +165,8 @@ export function CourseView({
   addDishPending,
   addDishError,
   onAddDish,
-  dishScale,
-}: CourseViewProps) {
+  renderDishScale,
+}: Readonly<CourseViewProps>) {
   // A full load: App reads the view from the URL. ?menu= stays for the way back.
   const recipeHref = (recipeId: string) =>
     `?${new URLSearchParams({ menu: menuId, view: "recipe", recipe: recipeId })}`;
@@ -182,7 +190,7 @@ export function CourseView({
                 )}
               </p>
             ))}
-            {dishScale(dish)}
+            {renderDishScale(dish)}
           </li>
         ))}
       </ul>
@@ -212,13 +220,18 @@ export type DishScaleViewProps = {
 };
 
 /** A Dish's Scale factor: the guest count over servings, a portion count, or a factor (units spec §5). */
-export function DishScaleView({ dish, savePending, saveError, onSave }: DishScaleViewProps) {
+export function DishScaleView({
+  dish,
+  savePending,
+  saveError,
+  onSave,
+}: Readonly<DishScaleViewProps>) {
   // What the cook picked, opening on the Dish's saved scale.
   const [kind, setKind] = useState(() => openingScaleKind(dish.scale));
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSave(dishScale(kind, String(new FormData(event.currentTarget).get("value") ?? "")));
+    onSave(dishScale(kind, fieldText(new FormData(event.currentTarget), "value")));
   }
 
   return (
@@ -277,11 +290,11 @@ export function ServiceFormView({
   savePending,
   saveError,
   onSave,
-}: ServiceFormViewProps) {
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+}: Readonly<ServiceFormViewProps>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const input = serviceInput(String(form.get("date") ?? ""), String(form.get("time") ?? ""));
+    const input = serviceInput(fieldText(form, "date"), fieldText(form, "time"));
     if (input) onSave(input);
   }
 

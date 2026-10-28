@@ -100,8 +100,8 @@ describe("Menu", () => {
         addCoursePending={false}
         addCourseError={null}
         onAddCourse={() => {}}
-        serviceForm={() => <p>Service form</p>}
-        course={(course) => <p>Course {course.name}</p>}
+        renderServiceForm={() => <p>Service form</p>}
+        renderCourse={(course) => <p>Course {course.name}</p>}
         {...props}
       />,
     );
@@ -165,7 +165,7 @@ describe("Course", () => {
         addDishPending={false}
         addDishError={null}
         onAddDish={() => {}}
-        dishScale={(dish) => <p>Scale for {dish.recipe.name}</p>}
+        renderDishScale={(dish) => <p>Scale for {dish.recipe.name}</p>}
         {...props}
       />,
     );

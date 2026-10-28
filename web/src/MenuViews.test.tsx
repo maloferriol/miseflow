@@ -12,7 +12,11 @@ import {
   type MenuViewProps,
   NewMenuView,
   type NewMenuViewProps,
+  ServiceFormView,
+  type ServiceFormViewProps,
 } from "./MenuViews.tsx";
+import { serviceInput } from "./menu-screen.ts";
+import { minuteOfDay } from "./time-of-day.ts";
 
 const button = (name: string) => screen.getByRole("button", { name });
 const type = (label: string, value: string) =>
@@ -229,5 +233,50 @@ describe("Dish scale", () => {
   it("shows a failed save as an alert with its message", () => {
     dishScale({ saveError: new Error("Could not save the scale (500)") });
     expect(screen.getByRole("alert").textContent).toBe("Could not save the scale (500)");
+  });
+});
+
+describe("Service form", () => {
+  // ADR 0004's Service: Saturday at 19:30.
+  const saturday = { id: "s-saturday", date: "2026-10-31", time: minuteOfDay("19:30") };
+  const serviceForm = (props: Partial<ServiceFormViewProps> = {}) =>
+    renderView(
+      <ServiceFormView
+        menuId="m-dinner"
+        service={null}
+        availability={undefined}
+        savePending={false}
+        saveError={null}
+        onSave={() => {}}
+        {...props}
+      />,
+    );
+
+  it("adds the Service from its date and time", () => {
+    const onSave = vi.fn();
+    serviceForm({ onSave });
+    type("Service date", "2026-10-31");
+    type("Service time (optional)", "19:30");
+    fireEvent.click(button("Add Service"));
+    expect(onSave).toHaveBeenCalledWith(serviceInput("2026-10-31", "19:30"));
+  });
+
+  it("shows the saved Service, with its Plan and Shopping list", () => {
+    serviceForm({ service: saturday });
+    expect(screen.getByLabelText<HTMLInputElement>("Service time (optional)").value).toBe("19:30");
+    expect(screen.getByRole("link", { name: "Open Plan" }).getAttribute("href")).toBe(
+      "?menu=m-dinner&view=plan&service=s-saturday",
+    );
+    expect(screen.getByRole("link", { name: "Open Shopping list" })).toBeTruthy();
+  });
+
+  it("disables the save while one is pending", () => {
+    serviceForm({ service: saturday, savePending: true });
+    expect(button("Save Service").hasAttribute("disabled")).toBe(true);
+  });
+
+  it("shows a failed save as an alert with its message", () => {
+    serviceForm({ saveError: new Error("Could not save the Service (500)") });
+    expect(screen.getByRole("alert").textContent).toBe("Could not save the Service (500)");
   });
 });

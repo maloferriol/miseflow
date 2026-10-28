@@ -1,14 +1,17 @@
 // The Menu screen's views (ADR 0011): props only, so their tests render them without the API.
 import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { type FormEvent, Fragment, type ReactNode, useState } from "react";
-import type { fetchMenus, Menu } from "./api.ts";
+import type { Availability, fetchMenus, Menu } from "./api.ts";
 import {
   type DishScale,
   dishScale,
   newMenuInput,
   openingScaleKind,
   type ScaleKind,
+  type ServiceInput,
+  serviceInput,
 } from "./menu-screen.ts";
+import { timeValue } from "./time-of-day.ts";
 
 /** A form field's trimmed text; the form is cleared for the next entry. */
 function formText(event: FormEvent<HTMLFormElement>, name: string) {
@@ -248,6 +251,72 @@ export function DishScaleView({ dish, savePending, saveError, onSave }: DishScal
       <button type="submit" disabled={savePending}>
         Save scale
       </button>
+      {saveError && <p role="alert">{saveError.message}</p>}
+    </form>
+  );
+}
+
+export type ServiceFormViewProps = {
+  menuId: string;
+  service: Menu["service"];
+  /** The kitchen's default Service time, once loaded. */
+  availability: Pick<Availability, "defaultServiceTime"> | undefined;
+  savePending: boolean;
+  saveError: Error | null;
+  onSave: (input: ServiceInput) => void;
+};
+
+/**
+ * The Menu's one Service: a date and an optional time (empty: the kitchen's default). Saving it
+ * re-plans on the server; Open Plan shows the result, Open Shopping list what to buy.
+ */
+export function ServiceFormView({
+  menuId,
+  service,
+  availability,
+  savePending,
+  saveError,
+  onSave,
+}: ServiceFormViewProps) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const input = serviceInput(String(form.get("date") ?? ""), String(form.get("time") ?? ""));
+    if (input) onSave(input);
+  }
+
+  const defaultTime = availability && timeValue(availability.defaultServiceTime);
+  return (
+    <form onSubmit={onSubmit}>
+      <label>
+        Service date <input name="date" type="date" defaultValue={service?.date ?? ""} required />
+      </label>
+      <label>
+        Service time (optional){" "}
+        <input
+          name="time"
+          type="time"
+          step={300}
+          defaultValue={service?.time == null ? "" : timeValue(service.time)}
+          placeholder={defaultTime}
+          title={defaultTime && `Empty: the kitchen's default, ${defaultTime}`}
+        />
+      </label>
+      <button type="submit" disabled={savePending}>
+        {service ? "Save Service" : "Add Service"}
+      </button>
+      {service && (
+        <a href={`?${new URLSearchParams({ menu: menuId, view: "plan", service: service.id })}`}>
+          Open Plan
+        </a>
+      )}
+      {service && (
+        <a
+          href={`?${new URLSearchParams({ menu: menuId, view: "shopping", service: service.id })}`}
+        >
+          Open Shopping list
+        </a>
+      )}
       {saveError && <p role="alert">{saveError.message}</p>}
     </form>
   );

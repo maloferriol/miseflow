@@ -1,13 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
-import postgres from "postgres";
 import { buildWalkthrough, type Walkthrough } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 
 // The walkthrough Menu is built through POST /mutate; the Service and the Availability through the UI.
 // Sets this spec's own user's Availability (D12).
 const s = String(Date.now());
-const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 let w: Walkthrough;
 let user: TestUser;
 
@@ -24,15 +22,9 @@ test.beforeAll(async ({ request }) => {
   }, s);
 });
 
-// Soft-deletes the Menu, its Service and the Recipes this run made. Local stack only.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  if (w) {
-    await sql`update services set deleted_at = now() where menu_id = ${w.menuId} and deleted_at is null`;
-    await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
-    await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes))}`;
-  }
   if (user) await deleteTestUser(user);
-  await sql.end();
 });
 
 // Clicks a save button and waits for its mutation to be applied.

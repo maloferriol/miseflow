@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import postgres from "postgres";
 import {
   buildWalkthrough,
   SERVICE_DATE,
@@ -15,7 +14,6 @@ import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 // plan.spec.ts.
 const FRIDAY = "2026-10-30";
 const s = String(Date.now());
-const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
 let user: TestUser;
@@ -40,15 +38,9 @@ test.beforeAll(async ({ request }) => {
   });
 });
 
-// Soft-deletes the Service, the Menu and the Recipes this run made, then the user. Local stack only.
+// deleteTestUser hard-deletes every row this spec's user owns.
 test.afterAll(async () => {
-  if (w) {
-    await sql`update services set deleted_at = now() where id = ${serviceId}`;
-    await sql`update menus set deleted_at = now() where id = ${w.menuId}`;
-    await sql`update recipes set deleted_at = now() where id in ${sql(Object.values(w.recipes))}`;
-  }
   if (user) await deleteTestUser(user);
-  await sql.end();
 });
 
 const mutated = (page: Page) =>

@@ -9,6 +9,15 @@ export function parseGuests(text: string): number | null {
   return guests > 0 ? guests : null;
 }
 
+/** The New Menu form's name and Guests, or null when either is missing. */
+export function newMenuInput(
+  name: string,
+  guests: string,
+): { name: string; guestCount: number } | null {
+  const guestCount = parseGuests(guests);
+  return name.trim() && guestCount ? { name: name.trim(), guestCount } : null;
+}
+
 /** A Service's date and time of day: a minute of day, or null for the kitchen's default. */
 export type ServiceInput = { date: string; time: number | null };
 

@@ -3,6 +3,7 @@ import { createIntent } from "./intent.ts";
 import {
   dishScale,
   dishScaleSave,
+  newMenuInput,
   openingScaleKind,
   parseGuests,
   serviceInput,
@@ -16,6 +17,20 @@ describe("parseGuests", () => {
 
   it.each(["", "0", "-2", "2.5", "six"])("reads no guest count from %j", (text) => {
     expect(parseGuests(text)).toBeNull();
+  });
+});
+
+describe("newMenuInput", () => {
+  it("reads a trimmed name and the guest count", () => {
+    expect(newMenuInput("  Saturday dinner ", "6")).toEqual({
+      name: "Saturday dinner",
+      guestCount: 6,
+    });
+  });
+
+  it("creates nothing without a name or without a guest count", () => {
+    expect(newMenuInput("   ", "6")).toBeNull();
+    expect(newMenuInput("Saturday dinner", "0")).toBeNull();
   });
 });
 

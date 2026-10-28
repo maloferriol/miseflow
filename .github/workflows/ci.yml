@@ -46,10 +46,6 @@ jobs:
       - run: npm run db:migrate
       - run: npm run test:coverage
 
-      # No cache: the browser and its system packages install fresh on each run.
-      - name: Install Chromium for the e2e
-        run: npx playwright install --with-deps chromium
-
       - name: Upload coverage
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -57,6 +53,12 @@ jobs:
           name: coverage
           path: "*/coverage/lcov.info"
           if-no-files-found: warn
+
+      # No cache: the browser and its system packages install fresh on each run. Like the e2e, it runs
+      # when an earlier step failed.
+      - name: Install Chromium for the e2e
+        if: ${{ !cancelled() }}
+        run: npx playwright install --with-deps chromium
 
       # Non-blocking: a red e2e shows as an annotation and the job still passes.
       - name: e2e (non-blocking)

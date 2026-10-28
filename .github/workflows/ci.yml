@@ -21,6 +21,12 @@ env:
   # Read by `npm run setup:local`: the Supabase services the tests and the e2e don't use, left out to
   # start the stack faster. They use the database, auth, the API gateway and PostgREST (#158).
   SUPABASE_START_EXCLUDE: studio,postgres-meta,realtime,storage-api,imgproxy,edge-runtime,logflare,vector,mailpit
+  # `-x` only skips the containers: the CLI still pulls the realtime and storage images to set up their
+  # schemas unless these turn the services off.
+  SUPABASE_REALTIME_ENABLED: false
+  SUPABASE_STORAGE_ENABLED: false
+  # The CLI tries public.ecr.aws first, which rate-limits the runners, then falls back to ghcr.io.
+  SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
 
 jobs:
   static:

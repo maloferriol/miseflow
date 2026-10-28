@@ -63,7 +63,8 @@ runners that start together, each after `npm ci`:
   an annotation but doesn't fail the check. Its HTML and JSON reports are uploaded as the `e2e-reports` artifact.
 
 CI starts the stack without the services these runs don't use: the workflow sets `SUPABASE_START_EXCLUDE`, which
-`setup:local` passes to `supabase start -x`. Unset, as on a laptop, every service starts.
+`setup:local` passes to `supabase start -x`, and turns Realtime and Storage off so the CLI doesn't pull their
+images to set up their schemas. Unset, as on a laptop, every service starts.
 
 The `check` job passes when `static` and `test` both pass, and fails otherwise. It is the check the `main`
 ruleset requires.

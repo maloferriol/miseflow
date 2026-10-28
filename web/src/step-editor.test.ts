@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { blockingSave, insertPick, pickerOpensAt } from "./step-editor.ts";
+import {
+  amountText,
+  blockingSave,
+  chipText,
+  type ChipLine,
+  insertPick,
+  newIngredientKind,
+  pickerOpensAt,
+  unknownUnit,
+} from "./step-editor.ts";
 
 // The "@" the picker replaces sits at 5 in "Dice @ finely".
 describe("insertPick", () => {
@@ -127,5 +136,92 @@ describe("blockingSave", () => {
 
   it("blocks nothing before the first Save", () => {
     expect(blockingSave([], new Map(), "Dice @shallots{}")).toEqual([]);
+  });
+});
+
+// The braced amount of a ref, as the cook typed it: `@shallots{2%clove}` gives "2%clove".
+describe("newIngredientKind", () => {
+  it("measures by mass for a mass unit and by volume for a volume unit", () => {
+    expect(newIngredientKind("200%g")).toBe("mass");
+    expect(newIngredientKind("=1%L")).toBe("volume");
+    expect(newIngredientKind("2%tbsp")).toBe("volume");
+  });
+
+  it("counts an Ingredient unit or a bare number", () => {
+    expect(newIngredientKind("2%clove")).toBe("count");
+    expect(newIngredientKind("3")).toBe("count");
+  });
+
+  it("falls back to mass for a vague amount, an unknown unit or nothing", () => {
+    expect(newIngredientKind("%pinch")).toBe("mass");
+    expect(newIngredientKind("2%blob")).toBe("mass");
+    expect(newIngredientKind("")).toBe("mass");
+  });
+});
+
+describe("amountText", () => {
+  it("writes the number, a range and the unit", () => {
+    expect(amountText({ quantity: 30, quantityMax: null, unit: "g" })).toBe("30 g");
+    expect(amountText({ quantity: 2, quantityMax: 3, unit: "clove" })).toBe("2-3 clove");
+    expect(amountText({ quantity: 2, quantityMax: null, unit: null })).toBe("2");
+    expect(amountText({ quantity: null, quantityMax: null, unit: "a pinch" })).toBe("a pinch");
+    expect(amountText({ quantity: null, quantityMax: null, unit: null })).toBe("");
+  });
+});
+
+describe("unknownUnit", () => {
+  it("flags a unit MiseFlow doesn't recognise, and nothing else", () => {
+    expect(unknownUnit("blob")).toBe(true);
+    expect(unknownUnit("g")).toBe(false);
+    expect(unknownUnit("clove")).toBe(false);
+    expect(unknownUnit("pinch")).toBe(false);
+    expect(unknownUnit(null)).toBe(false);
+  });
+});
+
+const chipLine = (line: Partial<ChipLine>): ChipLine => ({
+  wording: "shallots",
+  quantity: null,
+  quantityMax: null,
+  unit: null,
+  preparation: null,
+  fixedQuantity: false,
+  subRecipe: null,
+  missingSubRecipe: false,
+  ...line,
+});
+
+describe("chipText", () => {
+  it("shows the wording and amount, then the preparation and flags", () => {
+    expect(chipText(chipLine({ quantity: 2, unit: "clove" }))).toBe("shallots 2 clove");
+    expect(chipText(chipLine({ quantity: 2, preparation: "diced", fixedQuantity: true }))).toBe(
+      "shallots 2 · diced · fixed",
+    );
+    expect(chipText(chipLine({ quantity: 1, unit: "blob" }))).toBe(
+      "shallots 1 blob · unknown unit",
+    );
+  });
+
+  it("marks a sub-recipe, and one that needs a yield", () => {
+    const stock = { id: "r-stock", name: "Chicken stock" };
+    expect(
+      chipText(
+        chipLine({
+          wording: "stock",
+          quantity: 0.5,
+          unit: "L",
+          subRecipe: { ...stock, yield: { quantity: 2, unit: "L" } },
+        }),
+      ),
+    ).toBe("stock 0.5 L · sub-recipe");
+    expect(chipText(chipLine({ wording: "stock", subRecipe: { ...stock, yield: null } }))).toBe(
+      "stock · sub-recipe · needs a yield",
+    );
+  });
+
+  it("names a sub-recipe MiseFlow can't find", () => {
+    expect(chipText(chipLine({ wording: "stock", quantity: 1, missingSubRecipe: true }))).toBe(
+      "Missing sub-recipe: stock",
+    );
   });
 });

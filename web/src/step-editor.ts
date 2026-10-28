@@ -1,7 +1,9 @@
 // The Step editor's decisions (ADR 0011): pure functions the hook and the view pass through.
 import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
+import { UNITS_BY_KIND } from "@miseflow/shared/src/catalog/units.ts";
+import { parseQuantity } from "@miseflow/shared/src/recipe/quantity.ts";
 import { parseStepText, refName } from "@miseflow/shared/src/recipe/tokens.ts";
-import type { CatalogIngredient, RecipeListItem } from "./api.ts";
+import type { CatalogIngredient, RecipeLine, RecipeListItem } from "./api.ts";
 import type { Ref, Target } from "./step-links.ts";
 
 /**
@@ -71,4 +73,59 @@ export function blockingSave<U extends { name: string }>(
     const name = normaliseName(u.name);
     return !links.has(name) && refs.has(name);
   });
+}
+
+/** "2", "30 g", "2-3 clove", "a pinch". */
+export function amountText(line: Pick<RecipeLine, "quantity" | "quantityMax" | "unit">) {
+  const number =
+    line.quantity === null
+      ? ""
+      : `${line.quantity}${line.quantityMax === null ? "" : `-${line.quantityMax}`}`;
+  return [number, line.unit].filter(Boolean).join(" ");
+}
+
+/** Unrecognised units are stored raw (Decision 10) and flagged on the chip. */
+export function unknownUnit(unit: string | null) {
+  return unit !== null && parseQuantity(`1%${unit}`).tier === "unknown";
+}
+
+/** What a chip reads of its line. */
+export type ChipLine = Pick<
+  RecipeLine,
+  | "wording"
+  | "quantity"
+  | "quantityMax"
+  | "unit"
+  | "preparation"
+  | "fixedQuantity"
+  | "subRecipe"
+  | "missingSubRecipe"
+>;
+
+/** A line's chip in read mode: "shallots 2 clove · diced · fixed". */
+export function chipText(line: ChipLine) {
+  // A line whose sub-recipe MiseFlow can't find still shows, and editing it treats it as unlinked.
+  if (line.missingSubRecipe) return `Missing sub-recipe: ${line.wording ?? ""}`;
+  return [
+    `${line.wording ?? ""} ${amountText(line)}`.trim(),
+    line.preparation,
+    line.fixedQuantity && "fixed",
+    unknownUnit(line.unit) && "unknown unit",
+    line.subRecipe && "sub-recipe",
+    line.subRecipe && line.subRecipe.yield === null && "needs a yield",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * Decision 7: a new Ingredient's kind of measure comes from the ref's braced amount ("200%g");
+ * an Ingredient unit or a bare number counts, and a vague or unknown unit falls back to mass.
+ */
+export function newIngredientKind(amount: string) {
+  const q = parseQuantity(amount);
+  if (q.tier === "ingredient") return "count";
+  if (q.tier === "fixed")
+    return (UNITS_BY_KIND.volume as readonly string[]).includes(q.unit!) ? "volume" : "mass";
+  return "mass";
 }

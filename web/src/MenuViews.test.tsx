@@ -1,7 +1,14 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderView } from "../test/render-view.tsx";
-import { MenuListView, NewMenuView, type NewMenuViewProps } from "./MenuViews.tsx";
+import type { Menu } from "./api.ts";
+import {
+  MenuListView,
+  MenuView,
+  type MenuViewProps,
+  NewMenuView,
+  type NewMenuViewProps,
+} from "./MenuViews.tsx";
 
 const button = (name: string) => screen.getByRole("button", { name });
 const type = (label: string, value: string) =>
@@ -64,5 +71,66 @@ describe("New Menu", () => {
   it("shows a failed create as an alert with its message", () => {
     newMenu({ createError: new Error("Could not create the Menu (500)") });
     expect(screen.getByRole("alert").textContent).toBe("Could not create the Menu (500)");
+  });
+});
+
+// ADR 0004's Saturday dinner for 6, before it has a Course, a Service or a Batch.
+const saturdayDinner: Menu = {
+  id: "m-dinner",
+  name: "Saturday dinner",
+  guestCount: 6,
+  batches: [],
+  service: null,
+  courses: [],
+};
+
+describe("Menu", () => {
+  const menuView = (props: Partial<MenuViewProps> = {}) =>
+    renderView(
+      <MenuView
+        menu={{ status: "success", data: saturdayDinner }}
+        addCoursePending={false}
+        addCourseError={null}
+        onAddCourse={() => {}}
+        serviceForm={() => <p>Service form</p>}
+        course={(course) => <p>Course {course.name}</p>}
+        {...props}
+      />,
+    );
+
+  it("shows Loading… while the Menu loads", () => {
+    menuView({ menu: { status: "pending" } });
+    expect(screen.getByText("Loading…")).toBeTruthy();
+  });
+
+  it("shows a failed load as an alert with its message", () => {
+    menuView({ menu: { status: "error", error: new Error("Could not load the Menu (404)") } });
+    expect(screen.getByRole("alert").textContent).toBe("Could not load the Menu (404)");
+  });
+
+  it("shows the Menu with its guests, its Service form and no Batches yet", () => {
+    menuView();
+    expect(screen.getByRole("heading", { name: "Saturday dinner" })).toBeTruthy();
+    expect(screen.getByText("6 guests")).toBeTruthy();
+    expect(screen.getByText("Service form")).toBeTruthy();
+    expect(screen.getByText("No Batches")).toBeTruthy();
+  });
+
+  it("adds a Course by its name", () => {
+    const onAddCourse = vi.fn();
+    menuView({ onAddCourse });
+    type("Course name", "Velouté");
+    fireEvent.click(button("Add Course"));
+    expect(onAddCourse).toHaveBeenCalledWith("Velouté");
+  });
+
+  it("disables Add Course while an add is pending", () => {
+    menuView({ addCoursePending: true });
+    expect(button("Add Course").hasAttribute("disabled")).toBe(true);
+  });
+
+  it("shows a failed add as an alert with its message", () => {
+    menuView({ addCourseError: new Error("Could not add the Course (500)") });
+    expect(screen.getByRole("alert").textContent).toBe("Could not add the Course (500)");
   });
 });

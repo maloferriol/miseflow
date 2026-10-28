@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
-import { MenuListView, NewMenuView } from "./MenuViews.tsx";
+import { MenuListView, MenuView, NewMenuView } from "./MenuViews.tsx";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
@@ -21,7 +21,7 @@ function formText(event: FormEvent<HTMLFormElement>, name: string) {
 
 export function MenuScreen() {
   const [menuId, setMenuId] = useState(menuIdFromUrl);
-  if (menuId) return <MenuView menuId={menuId} />;
+  if (menuId) return <OpenMenu menuId={menuId} />;
   return (
     <>
       <MenuList />
@@ -61,58 +61,33 @@ function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
   return <NewMenuView {...useNewMenu(onCreated)} />;
 }
 
-function MenuView({ menuId }: { menuId: string }) {
+/** One Menu and its Add Course. Only query, mutation and query-client hooks: no branches. */
+function useMenu(menuId: string) {
   const queryClient = useQueryClient();
   const menu = useQuery({ queryKey: ["menu", menuId], queryFn: () => fetchMenu(menuId) });
-  const onSuccess = () => queryClient.invalidateQueries({ queryKey: ["menu", menuId] });
-
+  const onChanged = () => queryClient.invalidateQueries({ queryKey: ["menu", menuId] });
   const addCourse = useMutation({
     mutationFn: async (name: string) =>
       mutate(crypto.randomUUID(), "addCourse", { courseId: crypto.randomUUID(), menuId, name }),
-    onSuccess,
+    onSuccess: onChanged,
   });
+  return {
+    menu,
+    addCoursePending: addCourse.isPending,
+    addCourseError: addCourse.error,
+    onAddCourse: (name: string) => addCourse.mutate(name),
+    onChanged,
+  };
+}
 
-  if (menu.isPending) return <p>Loading…</p>;
-  if (menu.isError) return <p role="alert">{menu.error.message}</p>;
-
+function OpenMenu({ menuId }: { menuId: string }) {
+  const { onChanged, ...menu } = useMenu(menuId);
   return (
-    <section>
-      <a href="/">All Menus</a>
-      <h2>{menu.data.name}</h2>
-      <p>{menu.data.guestCount} guests</p>
-      <ServiceForm
-        key={JSON.stringify(menu.data.service)}
-        menuId={menuId}
-        service={menu.data.service}
-      />
-      {menu.data.courses.map((course) => (
-        <CourseView key={course.id} course={course} onChanged={onSuccess} />
-      ))}
-      <h3>Batches</h3>
-      {menu.data.batches.length ? (
-        <ul aria-label="Batches">
-          {menu.data.batches.map((batch) => (
-            <li key={batch.subRecipe.id}>{batch.label}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No Batches</p>
-      )}
-      <form
-        onSubmit={(event) => {
-          const name = formText(event, "name");
-          if (name) addCourse.mutate(name);
-        }}
-      >
-        <label>
-          Course name <input name="name" required />
-        </label>
-        <button type="submit" disabled={addCourse.isPending}>
-          Add Course
-        </button>
-        {addCourse.error && <p role="alert">{addCourse.error.message}</p>}
-      </form>
-    </section>
+    <MenuView
+      {...menu}
+      serviceForm={(service) => <ServiceForm menuId={menuId} service={service} />}
+      course={(course) => <CourseView course={course} onChanged={onChanged} />}
+    />
   );
 }
 

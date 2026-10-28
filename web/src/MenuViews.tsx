@@ -1,6 +1,6 @@
 // The Menu screen's views (ADR 0011): props only, so their tests render them without the API.
-import type { FormEvent } from "react";
-import type { fetchMenus } from "./api.ts";
+import { type FormEvent, Fragment, type ReactNode } from "react";
+import type { fetchMenus, Menu } from "./api.ts";
 import { newMenuInput } from "./menu-screen.ts";
 
 /** A form field's trimmed text; the form is cleared for the next entry. */
@@ -65,5 +65,64 @@ export function NewMenuView({ createPending, createError, onCreate }: NewMenuVie
       </button>
       {createError && <p role="alert">{createError.message}</p>}
     </form>
+  );
+}
+
+export type MenuViewProps = {
+  menu: QueryState<Menu>;
+  addCoursePending: boolean;
+  addCourseError: Error | null;
+  onAddCourse: (name: string) => void;
+  /** The form for the Menu's one Service, remade when the saved Service changes. */
+  serviceForm: (service: Menu["service"]) => ReactNode;
+  course: (course: Menu["courses"][number]) => ReactNode;
+};
+
+/** One Menu: its guests, its Service, its Courses and their Batches, and a form to add a Course. */
+export function MenuView({
+  menu,
+  addCoursePending,
+  addCourseError,
+  onAddCourse,
+  serviceForm,
+  course,
+}: MenuViewProps) {
+  if (menu.status === "pending") return <p>Loading…</p>;
+  if (menu.status === "error") return <p role="alert">{menu.error.message}</p>;
+
+  return (
+    <section>
+      <a href="/">All Menus</a>
+      <h2>{menu.data.name}</h2>
+      <p>{menu.data.guestCount} guests</p>
+      <Fragment key={JSON.stringify(menu.data.service)}>{serviceForm(menu.data.service)}</Fragment>
+      {menu.data.courses.map((c) => (
+        <Fragment key={c.id}>{course(c)}</Fragment>
+      ))}
+      <h3>Batches</h3>
+      {menu.data.batches.length ? (
+        <ul aria-label="Batches">
+          {menu.data.batches.map((batch) => (
+            <li key={batch.subRecipe.id}>{batch.label}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No Batches</p>
+      )}
+      <form
+        onSubmit={(event) => {
+          const name = formText(event, "name");
+          if (name) onAddCourse(name);
+        }}
+      >
+        <label>
+          Course name <input name="name" required />
+        </label>
+        <button type="submit" disabled={addCoursePending}>
+          Add Course
+        </button>
+        {addCourseError && <p role="alert">{addCourseError.message}</p>}
+      </form>
+    </section>
   );
 }

@@ -44,6 +44,18 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
   `scripts`, with typescript-eslint's type-aware recommended rules and React's hooks rules in
   `web`. Warnings fail it too. `npx eslint . --fix` fixes what it can.
 - `npm run e2e` runs the Playwright test (`npx playwright install chromium` once).
+- `npm run check` runs what CI's required `check` job depends on, before you open a PR: the
+  `static` steps (format check, lint, typecheck, build) and the `test` steps (`setup:local`,
+  `db:migrate`, `npm test`) as two groups at the same time. A group stops at its first failure.
+  It prints each step's result and duration, then whether CI would pass, and exits non-zero when
+  it wouldn't. It runs `npm ci --ignore-scripts` first only when `node_modules` is older than
+  `package-lock.json`, and reuses the running local stack. A failed step's output is printed;
+  passing steps stay quiet. Node other than 24, the version CI runs, only warns.
+  - `--coverage` runs `test:coverage` instead of `npm test`.
+  - `--sonar` adds the SonarQube analysis with the scanner command below (implies `--coverage`;
+    needs `SONAR_TOKEN` in your shell, Docker and the network).
+  - `--e2e` runs `npm run e2e` once the other groups pass. Its result is reported but, as in CI,
+    doesn't fail the run.
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
   Service times and Availability. Unset, the server uses its own zone and warns on startup.

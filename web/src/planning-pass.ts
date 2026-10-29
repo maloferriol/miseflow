@@ -1,7 +1,7 @@
 // The Planning pass's decisions (ADR 0011): pure functions the hook and the view pass through.
 import type { Recipe, RecipeStep } from "./api.ts";
 import type { Intent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import { type MutationCall, revisionCall } from "./mutation-call.ts";
 import { stepLabel } from "./ReadyToPlan.tsx";
 
 /** A make-ahead window: made `beforeDays` before Service, kept `shelfLifeDays` once made. */
@@ -81,20 +81,7 @@ export function waitsFor(
     .map((d) => ({ id: d.id, label: labelOf(recipe, d.beforeStepId) }));
 }
 
-// One set of ids per intended save, keyed on its name and args, so a retry after a lost response
-// replays it (useIntent). Every Planning pass mutation appends one Revision.
-function revisionCall<A extends object>(
-  name: string,
-  args: A,
-  intent: Pick<Intent, "id">,
-): MutationCall {
-  const key = JSON.stringify([name, args]);
-  return {
-    id: intent.id(key, "mutation"),
-    name,
-    args: { revisionId: intent.id(key, "revision"), ...args },
-  };
-}
+// Every Planning pass mutation appends one Revision (`revisionCall`).
 
 /** Sets a Step's active and passive minutes. */
 export function stepTimesSave(

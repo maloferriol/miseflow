@@ -3,7 +3,7 @@
 import { areConsecutive } from "@miseflow/shared/src/recipe/subrecipes.ts";
 import type { Recipe, RecipeLine } from "./api.ts";
 import type { Intent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import type { MutationCall } from "./mutation-call.ts";
 import { amountText } from "./step-editor.ts";
 
 /** Write (the Steps) or Plan (the Planning pass). */
@@ -50,9 +50,14 @@ export function stepMoves(
   };
 }
 
-/** The ticked Steps after one is ticked or unticked. */
-export function toggleSelection(selected: string[], stepId: string, checked: boolean): string[] {
-  return checked ? [...selected, stepId] : selected.filter((id) => id !== stepId);
+/** The ticked Steps after the cook ticks one. */
+export function selectStep(selected: string[], stepId: string): string[] {
+  return [...selected, stepId];
+}
+
+/** The ticked Steps after the cook unticks one. */
+export function unselectStep(selected: string[], stepId: string): string[] {
+  return selected.filter((id) => id !== stepId);
 }
 
 /** The ticked Steps that are still the Recipe's, so a removed Step doesn't stay ticked. */
@@ -79,11 +84,6 @@ export function ingredientText(
 /** A yield as the field shows it: "1.5 L", "24", or "" for none. */
 export function yieldText(value: Recipe["yield"]): string {
   return value === null ? "" : [value.quantity, value.unit].filter((p) => p !== null).join(" ");
-}
-
-/** The yield field as what to save: the trimmed text, or null to clear it. */
-export function yieldInput(text: string): string | null {
-  return text.trim() || null;
 }
 
 /** Sets a Recipe's yield, with one set of ids per intended yield. */

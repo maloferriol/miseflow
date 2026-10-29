@@ -1,5 +1,6 @@
 // Sign-in (ADR 0008, ADR 0011): its hook, its view, and the SignIn that wires them.
-import { type FormEvent, useState } from "react";
+import { type SubmitEvent, useState } from "react";
+import { fieldText } from "./form-fields.ts";
 import { supabase } from "./supabase.ts";
 
 /**
@@ -32,10 +33,10 @@ export type SignInViewProps = {
 };
 
 export function SignInView({ pending, error, onSignIn }: Readonly<SignInViewProps>) {
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    onSignIn(String(form.get("email")), String(form.get("password")));
+    onSignIn(fieldText(form, "email"), fieldText(form, "password"));
   }
 
   return (

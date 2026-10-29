@@ -1,7 +1,7 @@
 // The Recipes list's view (ADR 0011): props only, so its tests render it without the API.
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import type { RecipeListItem } from "./api.ts";
-import { recipeName } from "./recipes-screen.ts";
+import { fieldText, trimmedOrNull } from "./form-fields.ts";
 
 /** A query as the view reads it: its data once loaded, and its error once failed. */
 export type ListQuery<T> = { data: T | undefined; error: Error | null };
@@ -22,9 +22,9 @@ export function RecipesView({
   onCreate,
   onOpen,
 }: Readonly<RecipesViewProps>) {
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const name = recipeName(String(new FormData(event.currentTarget).get("name") ?? ""));
+    const name = trimmedOrNull(fieldText(new FormData(event.currentTarget), "name"));
     if (name) onCreate(name);
   }
 

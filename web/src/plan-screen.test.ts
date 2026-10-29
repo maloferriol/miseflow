@@ -1,6 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { saturdayMenu, saturdayPlan } from "../test/plan-fixture.ts";
-import { confirmedFix, ganttCourses, passive, pinTask, replanFromScratch } from "./plan-screen.ts";
+import {
+  at,
+  keys,
+  SATURDAY,
+  SERVICE_ID,
+  saturdayMenu,
+  taskIn,
+  troubledPlan,
+} from "../test/walkthrough-plan.ts";
+import {
+  confirmedFix,
+  ganttCourses,
+  lastPinSettling,
+  noPinPending,
+  optimisticPlan,
+  passive,
+  pinTask,
+  replanFromScratch,
+} from "./plan-screen.ts";
 import { quickFixes } from "./quick-fixes.ts";
 
 describe("passive", () => {
@@ -21,7 +38,11 @@ describe("ganttCourses", () => {
   it("is each Course with its Dishes, named by Recipe", () => {
     expect(ganttCourses(saturdayMenu)).toEqual([
       { id: "c-0", name: "Starter", dishes: [{ id: "d-veloute", name: "Velouté" }] },
-      { id: "c-1", name: "Main", dishes: [{ id: "d-duck", name: "Duck breast" }] },
+      {
+        id: "c-1",
+        name: "Main",
+        dishes: [{ id: "d-duck", name: "Duck breast with beurre blanc" }],
+      },
       { id: "c-2", name: "Dessert", dishes: [{ id: "d-tarte", name: "Tarte tatin" }] },
     ]);
   });
@@ -29,30 +50,66 @@ describe("ganttCourses", () => {
 
 describe("pinTask", () => {
   it("pins the Task by its owner and first Step at the new start", () => {
-    const duck = saturdayPlan.days[0].tasks[0];
-    expect(pinTask("s-saturday", duck, 29_889_660)).toEqual({
+    const duck = taskIn(troubledPlan, keys.duck);
+    const start = at(SATURDAY, 18);
+    expect(pinTask(SERVICE_ID, duck, start)).toEqual({
       name: "pinTask",
       args: {
-        serviceId: "s-saturday",
+        serviceId: SERVICE_ID,
         owner: { kind: "dish", dishId: "d-duck" },
-        firstStepId: "s-sear",
-        start: 29_889_660,
+        firstStepId: "D2",
+        start,
       },
     });
   });
 });
 
+describe("optimisticPlan", () => {
+  const duck = taskIn(troubledPlan, keys.duck);
+  const start = at(SATURDAY, 17);
+
+  it("pins the dragged Task at its new start and re-fits the rest", () => {
+    const next = optimisticPlan(troubledPlan, duck, start)!;
+    expect(taskIn(next, keys.duck)).toMatchObject({ startMinute: start, pinned: true });
+    expect(next.model.previous).toContainEqual({
+      key: keys.duck,
+      start,
+      cookId: "cook",
+      pinned: true,
+    });
+    // The Beurre blanc the duck waits for moves earlier to fit.
+    expect(taskIn(next, keys.beurre).startMinute).toBeLessThan(start);
+    expect(taskIn(troubledPlan, keys.beurre).startMinute).toBeGreaterThan(start);
+  });
+
+  it("is undefined, leaving the cache alone, before the Plan is read", () => {
+    expect(optimisticPlan(undefined, duck, start)).toBeUndefined();
+  });
+});
+
+describe("the pins pending", () => {
+  it("let the Plan refetch only when none is pending", () => {
+    expect(noPinPending(0)).toBe(true);
+    expect(noPinPending(1)).toBe(false);
+  });
+
+  it("read the Plan again only as the last one settles, itself still counted", () => {
+    expect(lastPinSettling(1)).toBe(true);
+    expect(lastPinSettling(2)).toBe(false);
+  });
+});
+
 describe("replanFromScratch", () => {
   it("re-plans the Service", () => {
-    expect(replanFromScratch("s-saturday")).toEqual({
+    expect(replanFromScratch(SERVICE_ID)).toEqual({
       name: "replanFromScratch",
-      args: { serviceId: "s-saturday" },
+      args: { serviceId: SERVICE_ID },
     });
   });
 });
 
 describe("confirmedFix", () => {
-  const [moreTime, remove] = quickFixes("s-saturday", saturdayPlan.unplaced[0], () => "new-id");
+  const [moreTime, remove] = quickFixes(SERVICE_ID, troubledPlan.unplaced[0], () => "new-id");
 
   it("sends a fix with no question without asking", () => {
     const ask = vi.fn(() => false);

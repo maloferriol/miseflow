@@ -1,16 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ingredientDetails, nameInput, newIngredientInput } from "./catalog-screen.ts";
-
-describe("nameInput", () => {
-  it("trims the name the cook typed", () => {
-    expect(nameInput(" shallot  ")).toBe("shallot");
-  });
-
-  it("is null for a blank name", () => {
-    expect(nameInput("")).toBeNull();
-    expect(nameInput(" \t ")).toBeNull();
-  });
-});
+import { ingredientDetails, newIngredientInput } from "./catalog-screen.ts";
 
 describe("newIngredientInput", () => {
   it("saves the trimmed name with the kind of measure and the Shopping category", () => {

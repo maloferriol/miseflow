@@ -2,15 +2,19 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderQueryHook, renderWired } from "../test/render-view.tsx";
 import {
+  at,
+  brined,
   FRIDAY,
+  keys,
+  model,
   pastryBehindPlan,
-  roastTheBones,
+  planOf,
   SATURDAY,
   SERVICE_ID,
-  sweatTheShallots,
+  taskIn,
   THURSDAY,
   walkthroughPlan,
-} from "../test/today-plan.ts";
+} from "../test/walkthrough-plan.ts";
 import { fetchPlan, mutate } from "./api.ts";
 import { dayHeading, ownerOf, taskTimes } from "./plan-display.ts";
 import { tickKey, wasDue } from "./today-checklist.ts";
@@ -22,7 +26,11 @@ vi.mock("./api.ts", () => ({ fetchPlan: vi.fn(), mutate: vi.fn() }));
 // Any made-up id: the intent makes ids with crypto.randomUUID.
 const anId: unknown = expect.any(String);
 
-// Friday 19:00 in Paris (UTC+1): the pastry's day, before it's due at 19:30.
+// Friday's pastry, not made yet, and Thursday's dry-brine, done.
+const pastry = taskIn(walkthroughPlan(), keys.pastry);
+const brine = taskIn(walkthroughPlan(), keys.brine);
+
+// Friday 19:00 in Paris (UTC+1): the pastry's day, before it's due.
 const fridayEvening = new Date("2026-10-30T18:00:00Z");
 
 beforeEach(() => {
@@ -102,14 +110,14 @@ describe("Today checklist hook", () => {
     await waitFor(() => expect(result.current.plan.status).toBe("success"));
     const save = settleLater();
 
-    act(() => result.current.onTick(roastTheBones, "st-roast", true));
-    expect(result.current.ticking).toEqual({ key: tickKey(roastTheBones, "st-roast"), done: true });
+    act(() => result.current.onTick(pastry, "P1", true));
+    expect(result.current.ticking).toEqual({ key: tickKey(pastry, "P1"), done: true });
     await waitFor(() =>
       expect(mutate).toHaveBeenCalledWith(anId, "tickStep", {
         eventId: anId,
         serviceId: SERVICE_ID,
-        owner: roastTheBones.owner,
-        stepId: "st-roast",
+        owner: pastry.owner,
+        stepId: "P1",
       }),
     );
 
@@ -121,13 +129,13 @@ describe("Today checklist hook", () => {
   it("unticks a Step with untickStep", async () => {
     const { result } = renderChecklist();
     await waitFor(() => expect(result.current.plan.status).toBe("success"));
-    act(() => result.current.onTick(sweatTheShallots, "st-sweat", false));
+    act(() => result.current.onTick(brine, "D1", false));
     await waitFor(() => expect(fetchPlan).toHaveBeenCalledTimes(2));
     expect(mutate).toHaveBeenCalledWith(anId, "untickStep", {
       eventId: anId,
       serviceId: SERVICE_ID,
-      owner: sweatTheShallots.owner,
-      stepId: "st-sweat",
+      owner: brine.owner,
+      stepId: "D1",
     });
   });
 
@@ -135,7 +143,7 @@ describe("Today checklist hook", () => {
     const { result } = renderChecklist();
     await waitFor(() => expect(result.current.plan.status).toBe("success"));
     const save = settleLater();
-    act(() => result.current.onTick(roastTheBones, "st-roast", true));
+    act(() => result.current.onTick(pastry, "P1", true));
     await save.fail(new Error("Could not save (500)"));
 
     await waitFor(() =>
@@ -154,13 +162,13 @@ describe("Today checklist hook", () => {
     };
 
     vi.mocked(mutate).mockRejectedValueOnce(new Error("Could not save (500)"));
-    act(() => result.current.onTick(roastTheBones, "st-roast", true));
+    act(() => result.current.onTick(pastry, "P1", true));
     await waitFor(() => expect(result.current.tickError).not.toBeNull());
-    act(() => result.current.onTick(roastTheBones, "st-roast", true));
+    act(() => result.current.onTick(pastry, "P1", true));
     await waitFor(() => expect(fetchPlan).toHaveBeenCalledTimes(2));
     expect(ids(1)).toEqual(ids(0));
 
-    act(() => result.current.onTick(roastTheBones, "st-roast", true));
+    act(() => result.current.onTick(pastry, "P1", true));
     await waitFor(() => expect(fetchPlan).toHaveBeenCalledTimes(3));
     expect(ids(2)[0]).not.toBe(ids(1)[0]);
     expect(ids(2)[1]).not.toBe(ids(1)[1]);
@@ -196,20 +204,12 @@ describe("Today checklist", () => {
   });
 
   it("records a tick on a Step, then shows the re-read Plan", async () => {
-    window.history.replaceState(null, "", `/?view=today&service=${SERVICE_ID}&day=${THURSDAY}`);
     renderWired(<TodayScreen serviceId={SERVICE_ID} />);
-    const box = await screen.findByRole<HTMLInputElement>("checkbox", { name: "Roast the bones" });
+    const box = await screen.findByRole<HTMLInputElement>("checkbox", { name: "Make the pastry" });
     const save = settleLater();
-    const ticked = walkthroughPlan();
-    ticked.days[0] = {
-      ...ticked.days[0],
-      tasks: ticked.days[0].tasks.map((t) =>
-        t === roastTheBones
-          ? { ...t, steps: [{ ...t.steps[0], done: true, doneAt: "19:00" }], done: true }
-          : t,
-      ),
-    };
-    vi.mocked(fetchPlan).mockResolvedValue(ticked);
+    // The Plan as the server reads it once the pastry's tick is stored.
+    const made = { key: keys.pastry, stepId: "P1", at: at(FRIDAY, 19) };
+    vi.mocked(fetchPlan).mockResolvedValue(planOf(model, { ticks: [brined, made], now: made.at }));
 
     fireEvent.click(box);
     expect(box.checked).toBe(true);
@@ -218,8 +218,8 @@ describe("Today checklist", () => {
       expect(mutate).toHaveBeenCalledWith(anId, "tickStep", {
         eventId: anId,
         serviceId: SERVICE_ID,
-        owner: roastTheBones.owner,
-        stepId: "st-roast",
+        owner: pastry.owner,
+        stepId: "P1",
       }),
     );
 
@@ -230,9 +230,8 @@ describe("Today checklist", () => {
   });
 
   it("shows a failed tick as an alert and the box as the Plan has it", async () => {
-    window.history.replaceState(null, "", `/?view=today&service=${SERVICE_ID}&day=${THURSDAY}`);
     renderWired(<TodayScreen serviceId={SERVICE_ID} />);
-    const box = await screen.findByRole<HTMLInputElement>("checkbox", { name: "Roast the bones" });
+    const box = await screen.findByRole<HTMLInputElement>("checkbox", { name: "Make the pastry" });
     vi.mocked(mutate).mockRejectedValueOnce(new Error("Could not save (500)"));
     fireEvent.click(box);
     await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Could not save (500)"));
@@ -245,7 +244,7 @@ describe("Today checklist", () => {
     await waitFor(() => expect(tab(FRIDAY).getAttribute("aria-selected")).toBe("true"));
     expect(within(panel()).getByRole("listitem").textContent).not.toContain("behind");
 
-    // 19:31 in Paris: past the pastry's 19:30, as the server now reads the Plan.
+    // Past the pastry's due time, as the server now reads the Plan.
     const behind = pastryBehindPlan();
     vi.mocked(fetchPlan).mockResolvedValue(behind);
     await act(() => vi.advanceTimersByTimeAsync(59_000));
@@ -253,10 +252,10 @@ describe("Today checklist", () => {
     await act(() => vi.advanceTimersByTimeAsync(1_000));
     await waitFor(() => expect(fetchPlan).toHaveBeenCalledTimes(2));
 
-    const pastry = behind.days[1].tasks[0];
+    const late = taskIn(behind, keys.pastry);
     await waitFor(() =>
       expect(within(panel()).getByRole("listitem").textContent).toContain(
-        `${taskTimes(pastry, FRIDAY)} · ${ownerOf(pastry)} · Make the pastry · behind · was due ${wasDue(pastry.behind!, FRIDAY)}`,
+        `${taskTimes(late, FRIDAY)} · ${ownerOf(late)} · Make the pastry · behind · was due ${wasDue(late.behind!, FRIDAY)}`,
       ),
     );
   });

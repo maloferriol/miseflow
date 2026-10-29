@@ -11,6 +11,7 @@ import { collapse, laneTree, type Lane, type LaneCourse } from "@miseflow/shared
 import { formatMinuteOfDay, localParts } from "@miseflow/shared/src/plan/time.ts";
 import { useMemo, useState, type PointerEvent } from "react";
 import type { Plan, PlanTask } from "./api.ts";
+import { shortDate } from "./plan-display.ts";
 import "./gantt.css";
 
 // The Plan's Gantt chart (#89, ADR 0009), our own DOM component after variant C of the lanes
@@ -37,13 +38,6 @@ const ownerKey = (owner: PlanTask["owner"]) =>
 const ownerLabel = (task: PlanTask) => task.batch?.label ?? task.dish?.name ?? "";
 const clock = (minute: number, timeZone: string) =>
   formatMinuteOfDay(localParts(minute, timeZone).minuteOfDay);
-const dayLabel = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", {
-    timeZone: "UTC",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
 
 type Drag = { copy: string; x0: number; dx: number };
 
@@ -204,7 +198,7 @@ export function Gantt({
                 style={{ left: s.offset * PX, width: (s.end - s.start) * PX }}
               >
                 <span className="gantt-day">
-                  {dayLabel(s.date)} {!s.available && <small>not available</small>}
+                  {shortDate(s.date)} {!s.available && <small>not available</small>}
                 </span>
                 {hours(s).map((m) => (
                   <span key={m} className="gantt-tick" style={{ left: (m - s.start) * PX }}>

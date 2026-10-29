@@ -18,6 +18,15 @@ export function dayHeading(date: string) {
 export const shortDay = (date: string) =>
   atMidnightUtc(date).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
 
+/** "Thu 29 Oct", from a kitchen-zone date: a day on the Gantt chart's axis. */
+export const shortDate = (date: string) =>
+  atMidnightUtc(date).toLocaleDateString("en-GB", {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
 /** A Dish's name, or a Batch's label ("Chicken stock ×1.5 · for: Velouté, Beurre blanc"). */
 export const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) =>
   task.batch?.label ?? task.dish?.name;

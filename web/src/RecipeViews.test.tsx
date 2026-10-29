@@ -19,6 +19,7 @@ function recipeScreenProps(overrides: Partial<RecipeScreenViewProps> = {}): Reci
     onMode: vi.fn(),
     selected: [],
     onSelect: vi.fn(),
+    onUnselect: vi.fn(),
     onClearSelection: vi.fn(),
     adding: false,
     onAdding: vi.fn(),
@@ -128,13 +129,14 @@ describe("Recipe screen view", () => {
 
   it("asks to tick and untick a Step", () => {
     const onSelect = vi.fn();
-    renderView(<RecipeScreenView {...recipeScreenProps({ onSelect, selected: ["s-rub"] })} />);
+    const onUnselect = vi.fn();
+    renderView(
+      <RecipeScreenView {...recipeScreenProps({ onSelect, onUnselect, selected: ["s-rub"] })} />,
+    );
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Step 3" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Step 1" }));
-    expect(onSelect.mock.calls).toEqual([
-      ["s-caramelise", true],
-      ["s-rub", false],
-    ]);
+    expect(onSelect.mock.calls).toEqual([["s-caramelise"]]);
+    expect(onUnselect.mock.calls).toEqual([["s-rub"]]);
   });
 
   it("asks to move and remove a Step", () => {

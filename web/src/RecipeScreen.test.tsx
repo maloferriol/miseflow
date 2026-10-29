@@ -327,9 +327,12 @@ describe("Recipe screen hook", () => {
     await waitFor(() => expect(result.current.recipe.status).toBe("success"));
     expect(result.current.mode).toBe("plan");
 
-    act(() => result.current.onSelect("s-rest", true));
-    act(() => result.current.onSelect("s-gone", true));
-    expect(result.current.selected).toEqual(["s-rest"]);
+    act(() => result.current.onSelect("s-rest"));
+    act(() => result.current.onSelect("s-gone"));
+    act(() => result.current.onSelect("s-rub"));
+    expect(result.current.selected).toEqual(["s-rest", "s-rub"]);
+    act(() => result.current.onUnselect("s-rest"));
+    expect(result.current.selected).toEqual(["s-rub"]);
     act(() => result.current.onClearSelection());
     expect(result.current.selected).toEqual([]);
   });

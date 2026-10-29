@@ -1,9 +1,11 @@
 // The Recipe screen's views (ADR 0011), with its yield field and Extract to sub-recipe: props
 // only, so their tests render them without the API.
 import { SERVINGS } from "@miseflow/shared/src/recipe/servings.ts";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode, SubmitEvent } from "react";
 import type { Recipe, RecipeStep } from "./api.ts";
+import { fieldText, trimmedOrNull } from "./form-fields.ts";
 import type { QueryState } from "./MenuViews.tsx";
+import "./recipe-views.css";
 import {
   type ExtractArgs,
   extractInput,
@@ -13,15 +15,8 @@ import {
   type MoveArgs,
   recipeInput,
   stepMoves,
-  yieldInput,
   yieldText,
 } from "./recipe-screen.ts";
-
-/** A form field's text, or "" when the field is missing or holds a file. */
-function fieldText(form: FormData, name: string) {
-  const value = form.get(name);
-  return typeof value === "string" ? value : "";
-}
 
 /** What Extract to sub-recipe needs from the Recipe screen. */
 export type ExtractSlot = { stepIds: string[]; selected: string[]; onDone: () => void };
@@ -32,7 +27,8 @@ export type RecipeScreenViewProps = {
   onMode: (mode: Mode) => void;
   /** The ticked Steps, for Extract to sub-recipe. */
   selected: string[];
-  onSelect: (stepId: string, checked: boolean) => void;
+  onSelect: (stepId: string) => void;
+  onUnselect: (stepId: string) => void;
   onClearSelection: () => void;
   adding: boolean;
   onAdding: (adding: boolean) => void;
@@ -62,7 +58,7 @@ export function RecipeScreenView(props: Readonly<RecipeScreenViewProps>) {
   const { steps, ingredients } = recipe.data;
   const lines = new Map(steps.flatMap((s) => s.lines).map((l) => [l.id, l]));
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const input = recipeInput(fieldText(form, "name"), fieldText(form, "servings"));
@@ -95,7 +91,7 @@ export function RecipeScreenView(props: Readonly<RecipeScreenViewProps>) {
       </form>
       {props.renderYield(recipe.data)}
 
-      <div role="group" aria-label="Mode">
+      <fieldset className="plain-group" aria-label="Mode">
         <button
           type="button"
           aria-pressed={props.mode === "write"}
@@ -110,7 +106,7 @@ export function RecipeScreenView(props: Readonly<RecipeScreenViewProps>) {
         >
           Plan
         </button>
-      </div>
+      </fieldset>
 
       {props.mode === "plan" ? (
         props.renderPlanningPass(recipe.data)
@@ -144,7 +140,9 @@ function WriteMode({ steps, ...props }: Readonly<RecipeScreenViewProps & { steps
                 type="checkbox"
                 aria-label={`Select Step ${index + 1}`}
                 checked={props.selected.includes(step.id)}
-                onChange={(e) => props.onSelect(step.id, e.target.checked)}
+                onChange={(e) =>
+                  e.target.checked ? props.onSelect(step.id) : props.onUnselect(step.id)
+                }
               />
               {props.renderStep(step)}
               <button
@@ -203,9 +201,10 @@ export function YieldFieldView({
   saveError,
   onSave,
 }: Readonly<YieldFieldViewProps>) {
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSave(yieldInput(fieldText(new FormData(event.currentTarget), "yield")));
+    // A blank field clears the yield.
+    onSave(trimmedOrNull(fieldText(new FormData(event.currentTarget), "yield")));
   }
 
   return (

@@ -7,13 +7,12 @@ import {
   dayFromLink,
   linkWithDay,
   shownDay,
+  type Tick,
   type Ticking,
   tickKey,
   tickSave,
 } from "./today-checklist.ts";
 import { TodayView } from "./TodayView.tsx";
-
-type Tick = { task: PlanTask; stepId: string; done: boolean };
 
 /**
  * The Plan, the open day and the ticks. Only state, query, mutation and intent hooks: no branches.
@@ -31,8 +30,8 @@ export function useTodayChecklist(serviceId: string) {
   // A tick shows at once, until the re-read Plan (or a failed save) settles it.
   const [ticking, setTicking] = useState<Ticking | null>(null);
   const tick = useMutation({
-    mutationFn: ({ task, stepId, done }: Tick) => {
-      const { id, name, args } = tickSave(serviceId, task, stepId, done, intent);
+    mutationFn: (ticked: Tick) => {
+      const { id, name, args } = tickSave(serviceId, ticked, intent);
       return mutate(id, name, args);
     },
     onSuccess: async () => {

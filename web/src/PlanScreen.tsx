@@ -1,8 +1,13 @@
-import { applyPlacements, withPin } from "@miseflow/shared/src/plan/pin.ts";
-import { schedule } from "@miseflow/shared/src/scheduler/schedule.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMenu, fetchPlan, mutate, type Plan, type PlanTask } from "./api.ts";
-import { ganttCourses, type PlanMutation, pinTask } from "./plan-screen.ts";
+import {
+  ganttCourses,
+  lastPinSettling,
+  noPinPending,
+  optimisticPlan,
+  type PlanMutation,
+  pinTask,
+} from "./plan-screen.ts";
 import { PlanView } from "./PlanView.tsx";
 
 /**
@@ -27,18 +32,15 @@ function usePinTask(serviceId: string) {
     },
     onMutate: async ({ task, start }) => {
       await queryClient.cancelQueries({ queryKey });
-      const read = queryClient.getQueryData<Plan>(queryKey);
-      if (read)
-        queryClient.setQueryData<Plan>(
-          queryKey,
-          applyPlacements(read, schedule(withPin(read.model, task.key, start))),
-        );
+      // An undefined answer leaves the cache as it is.
+      queryClient.setQueryData<Plan>(queryKey, (read) => optimisticPlan(read, task, start));
     },
-    // Still counted here, so 1 means no other pin is pending.
-    onSettled: () => {
-      if (queryClient.isMutating({ mutationKey }) === 1)
-        return queryClient.invalidateQueries({ queryKey });
-    },
+    // Only the last pin to settle reads the Plan again.
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey,
+        predicate: () => lastPinSettling(queryClient.isMutating({ mutationKey })),
+      }),
   });
 }
 
@@ -67,12 +69,13 @@ export function usePlanScreen(serviceId: string) {
   const queryClient = useQueryClient();
   // No refetch on focus or reconnect while a pin is pending: it would show an earlier pin's answer
   // over a later drag. The last pin to settle re-reads the Plan.
-  const noPinPending = () => queryClient.isMutating({ mutationKey: ["pinTask", serviceId] }) === 0;
+  const refetch = () =>
+    noPinPending(queryClient.isMutating({ mutationKey: ["pinTask", serviceId] }));
   const plan = useQuery({
     queryKey: ["plan", serviceId],
     queryFn: () => fetchPlan(serviceId),
-    refetchOnWindowFocus: noPinPending,
-    refetchOnReconnect: noPinPending,
+    refetchOnWindowFocus: refetch,
+    refetchOnReconnect: refetch,
   });
   const menuId = plan.data?.service.menuId;
   // The Courses and Dishes for the Gantt chart's lanes.

@@ -10,9 +10,9 @@ import {
   modeFromSearch,
   recipeInput,
   searchWithMode,
+  selectStep,
   stepMoves,
-  toggleSelection,
-  yieldInput,
+  unselectStep,
   yieldSave,
   yieldText,
 } from "./recipe-screen.ts";
@@ -84,8 +84,8 @@ describe("moving a Step", () => {
 
 describe("ticking Steps", () => {
   it("adds a ticked Step and drops an unticked one", () => {
-    expect(toggleSelection(["s-rub"], "s-rest", true)).toEqual(["s-rub", "s-rest"]);
-    expect(toggleSelection(["s-rub", "s-rest"], "s-rub", false)).toEqual(["s-rest"]);
+    expect(selectStep(["s-rub"], "s-rest")).toEqual(["s-rub", "s-rest"]);
+    expect(unselectStep(["s-rub", "s-rest"], "s-rub")).toEqual(["s-rest"]);
   });
 
   it("keeps only the ticked Steps the Recipe still has", () => {
@@ -126,11 +126,6 @@ describe("the yield", () => {
     expect(yieldText(chickenStockWithYield.yield)).toBe("1.5 L");
     expect(yieldText(yieldOf24)).toBe("24");
     expect(yieldText(null)).toBe("");
-  });
-
-  it("saves the trimmed text, or clears it when blank", () => {
-    expect(yieldInput("  1.5 L ")).toBe("1.5 L");
-    expect(yieldInput("   ")).toBeNull();
   });
 
   it("is saved with setYield, and a retry of the same yield keeps its ids", () => {

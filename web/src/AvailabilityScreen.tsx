@@ -1,6 +1,6 @@
 // The Availability screen (ADR 0011): its hook, and the screen that renders its view with it.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchAvailability, mutate } from "./api.ts";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchAvailability } from "./api.ts";
 import {
   availabilityOverrideSave,
   kitchenSettingsSave,
@@ -11,9 +11,7 @@ import {
 } from "./availability-screen.ts";
 import { AvailabilityView } from "./AvailabilityView.tsx";
 import { useIntent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
-
-const send = (call: MutationCall) => mutate(call.id, call.name, call.args);
+import { useIntentSave } from "./use-intent-save.ts";
 
 /**
  * The kitchen's default Service time and the Cook's Availability. Every save is one named
@@ -25,27 +23,15 @@ export function useAvailabilityScreen() {
   const availability = useQuery({ queryKey: ["availability"], queryFn: fetchAvailability });
   // One set of ids per intended save, so a retry after a lost response replays it (useIntent).
   const intent = useIntent();
-  const onSuccess = async () => {
-    intent.reset();
-    await Promise.all([
+  const invalidate = () =>
+    Promise.all([
       queryClient.invalidateQueries({ queryKey: ["availability"] }),
       queryClient.invalidateQueries({ queryKey: ["plan"] }),
     ]);
-  };
 
-  const setDefault = useMutation({
-    mutationFn: (defaultServiceTime: number) =>
-      send(kitchenSettingsSave(defaultServiceTime, intent)),
-    onSuccess,
-  });
-  const setWeek = useMutation({
-    mutationFn: (hours: WeeklyHours[]) => send(weeklyAvailabilitySave(hours, intent)),
-    onSuccess,
-  });
-  const setOverride = useMutation({
-    mutationFn: (input: OverrideInput) => send(availabilityOverrideSave(input, intent)),
-    onSuccess,
-  });
+  const setDefault = useIntentSave(intent, kitchenSettingsSave, invalidate);
+  const setWeek = useIntentSave(intent, weeklyAvailabilitySave, invalidate);
+  const setOverride = useIntentSave(intent, availabilityOverrideSave, invalidate);
 
   return {
     availability,

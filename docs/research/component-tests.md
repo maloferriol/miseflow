@@ -1,3 +1,5 @@
+Status: superseded by ADR 0011
+
 # Research: tests for the web's React components
 
 28 Oct 2026 · answers "Should the web get component tests, and at what cost?" and feeds [ADR 0011](../adr/0011-web-screens-split-into-core-hook-and-view.md).

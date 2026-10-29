@@ -1,5 +1,6 @@
 // The Menu screen's decisions (ADR 0011): pure functions the hooks and the views pass through.
 import type { Intent } from "./intent.ts";
+import type { MutationCall } from "./mutation-call.ts";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
 // HTML's valid floating-point number, what <input type=number> lets through: "2.0", "1e1".
@@ -53,9 +54,6 @@ export function dishScale(kind: ScaleKind, value: string): DishScale {
   if (kind === "guests") return { kind };
   return kind === "portions" ? { kind, portions: Number(value) } : { kind, factor: Number(value) };
 }
-
-/** One named mutation (ADR 0007) and the id that makes a retry of it replay. */
-export type MutationCall = { id: string; name: string; args: Record<string, unknown> };
 
 /** Sets a Dish's scale, with one mutation id per intended scale. */
 export function dishScaleSave(

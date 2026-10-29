@@ -1,8 +1,41 @@
-import { areConsecutive } from "@miseflow/shared/src/recipe/subrecipes.ts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+// Extract to sub-recipe (ADR 0011): its hook, and the part that renders its view with it.
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
+import { type ExtractArgs, extractSave } from "./recipe-screen.ts";
+import { ExtractToSubRecipeView } from "./RecipeViews.tsx";
+import { useIntentSave } from "./use-intent-save.ts";
+
+/**
+ * The typed name and amount, and the extract that moves the ticked Steps into a new sub-recipe.
+ * Only state, query-client, intent and mutation hooks: no branches.
+ */
+export function useExtractToSubRecipe(recipeId: string, onDone: () => void) {
+  const queryClient = useQueryClient();
+  const intent = useIntent();
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("1");
+  const extract = useIntentSave(
+    intent,
+    (args: ExtractArgs, i) => extractSave(recipeId, args, i),
+    async () => {
+      setName("");
+      setAmount("1");
+      await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
+      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
+      onDone();
+    },
+  );
+  return {
+    name,
+    amount,
+    onName: setName,
+    onAmount: setAmount,
+    extractPending: extract.isPending,
+    extractError: extract.error,
+    onExtract: (args: ExtractArgs) => extract.mutate(args),
+  };
+}
 
 // Moves the selected Steps into a new sub-recipe, leaving one line using it (#84 Q3). Offered
 // only for consecutive Steps, which the server checks again.
@@ -11,69 +44,18 @@ export function ExtractToSubRecipe({
   stepIds,
   selected,
   onDone,
-}: {
+}: Readonly<{
   recipeId: string;
   /** The Recipe's live Steps, in order. */
   stepIds: string[];
   selected: string[];
   onDone: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const intent = useIntent();
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("1");
-  const extract = useMutation({
-    mutationFn: async (args: { stepIds: string[]; name: string; amount: string }) => {
-      const key = JSON.stringify(["extractToSubRecipe", args]);
-      const id = (what: string) => intent.id(key, what);
-      await mutate(id("mutation"), "extractToSubRecipe", {
-        recipeId,
-        revisionId: id("revision"),
-        subRecipeId: id("subRecipe"),
-        subRecipeRevisionId: id("subRecipeRevision"),
-        stepId: id("step"),
-        lineId: id("line"),
-        ...args,
-      });
-    },
-    onSuccess: async () => {
-      intent.reset();
-      setName("");
-      setAmount("1");
-      await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
-      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
-      onDone();
-    },
-  });
-  const consecutive = areConsecutive(stepIds, selected);
-
+}>) {
   return (
-    <fieldset>
-      <legend>Extract to sub-recipe</legend>
-      <label>
-        Name for the sub-recipe{" "}
-        <input value={name} maxLength={200} onChange={(e) => setName(e.target.value)} />
-      </label>
-      <label>
-        Amount used{" "}
-        <input value={amount} maxLength={100} onChange={(e) => setAmount(e.target.value)} />
-      </label>
-      <button
-        type="button"
-        disabled={!consecutive || !name.trim() || extract.isPending}
-        onClick={() =>
-          extract.mutate({
-            // In Step order, so a retry of the same selection is the same intent.
-            stepIds: stepIds.filter((id) => selected.includes(id)),
-            name: name.trim(),
-            amount: amount.trim() || "1",
-          })
-        }
-      >
-        Extract to sub-recipe
-      </button>
-      {selected.length > 0 && !consecutive && <p>Select Steps that follow one another.</p>}
-      {extract.error && <p role="alert">{extract.error.message}</p>}
-    </fieldset>
+    <ExtractToSubRecipeView
+      {...useExtractToSubRecipe(recipeId, onDone)}
+      stepIds={stepIds}
+      selected={selected}
+    />
   );
 }

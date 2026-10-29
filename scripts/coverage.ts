@@ -6,5 +6,8 @@ import type { CoverageOptions } from "vitest/node";
 export const coverage: CoverageOptions = {
   provider: "v8",
   include: ["src/**"],
+  // The web's entry point only mounts App, so no test can run it. Sonar excludes it too
+  // (sonar.coverage.exclusions in sonar-project.properties), so the two reports agree.
+  exclude: ["src/main.tsx"],
   reporter: ["text-summary", ["lcov", { projectRoot: ".." }]],
 };

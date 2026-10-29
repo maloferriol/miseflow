@@ -1,11 +1,12 @@
 import type { Menu, PlanTask } from "./api.ts";
+import type { MutationCall } from "./mutation-call.ts";
 import type { QuickFix } from "./quick-fixes.ts";
 
 // Pure: the Plan screen's decisions, formatting and named mutations (ADR 0011, ADR 0007).
 // PlanScreen's hook sends them and its view renders them.
 
-/** A named mutation as the Plan screen sends it. */
-export type PlanMutation = { name: string; args: Record<string, unknown> };
+/** A named mutation as the Plan screen sends it: each send makes its own id. */
+export type PlanMutation = Omit<MutationCall, "id">;
 
 /** "1 h 30 min", "2 h", "45 min": a Task's passive time on its Plan line. */
 export function passive(minutes: number) {

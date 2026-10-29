@@ -1,7 +1,7 @@
 // The Shopping list's decisions (ADR 0011): pure functions the hooks and the views pass through.
 import type { ShoppingList } from "./api.ts";
 import type { Intent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import type { MutationCall } from "./mutation-call.ts";
 
 /**
  * Marks a row Got (markGot) or un-Got (unmarkGot). Each intended state keeps its own ids, so a

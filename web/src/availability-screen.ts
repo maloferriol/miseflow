@@ -1,7 +1,7 @@
 // The Availability screen's decisions (ADR 0011): pure functions the hook and the view pass through.
 import type { Availability } from "./api.ts";
 import type { Intent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import { type MutationCall, overrideCall } from "./mutation-call.ts";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
 
 export const WEEKDAYS = [
@@ -116,10 +116,5 @@ export function availabilityOverrideSave(
   input: OverrideInput,
   intent: Pick<Intent, "id">,
 ): MutationCall {
-  const key = JSON.stringify(["setAvailabilityOverride", input]);
-  return {
-    id: intent.id(key, "mutation"),
-    name: "setAvailabilityOverride",
-    args: { overrideId: intent.id(key, "override"), ...input },
-  };
+  return overrideCall("setAvailabilityOverride", input, intent);
 }

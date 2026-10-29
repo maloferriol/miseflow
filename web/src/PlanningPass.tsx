@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { mutate, type Recipe } from "./api.ts";
 import { useIntent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import type { MutationCall } from "./mutation-call.ts";
 import {
   addLinkSave,
   groupSave,

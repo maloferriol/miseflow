@@ -11,7 +11,7 @@ import {
 } from "./availability-screen.ts";
 import { AvailabilityView } from "./AvailabilityView.tsx";
 import { useIntent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import type { MutationCall } from "./mutation-call.ts";
 
 const send = (call: MutationCall) => mutate(call.id, call.name, call.args);
 

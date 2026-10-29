@@ -1,7 +1,7 @@
 // The Today checklist's decisions (ADR 0011): pure functions the hook and the view pass through.
 import type { Plan, PlanTask } from "./api.ts";
 import type { Intent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import type { MutationCall } from "./mutation-call.ts";
 import { shortDay } from "./plan-display.ts";
 
 /** One prep day of the Plan, its Tasks by start. */

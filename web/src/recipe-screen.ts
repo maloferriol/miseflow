@@ -3,7 +3,7 @@
 import { areConsecutive } from "@miseflow/shared/src/recipe/subrecipes.ts";
 import type { Recipe, RecipeLine } from "./api.ts";
 import type { Intent } from "./intent.ts";
-import type { MutationCall } from "./menu-screen.ts";
+import type { MutationCall } from "./mutation-call.ts";
 import { amountText } from "./step-editor.ts";
 
 /** Write (the Steps) or Plan (the Planning pass). */

@@ -1,5 +1,6 @@
 // The decisions behind `npm run check` (scripts/check.ts): which steps run, in which groups, and
 // what the report says. The script runs the commands and times them, so the tests need no machine.
+import { nodeMajor } from "./preflight-checks.ts";
 
 /** The opt-in flags. `--sonar` implies `--coverage`, since the analysis reads the lcov files. */
 export type CheckOptions = { coverage: boolean; sonar: boolean; e2e: boolean };
@@ -8,8 +9,9 @@ export type CheckStep = { name: string; command: string[] };
 
 /**
  * Steps run in order and the group stops at its first failure. The groups of a phase start
- * together, as CI's jobs do, and a phase starts once the one before it is done and its blocking
- * groups passed. A group that isn't `blocking` is reported but can't fail the run, like CI's e2e.
+ * together, as CI's jobs do, and a phase starts once the one before it is done: 0 installs the
+ * dependencies, which every later step needs, 1 is CI's `static` and `test`, 2 the e2e. A group
+ * that isn't `blocking` is reported but can't fail the run, like CI's e2e.
  */
 export type CheckGroup = { name: string; steps: CheckStep[]; blocking: boolean; phase: number };
 
@@ -37,34 +39,56 @@ export function parseCheckArgs(args: string[]): CheckOptions {
 const npmRun = (script: string): CheckStep => ({ name: script, command: ["npm", "run", script] });
 
 /**
- * README's local analysis command: the scanner reads sonar-project.properties and the lcov files
- * from the mounted checkout. The token stays in the shell; docker passes it on by name.
+ * What `npm run check` reads from this machine. `repo` is the checkout's root, `gitDir` its git
+ * common directory (both absolute), `env` the shell's, and `needsInstall` the preflight's
+ * lock-file rule.
  */
-function sonarStep(repo: string, env: NodeJS.ProcessEnv): CheckStep {
-  if (!env.SONAR_TOKEN)
-    throw new Error('--sonar needs SONAR_TOKEN in your shell (README "CI and the quality gate").');
-  const host = env.SONAR_HOST_URL || "https://sonarcloud.io";
-  const command = ["docker", "run", "--rm", "-v", `${repo}:/usr/src`, "-e", "SONAR_TOKEN"];
-  command.push("-e", `SONAR_HOST_URL=${host}`, "sonarsource/sonar-scanner-cli");
+export type CheckFacts = {
+  repo: string;
+  gitDir: string;
+  env: NodeJS.ProcessEnv;
+  needsInstall: boolean;
+};
+
+const sonarCloud = "https://sonarcloud.io";
+
+/**
+ * README's local analysis command: the scanner reads sonar-project.properties and the lcov files
+ * from the mounted checkout. The token stays in the shell; docker passes it on by name. A
+ * worktree's .git file points at the main checkout's git directory, which is mounted at the same
+ * path so the scanner has the history CI's full clone gives it.
+ */
+function sonarStep({ repo, gitDir, env }: CheckFacts): CheckStep {
+  const why = '(README "CI and the quality gate")';
+  if (!env.SONAR_TOKEN) throw new Error(`--sonar needs SONAR_TOKEN in your shell ${why}.`);
+  const host = env.SONAR_HOST_URL || sonarCloud;
+  if (host === sonarCloud && !env.SONAR_ORGANIZATION)
+    throw new Error(`--sonar needs SONAR_ORGANIZATION in your shell for SonarCloud ${why}.`);
+
+  const command = ["docker", "run", "--rm", "-v", `${repo}:/usr/src`];
+  if (!gitDir.startsWith(`${repo}/`)) command.push("-v", `${gitDir}:${gitDir}`);
+  command.push(
+    "-e",
+    "SONAR_TOKEN",
+    "-e",
+    `SONAR_HOST_URL=${host}`,
+    "sonarsource/sonar-scanner-cli",
+  );
   if (env.SONAR_ORGANIZATION) command.push(`-Dsonar.organization=${env.SONAR_ORGANIZATION}`);
   return { name: "sonar", command };
 }
 
 /**
- * CI's `static` and `test` jobs (.github/workflows/ci.yml), plus what the flags add. `repo` is the
- * checkout's root and `env` the shell's, which the analysis needs. `needsInstall` comes from the
- * preflight's lock-file rule. Throws when `--sonar` can't run.
+ * CI's `static` and `test` jobs (.github/workflows/ci.yml), plus what the flags add. Throws when
+ * `--sonar` can't run, so it fails before the tests rather than after.
  */
-export function checkGroups(
-  options: CheckOptions,
-  machine: { repo: string; env: NodeJS.ProcessEnv; needsInstall: boolean },
-): CheckGroup[] {
+export function checkGroups(options: CheckOptions, facts: CheckFacts): CheckGroup[] {
   const test = [npmRun("setup:local"), npmRun("db:migrate")];
   test.push(npmRun(options.coverage ? "test:coverage" : "test"));
-  if (options.sonar) test.push(sonarStep(machine.repo, machine.env));
+  if (options.sonar) test.push(sonarStep(facts));
 
   const groups: CheckGroup[] = [];
-  if (machine.needsInstall) {
+  if (facts.needsInstall) {
     const install = ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"];
     groups.push({
       name: "install",
@@ -100,7 +124,11 @@ async function runGroup(group: CheckGroup, runStep: RunStep, skip: boolean): Pro
   return results;
 }
 
-/** Runs the groups phase by phase. Returns every step's row, in the order of `groups`. */
+/**
+ * Runs the groups phase by phase. A failed install stops every later phase; any other failure
+ * leaves the next phase to run, as CI's e2e runs whatever the other jobs did. Returns every
+ * step's row, in the order of `groups`.
+ */
 export async function runChecks(groups: CheckGroup[], runStep: RunStep): Promise<StepResult[]> {
   const byGroup = new Map<CheckGroup, StepResult[]>();
   let blocked = false;
@@ -108,9 +136,7 @@ export async function runChecks(groups: CheckGroup[], runStep: RunStep): Promise
     const inPhase = groups.filter((group) => group.phase === phase);
     const results = await Promise.all(inPhase.map((group) => runGroup(group, runStep, blocked)));
     inPhase.forEach((group, i) => byGroup.set(group, results[i]!));
-    blocked ||= inPhase.some(
-      (group, i) => group.blocking && results[i]!.some((row) => row.result !== "pass"),
-    );
+    blocked ||= phase === 0 && results.some((rows) => rows.some((row) => row.result !== "pass"));
   }
   return groups.flatMap((group) => byGroup.get(group)!);
 }
@@ -167,6 +193,6 @@ const ciNodeMajor = 24;
 
 /** A warning when `version` (as in `process.version`) isn't CI's major, or undefined. */
 export function nodeMajorWarning(version: string): string | undefined {
-  if (Number(/^v?(\d+)\./.exec(version)?.[1]) === ciNodeMajor) return undefined;
+  if (nodeMajor(version) === ciNodeMajor) return undefined;
   return `Node ${version} isn't ${ciNodeMajor}, the version CI runs, so a result here may differ from CI's.`;
 }

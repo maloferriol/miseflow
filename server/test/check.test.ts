@@ -6,40 +6,46 @@ import {
   nodeMajorWarning,
   parseCheckArgs,
   runChecks,
+  type CheckFacts,
   type CheckGroup,
   type StepResult,
 } from "../../scripts/check-steps.ts";
 
-const machine = { repo: "/Users/cook/miseflow", env: { SONAR_TOKEN: "t" }, needsInstall: false };
-const stepNames = (groups: ReturnType<typeof checkGroups>) =>
+const facts: CheckFacts = {
+  repo: "/Users/cook/miseflow",
+  gitDir: "/Users/cook/miseflow/.git",
+  env: { SONAR_TOKEN: "t", SONAR_ORGANIZATION: "cooks" },
+  needsInstall: false,
+};
+const stepNames = (groups: CheckGroup[]) =>
   groups.map((group) => ({ group: group.name, steps: group.steps.map((step) => step.name) }));
+const named = (groups: CheckGroup[], name: string) => groups.find((group) => group.name === name)!;
 
 // `npm run check` decides what to run and how to report it with these; scripts/check.ts only runs
 // the commands.
 describe("npm run check", () => {
   describe("the steps", () => {
     it("runs CI's static and test groups, with npm test instead of coverage", () => {
-      expect(stepNames(checkGroups(parseCheckArgs([]), machine))).toEqual([
+      expect(stepNames(checkGroups(parseCheckArgs([]), facts))).toEqual([
         { group: "static", steps: ["format:check", "lint", "typecheck", "build"] },
         { group: "test", steps: ["setup:local", "db:migrate", "test"] },
       ]);
     });
 
     it("runs the tests with coverage on --coverage", () => {
-      const groups = checkGroups(parseCheckArgs(["--coverage"]), machine);
+      const test = named(checkGroups(parseCheckArgs(["--coverage"]), facts), "test");
 
-      expect(groups[1].steps.map((step) => step.name)).toEqual([
-        "setup:local",
-        "db:migrate",
-        "test:coverage",
+      expect(test.steps.map((step) => step.command)).toEqual([
+        ["npm", "run", "setup:local"],
+        ["npm", "run", "db:migrate"],
+        ["npm", "run", "test:coverage"],
       ]);
-      expect(groups[1].steps[2].command).toEqual(["npm", "run", "test:coverage"]);
     });
 
     it("adds the SonarQube analysis after coverage on --sonar", () => {
-      const groups = checkGroups(parseCheckArgs(["--sonar"]), machine);
+      const test = named(checkGroups(parseCheckArgs(["--sonar"]), facts), "test");
 
-      expect(stepNames(groups)[1].steps).toEqual([
+      expect(test.steps.map((step) => step.name)).toEqual([
         "setup:local",
         "db:migrate",
         "test:coverage",
@@ -47,55 +53,74 @@ describe("npm run check", () => {
       ]);
     });
 
-    it("runs the analysis with README's scanner command, the token and host from the shell", () => {
-      const repo = "/Users/cook/miseflow";
-      const sonar = (env: NodeJS.ProcessEnv) =>
-        checkGroups(parseCheckArgs(["--sonar"]), { ...machine, repo, env })[1].steps.at(-1)!
-          .command;
+    describe("the analysis", () => {
+      const sonar = (changes: Partial<CheckFacts>) =>
+        named(checkGroups(parseCheckArgs(["--sonar"]), { ...facts, ...changes }), "test").steps.at(
+          -1,
+        )!.command;
+      const scanner = "sonarsource/sonar-scanner-cli";
 
-      expect(sonar({ SONAR_TOKEN: "t", SONAR_ORGANIZATION: "cooks" })).toEqual([
-        "docker",
-        "run",
-        "--rm",
-        "-v",
-        "/Users/cook/miseflow:/usr/src",
-        "-e",
-        "SONAR_TOKEN",
-        "-e",
-        "SONAR_HOST_URL=https://sonarcloud.io",
-        "sonarsource/sonar-scanner-cli",
-        "-Dsonar.organization=cooks",
-      ]);
-      expect(sonar({ SONAR_TOKEN: "t", SONAR_HOST_URL: "https://sonar.example" })).toEqual([
-        "docker",
-        "run",
-        "--rm",
-        "-v",
-        "/Users/cook/miseflow:/usr/src",
-        "-e",
-        "SONAR_TOKEN",
-        "-e",
-        "SONAR_HOST_URL=https://sonar.example",
-        "sonarsource/sonar-scanner-cli",
-      ]);
-    });
+      it("runs README's scanner command with the token, host and organization from the shell", () => {
+        expect(sonar({})).toEqual([
+          "docker",
+          "run",
+          "--rm",
+          "-v",
+          "/Users/cook/miseflow:/usr/src",
+          "-e",
+          "SONAR_TOKEN",
+          "-e",
+          "SONAR_HOST_URL=https://sonarcloud.io",
+          scanner,
+          "-Dsonar.organization=cooks",
+        ]);
+        expect(
+          sonar({ env: { SONAR_TOKEN: "t", SONAR_HOST_URL: "https://sonar.example" } }),
+        ).toEqual(expect.arrayContaining(["SONAR_HOST_URL=https://sonar.example"]));
+        expect(
+          sonar({ env: { SONAR_TOKEN: "t", SONAR_HOST_URL: "https://sonar.example" } }).at(-1),
+        ).toBe(scanner);
+      });
 
-    it("refuses --sonar without SONAR_TOKEN in the shell", () => {
-      expect(() => checkGroups(parseCheckArgs(["--sonar"]), { ...machine, env: {} })).toThrow(
-        '--sonar needs SONAR_TOKEN in your shell (README "CI and the quality gate").',
-      );
+      it("mounts a worktree's git directory where its .git file points, for the history", () => {
+        const command = sonar({
+          repo: "/Users/cook/miseflow/.claude/worktrees/menus",
+          gitDir: "/Users/cook/miseflow/.git",
+        });
+
+        expect(command.slice(3, 7)).toEqual([
+          "-v",
+          "/Users/cook/miseflow/.claude/worktrees/menus:/usr/src",
+          "-v",
+          "/Users/cook/miseflow/.git:/Users/cook/miseflow/.git",
+        ]);
+      });
+
+      it("refuses to start without SONAR_TOKEN, or SONAR_ORGANIZATION for SonarCloud", () => {
+        expect(() => sonar({ env: {} })).toThrow(
+          '--sonar needs SONAR_TOKEN in your shell (README "CI and the quality gate").',
+        );
+        expect(() => sonar({ env: { SONAR_TOKEN: "t" } })).toThrow(
+          '--sonar needs SONAR_ORGANIZATION in your shell for SonarCloud (README "CI and the quality gate").',
+        );
+      });
     });
 
     it("adds a non-blocking e2e group that runs after the others on --e2e", () => {
-      const groups = checkGroups(parseCheckArgs(["--e2e"]), machine);
+      const groups = checkGroups(parseCheckArgs(["--e2e"]), facts);
 
-      expect(groups.at(-1)).toMatchObject({ name: "e2e", blocking: false, phase: 2 });
-      expect(groups.at(-1)!.steps.map((step) => step.command)).toEqual([["npm", "run", "e2e"]]);
-      expect(groups.slice(0, 2).every((group) => group.blocking && group.phase === 1)).toBe(true);
+      expect(named(groups, "e2e")).toMatchObject({ blocking: false, phase: 2 });
+      expect(named(groups, "e2e").steps.map((step) => step.command)).toEqual([
+        ["npm", "run", "e2e"],
+      ]);
+      expect(groups.filter((group) => group.phase === 1).map((group) => group.name)).toEqual([
+        "static",
+        "test",
+      ]);
     });
 
     it("installs dependencies first, the way CI does, only when they're out of date", () => {
-      const groups = checkGroups(parseCheckArgs([]), { ...machine, needsInstall: true });
+      const groups = checkGroups(parseCheckArgs([]), { ...facts, needsInstall: true });
 
       expect(groups[0]).toEqual({
         name: "install",
@@ -171,7 +196,13 @@ describe("npm run check", () => {
       ]);
     });
 
-    it("runs no later phase once a blocking group failed", async () => {
+    it("still runs the e2e after a failed static or test group, as CI does", async () => {
+      const { results } = await run(groups, ["lint"]);
+
+      expect(results.at(-1)).toEqual(row("e2e", "e2e", "pass"));
+    });
+
+    it("runs nothing more once the install failed", async () => {
       const install = group("install", ["npm ci"], 0);
 
       expect((await run([install, ...groups], ["npm ci"])).results).toEqual([
@@ -187,7 +218,7 @@ describe("npm run check", () => {
   });
 
   describe("the verdict and report", () => {
-    const blockingGroups = checkGroups(parseCheckArgs(["--e2e"]), machine);
+    const blockingGroups = checkGroups(parseCheckArgs(["--e2e"]), facts);
     const pass = (step: string, group: string, ms: number): StepResult => ({
       step,
       group,

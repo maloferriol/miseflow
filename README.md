@@ -53,9 +53,10 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
   passing steps stay quiet. Node other than 24, the version CI runs, only warns.
   - `--coverage` runs `test:coverage` instead of `npm test`.
   - `--sonar` adds the SonarQube analysis with the scanner command below (implies `--coverage`;
-    needs `SONAR_TOKEN` in your shell, Docker and the network).
-  - `--e2e` runs `npm run e2e` once the other groups pass. Its result is reported but, as in CI,
-    doesn't fail the run.
+    needs Docker, the network and `SONAR_TOKEN` in your shell, plus `SONAR_ORGANIZATION` for
+    SonarCloud or `SONAR_HOST_URL` for a SonarQube server).
+  - `--e2e` runs `npm run e2e` after the other groups, whatever they did. Its result is reported
+    but, as in CI, doesn't fail the run.
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
   Service times and Availability. Unset, the server uses its own zone and warns on startup.

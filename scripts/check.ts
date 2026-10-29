@@ -3,7 +3,7 @@
 // the running local stack, and runs `npm test` (`--coverage` for `test:coverage`). `--sonar` adds
 // the SonarQube analysis and `--e2e` the e2e, which is reported but, as in CI, can't fail the run.
 // The decisions live in check-steps.ts, which has the tests.
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -26,8 +26,14 @@ try {
     throwIfNoEntry: false,
   })?.mtimeMs;
   const lockfileAt = statSync(`${repoDir}package-lock.json`).mtimeMs;
+  const repo = repoDir.replace(/\/$/, "");
+  const gitDir = spawnSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], {
+    cwd: repo,
+    encoding: "utf8",
+  }).stdout.trim();
   groups = checkGroups(parseCheckArgs(process.argv.slice(2)), {
-    repo: repoDir.replace(/\/$/, ""),
+    repo,
+    gitDir,
     env: process.env,
     needsInstall: dependenciesNeedInstall({ installedAt, lockfileAt }),
   });
@@ -72,4 +78,6 @@ console.log(`Running ${groups.map((group) => group.name).join(", ")}…`);
 const started = performance.now();
 const results = await runChecks(groups, runStep);
 console.log(`\n${formatReport(groups, results, performance.now() - started)}`);
+// Again under the table, where it can't scroll away.
+if (nodeWarning) console.warn(`! ${nodeWarning}`);
 process.exit(checkPassed(groups, results) ? 0 : 1);

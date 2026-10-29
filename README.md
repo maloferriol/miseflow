@@ -30,17 +30,21 @@ Otherwise it runs `npm ci --ignore-scripts` when `node_modules` is missing or ol
 `gh` only warns. It doesn't check Claude skills: sessions need the `mattpocock-skills` plugin
 installed in your Claude config.
 
-`npm run setup:local` (ES256 signing key, starts the stack, writes `.env.test`, seeds the test user)
+`npm run setup:local` (ES256 signing key, starts the stack, writes `.env.test`; it creates no user)
 starts the stack itself. It creates `supabase/signing_keys.json`, so on a
 fresh clone `npx supabase start` fails until `npm run setup:local` has run once; afterwards
 `npx supabase start` restarts the stack.
 
-It also writes the git-ignored `.env.test` from `npx supabase status`, with a random password for the
-test user (`.env.example` lists the names). An existing `.env.test` is kept; delete it to write a fresh
-one. Every checkout on this machine shares one local stack and one test user, so running it in a
-second checkout resets that user's password: only the checkout that ran it last
-logs in. When another checkout's tests fail with `Invalid login credentials`, rerun
-`npm run setup:local` there. Don't copy another checkout's `.env.test`.
+It also writes the git-ignored `.env.test` from `npx supabase status` (`.env.example` lists the
+names). An existing `.env.test` is kept; delete it to write a fresh one. Don't copy another
+checkout's `.env.test`.
+
+Every checkout signs in as its own test user, `checkout-<directory name>-<hash>@miseflow.test`,
+created on first use on the shared local stack. Each use gives it a new random password that is
+kept in memory only, so no file holds it and one checkout never breaks another. `npm test` signs
+in as it. To sign in by hand in `npm run dev:web`, run `npm run dev:user`: it resets the password
+and prints the email and the new password. Old checkouts' users stay on the stack until
+`npx supabase db reset`. e2e keeps its own user per spec.
 
 - `npm test` runs every workspace's tests against the local stack. `npm run test:coverage` does
   the same and writes `<workspace>/coverage/lcov.info` for `shared`, `server` and `web`.
@@ -63,7 +67,7 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
   - `--coverage` runs `test:coverage` instead of `npm test`.
   - `--e2e` runs `npm run e2e` after the other groups, whatever they did. Its result is reported
     but, as in CI, doesn't fail the run.
-- `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
+- `TOKEN=$(npm run -s token)` prints an access token for the checkout's test user, for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
   Service times and Availability. Unset, the server uses its own zone and warns on startup.
 - `npm test`, `npm run e2e` and `npm run setup:local` refuse an env file whose `DATABASE_URL`,

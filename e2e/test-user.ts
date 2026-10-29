@@ -1,53 +1,13 @@
-import { randomBytes } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import { is } from "drizzle-orm";
 import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 import postgres from "postgres";
 import * as schema from "../shared/src/schema.ts";
 import { assertLocalEnv } from "../scripts/local-only.ts";
+import { requireEnv, runPid, type TestUser } from "../scripts/test-user.ts";
 
-// Each spec file signs in as its own Cook, so specs that run in parallel never share
-// Availability, overrides or Services (#122). Local stack only.
-export type TestUser = { id: string; email: string; password: string; token: string };
-
-const options = { auth: { persistSession: false, autoRefreshToken: false } };
-const adminClient = (env: NodeJS.ProcessEnv) =>
-  createClient(requireEnv(env, "SUPABASE_URL"), requireEnv(env, "SUPABASE_SECRET_KEY"), options);
-
-function requireEnv(env: NodeJS.ProcessEnv, name: string): string {
-  const value = env[name];
-  if (!value) throw new Error(`${name} is not set. Run npm run setup:local to write .env.test.`);
-  return value;
-}
-
-/**
- * Creates a confirmed user e2e-<specName>-<random>-<runPid>@miseflow.test and signs it in. The
- * runner's pid tells another worktree's run that this run is still going (#156).
- */
-export async function createTestUser(
-  specName: string,
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<TestUser> {
-  assertLocalEnv("createTestUser", env);
-  const email = testUserEmail(specName, runPid(env));
-  const password = randomBytes(18).toString("base64url");
-
-  const created = await adminClient(env).auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-  if (created.error) throw created.error;
-
-  const client = createClient(
-    requireEnv(env, "SUPABASE_URL"),
-    requireEnv(env, "SUPABASE_PUBLISHABLE_KEY"),
-    options,
-  );
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return { id: created.data.user.id, email, password, token: data.session.access_token };
-}
+// The per-spec users and the checkout user live in scripts/test-user.ts (shared with the server
+// tests); this file adds the cleanup and the run-wide checks that only e2e needs.
+export { createTestUser, type TestUser } from "../scripts/test-user.ts";
 
 /**
  * Every table with an owner_id, children before the tables they reference, so deleting in this
@@ -74,14 +34,6 @@ const ownedTables: string[] = (() => {
   for (const name of parents.keys()) visit(name);
   return order;
 })();
-
-/** The pid of the Playwright runner this run belongs to, which the config writes to the env. */
-function runPid(env: NodeJS.ProcessEnv) {
-  return Number(requireEnv(env, "E2E_RUN_PID"));
-}
-
-const testUserEmail = (specName: string, pid: number) =>
-  `e2e-${specName}-${randomBytes(6).toString("hex")}-${pid}@miseflow.test`;
 
 /** The runner pid a testUserEmail names, or undefined for a user from before #156. */
 function runPidOf(email: string) {

@@ -19,6 +19,8 @@
     "lint": "eslint . --max-warnings 0",
     "preflight": "node --experimental-strip-types scripts/preflight.ts",
     "check": "node --experimental-strip-types scripts/check.ts",
+    "dev:user": "node --experimental-strip-types scripts/dev-user.ts",
+    "token": "node --experimental-strip-types scripts/token.ts",
     "setup:local": "npm run setup:local -w server",
     "db:migrate": "npm run db:migrate -w shared",
     "e2e": "playwright test"

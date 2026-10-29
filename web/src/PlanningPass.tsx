@@ -1,8 +1,7 @@
 // The Planning pass (ADR 0011): its hook, and the component that renders its view with it.
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { mutate, type Recipe } from "./api.ts";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Recipe } from "./api.ts";
 import { useIntent } from "./intent.ts";
-import type { MutationCall } from "./mutation-call.ts";
 import {
   addLinkSave,
   groupSave,
@@ -13,6 +12,7 @@ import {
   type Window,
 } from "./planning-pass.ts";
 import { PlanningPassView } from "./PlanningPassView.tsx";
+import { useIntentSave } from "./use-intent-save.ts";
 
 /**
  * The Planning pass's five mutations. The Steps' rows share them with the Recipe's window, so one
@@ -23,33 +23,13 @@ export function usePlanningPass(recipe: Recipe) {
   const queryClient = useQueryClient();
   // One intent slot for the pass: a retry after a lost response replays the same save.
   const intent = useIntent();
-  const send = (call: MutationCall) => mutate(call.id, call.name, call.args);
-  const onSuccess = async () => {
-    intent.reset();
-    await queryClient.invalidateQueries({ queryKey: ["recipe", recipe.id] });
-  };
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["recipe", recipe.id] });
 
-  const setStepTimes = useMutation({
-    mutationFn: (args: { stepId: string } & StepTimes) => send(stepTimesSave(args, intent)),
-    onSuccess,
-  });
-  const setMakeAhead = useMutation({
-    mutationFn: (args: Parameters<typeof makeAheadSave>[0]) => send(makeAheadSave(args, intent)),
-    onSuccess,
-  });
-  const setGroupWithPrevious = useMutation({
-    mutationFn: (args: { stepId: string; value: boolean }) => send(groupSave(args, intent)),
-    onSuccess,
-  });
-  const addStepDependency = useMutation({
-    mutationFn: (args: { beforeStepId: string; afterStepId: string }) =>
-      send(addLinkSave(args, intent)),
-    onSuccess,
-  });
-  const removeStepDependency = useMutation({
-    mutationFn: (dependencyId: string) => send(removeLinkSave(dependencyId, intent)),
-    onSuccess,
-  });
+  const setStepTimes = useIntentSave(intent, stepTimesSave, invalidate);
+  const setMakeAhead = useIntentSave(intent, makeAheadSave, invalidate);
+  const setGroupWithPrevious = useIntentSave(intent, groupSave, invalidate);
+  const addStepDependency = useIntentSave(intent, addLinkSave, invalidate);
+  const removeStepDependency = useIntentSave(intent, removeLinkSave, invalidate);
   const error =
     [
       setStepTimes,

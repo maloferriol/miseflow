@@ -1,10 +1,10 @@
 // Extract to sub-recipe (ADR 0011): its hook, and the part that renders its view with it.
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
 import { type ExtractArgs, extractSave } from "./recipe-screen.ts";
 import { ExtractToSubRecipeView } from "./RecipeViews.tsx";
+import { useIntentSave } from "./use-intent-save.ts";
 
 /**
  * The typed name and amount, and the extract that moves the ticked Steps into a new sub-recipe.
@@ -15,20 +15,17 @@ export function useExtractToSubRecipe(recipeId: string, onDone: () => void) {
   const intent = useIntent();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("1");
-  const extract = useMutation({
-    mutationFn: async (args: ExtractArgs) => {
-      const call = extractSave(recipeId, args, intent);
-      await mutate(call.id, call.name, call.args);
-    },
-    onSuccess: async () => {
-      intent.reset();
+  const extract = useIntentSave(
+    intent,
+    (args: ExtractArgs, i) => extractSave(recipeId, args, i),
+    async () => {
       setName("");
       setAmount("1");
       await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
       await queryClient.invalidateQueries({ queryKey: ["recipes"] });
       onDone();
     },
-  });
+  );
   return {
     name,
     amount,

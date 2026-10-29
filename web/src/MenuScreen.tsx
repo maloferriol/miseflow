@@ -12,6 +12,7 @@ import {
   NewMenuView,
   ServiceFormView,
 } from "./MenuViews.tsx";
+import { useIntentSave } from "./use-intent-save.ts";
 
 // The open Menu lives in the URL (?menu=<id>), so a reload finds it again.
 function menuIdFromUrl() {
@@ -139,16 +140,11 @@ function Course({
 export function useDishScale(dishId: string, onChanged: () => Promise<void>) {
   const queryClient = useQueryClient();
   const intent = useIntent();
-  const save = useMutation({
-    mutationFn: async (scale: DishScale) => {
-      const call = dishScaleSave(dishId, scale, intent);
-      await mutate(call.id, call.name, call.args);
-    },
-    onSuccess: async () => {
-      intent.reset();
-      await Promise.all([onChanged(), queryClient.invalidateQueries({ queryKey: ["plan"] })]);
-    },
-  });
+  const save = useIntentSave(
+    intent,
+    (scale: DishScale, i) => dishScaleSave(dishId, scale, i),
+    () => Promise.all([onChanged(), queryClient.invalidateQueries({ queryKey: ["plan"] })]),
+  );
   return {
     savePending: save.isPending,
     saveError: save.error,
@@ -171,19 +167,15 @@ export function useServiceForm(menuId: string, service: Menu["service"]) {
   const queryClient = useQueryClient();
   const intent = useIntent();
   const availability = useQuery({ queryKey: ["availability"], queryFn: fetchAvailability });
-  const save = useMutation({
-    mutationFn: async (input: ServiceInput) => {
-      const call = serviceSave(menuId, service, input, intent);
-      await mutate(call.id, call.name, call.args);
-    },
-    onSuccess: async () => {
-      intent.reset();
-      await Promise.all([
+  const save = useIntentSave(
+    intent,
+    (input: ServiceInput, i) => serviceSave(menuId, service, input, i),
+    () =>
+      Promise.all([
         queryClient.invalidateQueries({ queryKey: ["menu", menuId] }),
         queryClient.invalidateQueries({ queryKey: ["plan"] }),
-      ]);
-    },
-  });
+      ]),
+  );
   return {
     availability: availability.data,
     savePending: save.isPending,

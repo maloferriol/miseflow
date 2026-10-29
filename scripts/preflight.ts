@@ -4,9 +4,9 @@
 // package.json passes --experimental-strip-types so Node 22 gets the version message too.
 // The decisions live in preflight-checks.ts, which has the tests.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { parseEnv } from "node:util";
+import { envFileName, legacyEnvWarnings, loadEnv } from "./env.ts";
 import { assertLocalEnv } from "./local-only.ts";
 import {
   dependenciesNeedInstall,
@@ -17,7 +17,7 @@ import {
 } from "./preflight-checks.ts";
 
 const repoDir = fileURLToPath(new URL("..", import.meta.url));
-const envFile = fileURLToPath(new URL("../.env", import.meta.url));
+const envFile = fileURLToPath(new URL("../.env.test", import.meta.url));
 
 /** Runs a command quietly. `missing` means the command isn't installed. */
 function capture(command: string, args: string[], cwd = repoDir) {
@@ -101,32 +101,44 @@ pass("Dependencies");
 
 checkCommands(true);
 
-// 3. This checkout's own .env. Never copy another checkout's: each one resets the shared test user.
+// 3. This checkout's own .env.test (ADR 0012). Preflight is for the test environment only.
+try {
+  if (envFileName(process.env.APP_ENV) !== ".env.test")
+    throw new Error("preflight runs on the test environment");
+} catch (error) {
+  fail(`APP_ENV: ${(error as Error).message}. Unset APP_ENV, then rerun.`);
+}
+for (const warning of legacyEnvWarnings()) warn(warning);
 if (!existsSync(envFile)) {
-  console.log("Writing .env (npm run setup:local)…");
+  console.log("Writing .env.test (npm run setup:local)…");
   if (!run("npm", ["run", "setup:local"]))
     fail("`npm run setup:local` failed. Fix the error above, then rerun.");
 }
-const env = parseEnv(readFileSync(envFile, "utf8"));
+let env: Record<string, string>;
+try {
+  env = loadEnv("test");
+} catch (error) {
+  fail((error as Error).message);
+}
 try {
   assertLocalEnv("npm run preflight", env);
 } catch (error) {
-  fail(`.env: ${(error as Error).message}`);
+  fail(`.env.test: ${(error as Error).message}`);
 }
 try {
-  // The scripts load .env without overriding the shell, so a cloud value there wins.
+  // The scripts load .env.test without overriding the shell, so a prod value there wins.
   assertLocalEnv("npm run preflight", process.env);
 } catch (error) {
   fail(`Your shell: ${(error as Error).message} Unset it in this shell, then rerun.`);
 }
-pass(".env");
+pass(".env.test");
 
 // 4. The local Supabase stack, shared by every worktree (so its ports are expected to be in use).
 const stackDown = "The local Supabase stack isn't running. Run `npx supabase start`, then rerun.";
 if (!capture("npx", ["supabase", "status"]).ok) fail(stackDown);
 const databaseUrl = process.env.DATABASE_URL ?? env.DATABASE_URL;
 if (!databaseUrl)
-  fail("DATABASE_URL isn't set in .env. Delete .env, then rerun to write a fresh one.");
+  fail("DATABASE_URL isn't set in .env.test. Delete .env.test, then rerun to write a fresh one.");
 const { default: postgres } = await import("postgres");
 const sql = postgres(databaseUrl, { max: 1, connect_timeout: 3, onnotice: () => {} });
 try {

@@ -7,32 +7,40 @@ A software to manage your cooking: recipes, ingredients, and meal prep workflow.
 Needs Node 24+ and Docker.
 
 ```sh
-npm run preflight           # checks Node, Docker and ports; installs dependencies; writes .env
+npm run preflight           # checks Node, Docker and ports; installs dependencies; writes .env.test
 npm run db:migrate          # drizzle-kit migrate; Supabase CLI migrations are not used
 npm run seed -w server      # the shared Ingredient seed (ODbL); safe to run again
 npm run dev:server          # API on http://localhost:8787
 npm run dev:web             # web app on http://localhost:5173
 ```
 
+Two environments, each with one git-ignored file at the repo root (ADR 0012): **test**, the local
+Supabase stack (`.env.test`), and **prod**, the hosted project (`.env.prod`). `APP_ENV` picks the
+file; unset means test, and any value but `test` or `prod` is an error. Every part of a run (the
+browser, the server and its scripts, drizzle-kit, the seed, Vitest, Playwright, `preflight` and
+`check`) reads that one file through the loader in `scripts/env.ts`. Vite loads no env files of
+its own, so a `.env.local` or `.env` changes nothing; they are reported by `preflight` and
+`setup:local`, which tell you to rename them (`.env` to `.env.test`, `.env.local` to `.env.prod`).
+
 `npm run preflight` is the first step in any new clone or worktree, and safe to run again. It
-stops at the first problem (Node older than 24, Docker not running, the stack stopped, a `.env`
-with cloud values, or port 8787 or 5173 held by a server from another checkout) and prints the fix.
+stops at the first problem (Node older than 24, Docker not running, the stack stopped, a `.env.test`
+with prod values, or port 8787 or 5173 held by a server from another checkout) and prints the fix.
 Otherwise it runs `npm ci --ignore-scripts` when `node_modules` is missing or older than
-`package-lock.json`, and `npm run setup:local` when `.env` is missing. A missing or logged-out
+`package-lock.json`, and `npm run setup:local` when `.env.test` is missing. A missing or logged-out
 `gh` only warns. It doesn't check Claude skills: sessions need the `mattpocock-skills` plugin
 installed in your Claude config.
 
-`npm run setup:local` (ES256 signing key, starts the stack, writes `.env`, seeds the test user)
+`npm run setup:local` (ES256 signing key, starts the stack, writes `.env.test`, seeds the test user)
 starts the stack itself. It creates `supabase/signing_keys.json`, so on a
 fresh clone `npx supabase start` fails until `npm run setup:local` has run once; afterwards
 `npx supabase start` restarts the stack.
 
-It also writes the git-ignored `.env` from `npx supabase status`, with a random password for the
-test user (`.env.example` lists the names). An existing `.env` is kept; delete it to write a fresh
+It also writes the git-ignored `.env.test` from `npx supabase status`, with a random password for the
+test user (`.env.example` lists the names). An existing `.env.test` is kept; delete it to write a fresh
 one. Every checkout on this machine shares one local stack and one test user, so running it in a
 second checkout resets that user's password: only the checkout that ran it last
 logs in. When another checkout's tests fail with `Invalid login credentials`, rerun
-`npm run setup:local` there. Don't copy another checkout's `.env`.
+`npm run setup:local` there. Don't copy another checkout's `.env.test`.
 
 - `npm test` runs every workspace's tests against the local stack. `npm run test:coverage` does
   the same and writes `<workspace>/coverage/lcov.info` for `shared`, `server` and `web`.
@@ -58,8 +66,8 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
   Service times and Availability. Unset, the server uses its own zone and warns on startup.
-- `npm test`, `npm run e2e` and `npm run setup:local` refuse a `.env` whose `DATABASE_URL`,
-  `SUPABASE_URL` or `VITE_SUPABASE_URL` is not on the local stack, so they never touch cloud data.
+- `npm test`, `npm run e2e` and `npm run setup:local` refuse an env file whose `DATABASE_URL`,
+  `SUPABASE_URL` or `VITE_SUPABASE_URL` is not on the local stack, so they never touch prod data.
 
 ## CI and the quality gate
 
@@ -117,9 +125,9 @@ docker run --rm -v "$PWD:/usr/src" -e SONAR_TOKEN -e SONAR_HOST_URL=https://sona
 `SONAR_TOKEN` comes from your shell, never from a file in the repo. A local run analyzes the
 current branch. Only CI runs report on pull requests.
 
-## Cloud setup
+## Prod setup
 
-The cloud project is set up by hand in the Supabase dashboard (#81):
+The prod project (the hosted Supabase project) is set up by hand in the Supabase dashboard (#81):
 
 - **Auth:** Email provider on. Turn off "Allow new users to sign up" in Authentication → Sign In /
   Providers; the Email provider's own sign-up toggle is not enough. Create the single user in
@@ -128,7 +136,7 @@ The cloud project is set up by hand in the Supabase dashboard (#81):
   accepts only ES256 and RS256.
 - **Data API:** off. Only the server reaches Postgres, through Drizzle (ADR 0006).
 
-A cloud `.env` needs four names only:
+A `.env.prod` needs four names only:
 
 - `DATABASE_URL`: the **session pooler** string (Connect → Session pooler, port 5432). Use the
   session pooler only: the server's postgres.js client uses prepared statements, which the
@@ -139,9 +147,9 @@ A cloud `.env` needs four names only:
 - `VITE_SUPABASE_URL`: the same URL, for the browser.
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: the project's publishable key.
 
-Run `npm run db:migrate`, then `npm run seed -w server` (the shared Ingredient seed), against it.
-Do not run `npm test`, `npm run e2e` or `npm run setup:local` in a checkout whose `.env` holds
-cloud values; they refuse to.
+Run `npm run db:migrate`, then `npm run seed -w server` (the shared Ingredient seed), against it with `APP_ENV=prod`.
+Run it with `APP_ENV=prod` (for example `APP_ENV=prod npm run db:migrate`). Do not run `npm test`,
+`npm run e2e` or `npm run setup:local` with `APP_ENV=prod`; they refuse prod values.
 
 ## Working with agents
 

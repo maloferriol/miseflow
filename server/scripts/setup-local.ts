@@ -1,17 +1,18 @@
 // Prepares the local Supabase stack: an ES256 signing key that Hono's jwk() can verify,
-// the stack itself, a local .env, and the single test user (sign-ups are off, ADR 0008).
+// the stack itself, a local .env.test, and the single test user (sign-ups are off, ADR 0008).
 // Run from the repo root with `npm run setup:local`. Local development only.
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { envFileName, legacyEnvWarnings, loadEnvIntoProcess } from "../../scripts/env.ts";
 import { assertLocalEnv } from "../../scripts/local-only.ts";
 import { supabaseStartArgs } from "./supabase-start.ts";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const keysFile = fileURLToPath(new URL("../../supabase/signing_keys.json", import.meta.url));
-const envFile = fileURLToPath(new URL("../../.env", import.meta.url));
+const envFile = fileURLToPath(new URL("../../.env.test", import.meta.url));
 
 function supabase(...args: string[]) {
   execFileSync("npx", ["supabase", ...args], { cwd: repoRoot, stdio: "inherit" });
@@ -20,11 +21,19 @@ function supabase(...args: string[]) {
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value)
-    throw new Error(`${name} is not set in .env. Delete .env and rerun to write a fresh one.`);
+    throw new Error(
+      `${name} is not set in .env.test. Delete .env.test and rerun to write a fresh one.`,
+    );
   return value;
 }
 
-// An existing .env is kept as it is, but never one with cloud values: this seeds a test user.
+// setup:local writes the test environment only (ADR 0012).
+if (envFileName(process.env.APP_ENV) !== ".env.test")
+  throw new Error("npm run setup:local writes .env.test only. Unset APP_ENV, then rerun.");
+for (const warning of legacyEnvWarnings()) console.warn(`! ${warning}`);
+
+// An existing .env.test is kept as it is, but never one with prod values: this seeds a test user.
+if (existsSync(envFile)) loadEnvIntoProcess("test");
 assertLocalEnv("npm run setup:local");
 
 // 1. Signing key. The CLI only appends to an existing file, so start from an empty key set.
@@ -36,9 +45,9 @@ if (!existsSync(keysFile)) {
 // 2. The stack. A no-op when it is already running. CI leaves out the services its runs don't use.
 supabase(...supabaseStartArgs(process.env.SUPABASE_START_EXCLUDE));
 
-// 3. The local .env, from the running stack's values and a fresh random test user password.
+// 3. The local .env.test, from the running stack's values and a fresh random test user password.
 if (existsSync(envFile)) {
-  console.log("Keeping the existing .env.");
+  console.log("Keeping the existing .env.test.");
 } else {
   const status = JSON.parse(
     execFileSync("npx", ["supabase", "status", "-o", "json"], {
@@ -63,11 +72,11 @@ if (existsSync(envFile)) {
     `# Written by \`npm run setup:local\` for the local Supabase stack only.\n${lines.join("\n")}\n`,
     { mode: 0o600 },
   );
-  process.loadEnvFile(envFile);
-  console.log("Wrote .env for the local stack.");
+  loadEnvIntoProcess("test");
+  console.log("Wrote .env.test for the local stack.");
 }
 
-// 4. The test user, created confirmed. Re-running resets the password to the one in .env.
+// 4. The test user, created confirmed. Re-running resets the password to the one in .env.test.
 const admin = createClient(requireEnv("SUPABASE_URL"), requireEnv("SUPABASE_SECRET_KEY"), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -82,7 +91,7 @@ if (created.error?.code === "email_exists") {
   if (!user) throw new Error(`${email} exists but was not listed`);
   const updated = await admin.auth.admin.updateUserById(user.id, { password });
   if (updated.error) throw updated.error;
-  console.log(`Test user ${email} already existed; password reset from .env.`);
+  console.log(`Test user ${email} already existed; password reset from .env.test.`);
 } else if (created.error) {
   throw created.error;
 } else {

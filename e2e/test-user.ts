@@ -16,7 +16,7 @@ const adminClient = (env: NodeJS.ProcessEnv) =>
 
 function requireEnv(env: NodeJS.ProcessEnv, name: string): string {
   const value = env[name];
-  if (!value) throw new Error(`${name} is not set. Run npm run setup:local to write a local .env.`);
+  if (!value) throw new Error(`${name} is not set. Run npm run setup:local to write .env.test.`);
   return value;
 }
 

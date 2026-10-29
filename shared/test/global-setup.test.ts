@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import checkDatabase from "./global-setup.ts";
 
-// The global setup is the guard: it must refuse a cloud .env before it connects to anything.
+// The global setup is the guard: it must refuse prod values before it connects to anything.
 describe("test global setup", () => {
   afterEach(() => vi.unstubAllEnvs());
 
@@ -17,6 +17,8 @@ describe("test global setup", () => {
     expect((error as Error).message).toMatch(
       /only against the local Supabase stack.*aws-0-eu-north-1\.pooler\.supabase\.com/,
     );
+    expect((error as Error).message).toMatch(/prod/);
+    expect((error as Error).message).toMatch(/\.env\.test/);
     expect((error as Error).message).not.toContain("hunter2");
   });
 

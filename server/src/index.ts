@@ -1,3 +1,4 @@
+import "../../scripts/load-env.ts";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { createDb } from "./db.ts";

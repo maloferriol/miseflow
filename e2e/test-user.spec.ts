@@ -46,7 +46,7 @@ async function writeRecipe(user: TestUser) {
   return recipeId;
 }
 
-test("refuses a cloud .env before it connects", async () => {
+test("refuses prod values before it connects", async () => {
   await expect(
     createTestUser("test-user", { ...process.env, SUPABASE_URL: "https://abcdefgh.supabase.co" }),
   ).rejects.toThrow(

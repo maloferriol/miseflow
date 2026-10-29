@@ -133,7 +133,7 @@ describe("withMigrationSql", () => {
     const failing = () => Promise.reject(new Error(`connect ${url} failed: password secretpw`));
     const error = await withMigrationSql(url, failing).catch((e: Error) => e);
     expect(error).toBeInstanceOf(Error);
-    const message = (error as Error).message;
+    const message = error.message;
     expect(message).toContain("db.abcdefgh.supabase.co");
     expect(message).not.toContain("secretpw");
     expect(message).not.toContain("postgres://");

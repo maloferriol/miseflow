@@ -10,7 +10,7 @@ import {
   setWalkthroughAvailability,
 } from "../../test/walkthrough.ts";
 import { batchId } from "../plan/batch-rows.ts";
-import { readPlan, type PlanRead } from "../plan/replan.ts";
+import { readPlan, type PlanRead } from "../plan/read.ts";
 import { localParts } from "../plan/time.ts";
 import { dishes, stepEvents, taskPlacements } from "../schema.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";

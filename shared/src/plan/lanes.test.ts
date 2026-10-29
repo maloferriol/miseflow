@@ -9,7 +9,7 @@ import {
 } from "../../test/walkthrough.ts";
 import { getMutator, type Tx } from "../mutators/registry.ts";
 import { collapse, type LaneRow, laneTree } from "./lanes.ts";
-import { readPlan, type PlanRead } from "./replan.ts";
+import { readPlan, type PlanRead } from "./read.ts";
 
 const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
 const ownerId = crypto.randomUUID();

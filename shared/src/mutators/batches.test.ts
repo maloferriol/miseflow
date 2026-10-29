@@ -12,7 +12,8 @@ import {
 } from "../../test/walkthrough.ts";
 import { batchId, readMenuScale } from "../plan/batch-rows.ts";
 import { toPlanningModel } from "../plan/model.ts";
-import { loadPlanRows, readPlan } from "../plan/replan.ts";
+import { readPlan } from "../plan/read.ts";
+import { loadPlanRows } from "../plan/replan.ts";
 import { localParts, zonedMinute } from "../plan/time.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { batches, dishes, services, stepEvents, taskPlacements } from "../schema.ts";

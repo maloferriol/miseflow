@@ -10,7 +10,8 @@ import {
   setWalkthroughAvailability,
 } from "../../test/walkthrough.ts";
 import { batchId } from "../plan/batch-rows.ts";
-import { lockService, readPlan } from "../plan/replan.ts";
+import { readPlan } from "../plan/read.ts";
+import { lockService } from "../plan/replan.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import {
   batches,

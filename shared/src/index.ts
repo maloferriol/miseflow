@@ -18,6 +18,7 @@ export * from "./plan/batch-rows.ts";
 export * from "./plan/model.ts";
 export * from "./plan/diff.ts";
 export * from "./plan/reasons.ts";
+export * from "./plan/read.ts";
 export * from "./plan/replan.ts";
 export * from "./shopping/list.ts";
 export * from "./shopping/read.ts";

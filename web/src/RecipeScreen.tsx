@@ -1,23 +1,27 @@
-import { SERVINGS } from "@miseflow/shared/src/recipe/servings.ts";
+// The Recipe screen (ADR 0011): its hook, and the screen that renders its view with it and fills
+// the view's slots with the yield field, the Planning pass, the Step editors and Extract.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { fetchRecipe, mutate } from "./api.ts";
 import { ExtractToSubRecipe } from "./ExtractToSubRecipe.tsx";
 import { PlanningPass } from "./PlanningPass.tsx";
 import { recipeEdits } from "./recipe-edits.ts";
-import { amountText } from "./step-editor.ts";
+import {
+  liveSelection,
+  type Mode,
+  modeFromSearch,
+  searchWithMode,
+  toggleSelection,
+} from "./recipe-screen.ts";
+import { RecipeScreenView } from "./RecipeViews.tsx";
 import { StepEditor } from "./StepEditor.tsx";
 import { YieldField } from "./YieldField.tsx";
 
-type Mode = "write" | "plan";
-
-// Write or Plan, kept in the URL (&mode=plan) so a reload stays in it.
-function modeFromUrl(): Mode {
-  return new URLSearchParams(window.location.search).get("mode") === "plan" ? "plan" : "write";
-}
-
-// One Recipe: its name and servings, its Steps, and the ingredient list derived from them.
-export function RecipeScreen({ recipeId }: { recipeId: string }) {
+/**
+ * One Recipe, its mode (kept in the URL), the ticked Steps, and its edits. Only state, query,
+ * mutation and query-client hooks: no branches.
+ */
+export function useRecipeScreen(recipeId: string) {
   const queryClient = useQueryClient();
   const recipe = useQuery({
     queryKey: ["recipe", recipeId],
@@ -26,14 +30,8 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
   const [adding, setAdding] = useState(false);
   // Steps ticked for Extract to sub-recipe.
   const [selected, setSelected] = useState<string[]>([]);
-  const [mode, setMode] = useState(modeFromUrl);
-  const switchMode = (next: Mode) => {
-    const params = new URLSearchParams(window.location.search);
-    if (next === "plan") params.set("mode", "plan");
-    else params.delete("mode");
-    window.history.replaceState(null, "", `?${params}`);
-    setMode(next);
-  };
+  // Write or Plan, kept in the URL (&mode=plan) so a reload stays in it.
+  const [mode, setMode] = useState(() => modeFromSearch(window.location.search));
   // Each edit replays on a retry after a lost response, with its own ids (recipe-edits.ts).
   const edits = useMemo(() => recipeEdits(recipeId, mutate), [recipeId]);
   // After a failure too: the server may hold the edit though the response was lost (#127 B).
@@ -42,154 +40,45 @@ export function RecipeScreen({ recipeId }: { recipeId: string }) {
     await queryClient.invalidateQueries({ queryKey: ["recipes"] });
   };
 
-  const editRecipe = useMutation({
-    mutationFn: edits.editRecipe,
-    onSettled: refetch,
-  });
-  const moveStep = useMutation({
-    mutationFn: edits.moveStep,
-    onSettled: refetch,
-  });
-  const removeStep = useMutation({
-    mutationFn: edits.removeStep,
-    onSettled: refetch,
-  });
+  const editRecipe = useMutation({ mutationFn: edits.editRecipe, onSettled: refetch });
+  const moveStep = useMutation({ mutationFn: edits.moveStep, onSettled: refetch });
+  const removeStep = useMutation({ mutationFn: edits.removeStep, onSettled: refetch });
 
-  if (recipe.isPending) return <p>Loading…</p>;
-  if (recipe.isError) return <p role="alert">{recipe.error.message}</p>;
-  const { steps, ingredients } = recipe.data;
-  const lines = new Map(steps.flatMap((s) => s.lines).map((l) => [l.id, l]));
+  const stepIds = recipe.data?.steps.map((s) => s.id) ?? [];
+  return {
+    recipe,
+    mode,
+    onMode: (next: Mode) => {
+      window.history.replaceState(null, "", searchWithMode(window.location.search, next));
+      setMode(next);
+    },
+    selected: liveSelection(stepIds, selected),
+    onSelect: (stepId: string, checked: boolean) =>
+      setSelected((prev) => toggleSelection(prev, stepId, checked)),
+    onClearSelection: () => setSelected([]),
+    adding,
+    onAdding: setAdding,
+    editPending: editRecipe.isPending,
+    editError: editRecipe.error,
+    onEdit: (args: { name: string; servings: number | null }) => editRecipe.mutate(args),
+    movePending: moveStep.isPending,
+    moveError: moveStep.error,
+    onMove: (args: { stepId: string; afterStepId: string | null }) => moveStep.mutate(args),
+    removePending: removeStep.isPending,
+    removeError: removeStep.error,
+    onRemove: (stepId: string) => removeStep.mutate(stepId),
+  };
+}
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const name = String(data.get("name") ?? "").trim();
-    const servings = String(data.get("servings") ?? "").trim();
-    if (name) editRecipe.mutate({ name, servings: servings ? Number(servings) : null });
-  }
-
+export function RecipeScreen({ recipeId }: Readonly<{ recipeId: string }>) {
   return (
-    <section>
-      <h2>{recipe.data.name}</h2>
-      {/* Keyed on the Revision, so the fields show the saved values after each edit. */}
-      <form key={recipe.data.latestRevision} onSubmit={onSubmit}>
-        <label>
-          Recipe name <input name="name" defaultValue={recipe.data.name} maxLength={200} required />
-        </label>
-        <label>
-          Servings{" "}
-          <input
-            name="servings"
-            type="number"
-            min={SERVINGS.min}
-            max={SERVINGS.max}
-            step="any"
-            defaultValue={recipe.data.servings ?? ""}
-          />
-        </label>
-        <button type="submit" disabled={editRecipe.isPending}>
-          Save Recipe
-        </button>
-        {editRecipe.error && <p role="alert">{editRecipe.error.message}</p>}
-      </form>
-      <YieldField recipe={recipe.data} />
-
-      <div role="group" aria-label="Mode">
-        <button type="button" aria-pressed={mode === "write"} onClick={() => switchMode("write")}>
-          Write
-        </button>
-        <button type="button" aria-pressed={mode === "plan"} onClick={() => switchMode("plan")}>
-          Plan
-        </button>
-      </div>
-
-      {mode === "plan" ? (
-        <PlanningPass recipe={recipe.data} />
-      ) : (
-        <>
-          <h3>Steps</h3>
-          <ol aria-label="Steps">
-            {steps.map((step, index) => (
-              <li key={step.id}>
-                <input
-                  type="checkbox"
-                  aria-label={`Select Step ${index + 1}`}
-                  checked={selected.includes(step.id)}
-                  onChange={(e) =>
-                    setSelected((prev) =>
-                      e.target.checked ? [...prev, step.id] : prev.filter((id) => id !== step.id),
-                    )
-                  }
-                />
-                <StepEditor recipeId={recipeId} step={step} />
-                <button
-                  type="button"
-                  disabled={index === 0 || moveStep.isPending}
-                  onClick={() =>
-                    moveStep.mutate({
-                      stepId: step.id,
-                      afterStepId: steps[index - 2]?.id ?? null,
-                    })
-                  }
-                >
-                  Move up
-                </button>
-                <button
-                  type="button"
-                  disabled={index === steps.length - 1 || moveStep.isPending}
-                  onClick={() =>
-                    moveStep.mutate({
-                      stepId: step.id,
-                      afterStepId: steps[index + 1].id,
-                    })
-                  }
-                >
-                  Move down
-                </button>
-                <button
-                  type="button"
-                  disabled={removeStep.isPending}
-                  onClick={() => removeStep.mutate(step.id)}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ol>
-          {adding ? (
-            <StepEditor recipeId={recipeId} onClose={() => setAdding(false)} />
-          ) : (
-            <button type="button" onClick={() => setAdding(true)}>
-              Add Step
-            </button>
-          )}
-          <ExtractToSubRecipe
-            recipeId={recipeId}
-            stepIds={steps.map((s) => s.id)}
-            selected={selected.filter((id) => steps.some((s) => s.id === id))}
-            onDone={() => setSelected([])}
-          />
-          {(moveStep.error ?? removeStep.error) && (
-            <p role="alert">{(moveStep.error ?? removeStep.error)!.message}</p>
-          )}
-        </>
-      )}
-
-      <h3>Ingredients</h3>
-      <ul aria-label="Ingredients">
-        {ingredients.map((item) => {
-          const line = lines.get(item.lineId);
-          return (
-            <li key={item.lineId}>
-              {[amountText(item), item.wording].filter(Boolean).join(" ")}
-              {item.preparation && `, ${item.preparation}`}
-              {line?.ingredient &&
-                line.ingredient.name !== item.wording &&
-                ` (${line.ingredient.name})`}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <RecipeScreenView
+      {...useRecipeScreen(recipeId)}
+      renderYield={(recipe) => <YieldField recipe={recipe} />}
+      renderPlanningPass={(recipe) => <PlanningPass recipe={recipe} />}
+      renderStep={(step) => <StepEditor recipeId={recipeId} step={step} />}
+      renderNewStep={(onClose) => <StepEditor recipeId={recipeId} onClose={onClose} />}
+      renderExtract={(extract) => <ExtractToSubRecipe recipeId={recipeId} {...extract} />}
+    />
   );
 }

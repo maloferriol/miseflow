@@ -23,5 +23,7 @@ export const ownerOf = (task: { dish: { name: string } | null; batch: { label: s
   task.batch?.label ?? task.dish?.name;
 
 /** "18:20–18:40", with the end's day when it's another day ("21:50–22:00 (Fri)"). */
-export const taskTimes = (task: Pick<PlanTask, "start" | "end" | "endDate">, date: string) =>
-  `${task.start}–${task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`}`;
+export const taskTimes = (task: Pick<PlanTask, "start" | "end" | "endDate">, date: string) => {
+  const end = task.endDate === date ? task.end : task.end + ` (${shortDay(task.endDate)})`;
+  return `${task.start}–${end}`;
+};

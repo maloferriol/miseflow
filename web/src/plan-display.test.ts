@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dayHeading, ownerOf, shortDay, taskTimes } from "./plan-display.ts";
+import { dayHeading, ownerOf, shortDate, shortDay, taskTimes } from "./plan-display.ts";
 
 // A zone behind UTC, where midnight UTC is still the evening before, so formatting in the
 // browser's zone would show the day before.
@@ -24,6 +24,13 @@ describe("dayHeading", () => {
 describe("shortDay", () => {
   it("is the date's short weekday, in UTC", () => {
     expect(shortDay("2026-10-30")).toBe("Fri");
+  });
+});
+
+describe("shortDate", () => {
+  it("is the date's short weekday, day and short month, in UTC", () => {
+    expect(new Date("2026-10-29T00:00:00Z").getDate()).toBe(28);
+    expect(shortDate("2026-10-29")).toBe("Thu 29 Oct");
   });
 });
 

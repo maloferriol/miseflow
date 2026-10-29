@@ -6,7 +6,7 @@ function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value)
     throw new Error(
-      `${name} is not set. Set it in .env (npm run setup:local writes a local one; README: Cloud setup).`,
+      `${name} is not set. Set it in .env.test or .env.prod (npm run setup:local writes .env.test; README: Prod setup).`,
     );
   return value;
 }

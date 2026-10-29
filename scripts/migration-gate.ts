@@ -74,6 +74,26 @@ export function prodMigrationDecision(input: {
   return input.typed.trim() === input.ref ? { action: "confirmed" } : { action: "refused" };
 }
 
+/**
+ * The prod server's start-up check: reads what prod has applied and returns the refusal message, or
+ * undefined when the server may start. A failed read is rethrown without the driver's message,
+ * which can carry the connection string and so the database password.
+ */
+export async function prodStartupCheck(
+  sql: Query,
+  available: Migration[],
+): Promise<string | undefined> {
+  let applied: number[];
+  try {
+    applied = await readAppliedMigrations(sql);
+  } catch {
+    throw new Error(
+      "Could not read the applied migrations from prod. Check DATABASE_URL in .env.prod.",
+    );
+  }
+  return prodStartupProblem(pendingMigrations(available, applied));
+}
+
 /** For the server started with APP_ENV=prod: a message naming the pending migrations, or undefined. */
 export function prodStartupProblem(pending: string[]): string | undefined {
   if (pending.length === 0) return undefined;

@@ -151,6 +151,29 @@ A `.env.prod` needs four names only:
 - `VITE_SUPABASE_URL`: the same URL, for the browser.
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: the project's publishable key.
 
+`.env.prod` replaces the old `.env.local`. It is git-ignored, mode 600 (`chmod 600 .env.prod`) and
+kept only in the main checkout, never in a worktree.
+
+To rebuild it if it is lost:
+
+- `DATABASE_URL`: in the Supabase dashboard, Connect → Session pooler, copy the string. If you no
+  longer know the database password, reset it in Project Settings → Database and put the new one
+  into the string.
+- `SUPABASE_URL` and `VITE_SUPABASE_URL`: `https://<project-ref>.supabase.co`, the project ref
+  being in the dashboard URL.
+- `VITE_SUPABASE_PUBLISHABLE_KEY`: Project Settings → API Keys, the publishable key.
+
+### Using the app against prod
+
+```sh
+npm run dev:prod     # the API and the web app together, both reading .env.prod (APP_ENV=prod)
+```
+
+Signing in and saving then hit the prod project, so a saved Recipe lands in your real data. With
+`APP_ENV=prod` the server checks for pending migrations at startup and refuses to start while any
+are waiting, naming `npm run db:migrate:prod` as the fix. It never prints the database password.
+No automated test runs against prod.
+
 ### Migrating and seeding prod
 
 Prod is migrated and seeded on purpose, never by accident. After merging a PR that adds a

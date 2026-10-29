@@ -3,20 +3,9 @@ import { schedule } from "@miseflow/shared/src/scheduler/schedule.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMenu, fetchPlan, mutate, type Plan, type PlanTask } from "./api.ts";
 import { Gantt } from "./Gantt.tsx";
+import { dayHeading, ownerOf, taskTimes } from "./plan-display.ts";
 import { PrintedPlan } from "./PrintedPlan.tsx";
 import { quickFixes, troubleBadge } from "./quick-fixes.ts";
-
-// "Thursday 29 October", from a kitchen-zone date. Formatted in UTC, so the browser's own zone
-// can't move it to another day.
-function dayHeading(date: string) {
-  const at = new Date(`${date}T00:00:00Z`);
-  const part = (options: Intl.DateTimeFormatOptions) =>
-    at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
-  return `${part({ weekday: "long" })} ${part({ day: "numeric" })} ${part({ month: "long" })}`;
-}
-
-const shortDay = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
 
 function passive(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -24,15 +13,10 @@ function passive(minutes: number) {
   return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
 }
 
-// A Dish's name, or a Batch's label ("Chicken stock ×1.5 · for: Velouté, Beurre blanc").
-const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) =>
-  task.batch?.label ?? task.dish?.name;
-
 function TaskLine({ task, date }: { task: PlanTask; date: string }) {
-  const end = task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`;
   return (
     <li>
-      {task.start}–{end} · {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}
+      {taskTimes(task, date)} · {ownerOf(task)} · {task.steps.map((s) => s.text).join(", ")}
       {task.approximate && (
         <>
           {" "}

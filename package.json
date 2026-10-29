@@ -20,7 +20,9 @@
     "preflight": "node --experimental-strip-types scripts/preflight.ts",
     "check": "node --experimental-strip-types scripts/check.ts",
     "setup:local": "npm run setup:local -w server",
-    "db:migrate": "npm run db:migrate -w shared",
+    "db:migrate": "node --experimental-strip-types scripts/db-migrate.ts test",
+    "db:migrate:prod": "node --experimental-strip-types scripts/db-migrate.ts prod",
+    "db:seed:prod": "APP_ENV=prod npm run seed -w server",
     "e2e": "playwright test"
   },
   "engines": {

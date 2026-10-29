@@ -8,7 +8,7 @@ Needs Node 24+ and Docker.
 
 ```sh
 npm run preflight           # checks Node, Docker and ports; installs dependencies; writes .env.test
-npm run db:migrate          # drizzle-kit migrate; Supabase CLI migrations are not used
+npm run db:migrate          # drizzle-kit migrate against test (local only); Supabase CLI migrations are not used
 npm run seed -w server      # the shared Ingredient seed (ODbL); safe to run again
 npm run dev:server          # API on http://localhost:8787
 npm run dev:web             # web app on http://localhost:5173
@@ -147,9 +147,21 @@ A `.env.prod` needs four names only:
 - `VITE_SUPABASE_URL`: the same URL, for the browser.
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: the project's publishable key.
 
-Run `npm run db:migrate`, then `npm run seed -w server` (the shared Ingredient seed), against it with `APP_ENV=prod`.
-Run it with `APP_ENV=prod` (for example `APP_ENV=prod npm run db:migrate`). Do not run `npm test`,
-`npm run e2e` or `npm run setup:local` with `APP_ENV=prod`; they refuse prod values.
+### Migrating and seeding prod
+
+Prod is migrated and seeded on purpose, never by accident. After merging a PR that adds a
+migration, run, from the checkout that holds `.env.prod`:
+
+```sh
+npm run db:migrate:prod     # shows the prod project ref and the migrations waiting, asks you to type the ref back
+npm run db:seed:prod        # the shared Ingredient seed against prod (APP_ENV=prod); safe to run again
+```
+
+`db:migrate:prod` prints the project ref only (never `DATABASE_URL`, which holds the password),
+applies nothing until the typed ref matches, and says "Nothing pending" and exits when prod is up
+to date, so running it again is harmless. Plain `npm run db:migrate` only ever targets test: it
+refuses a `DATABASE_URL`, `SUPABASE_URL` or `VITE_SUPABASE_URL` that is not local. Do not run
+`npm test`, `npm run e2e` or `npm run setup:local` with `APP_ENV=prod`; they refuse prod values.
 
 ## Working with agents
 

@@ -1,9 +1,7 @@
 // The app shell's decisions (ADR 0011): which screen the link and the session open, and the link
 // that opening another view writes. Pure functions the hook and the view pass through.
 
-export type View =
-  "menu" | "catalog" | "recipes" | "recipe" | "availability" | "plan" | "today" | "shopping";
-const VIEWS: View[] = [
+const VIEWS = [
   "menu",
   "catalog",
   "recipes",
@@ -12,7 +10,10 @@ const VIEWS: View[] = [
   "plan",
   "today",
   "shopping",
-];
+] as const;
+
+/** A view the link can name. */
+export type View = (typeof VIEWS)[number];
 
 /**
  * The view a link's query string names: the Menu when it names none, or lacks the id it needs.

@@ -1,7 +1,7 @@
 import { formatInstant } from "@miseflow/shared/src/plan/time.ts";
 import { useEffect, useState } from "react";
 import type { Plan, PlanTask } from "./api.ts";
-import { dayHeading, ownerOf, taskTimes } from "./TodayScreen.tsx";
+import { dayHeading, ownerOf, taskTimes } from "./plan-display.ts";
 
 // The Plan as printed (ADR 0004, Printing): one section per day, each Task with an empty tick box
 // per Step (#88 owner decision 3), and when it was printed. Shown only in print (print.css).

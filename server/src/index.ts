@@ -2,27 +2,13 @@ import "../../scripts/load-env.ts";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { createDb } from "./db.ts";
-import {
-  prodStartupCheck,
-  readAvailableMigrations,
-  withMigrationSql,
-} from "../../scripts/migration-gate.ts";
+import { prodStartupRefusal } from "./prod-gate.ts";
 import { authConfigFromEnv, databaseUrlFromEnv, kitchenTimeZoneFromEnv } from "./env.ts";
 
-// Against prod the server refuses to start on an old schema (ADR 0012). Prints no connection string.
-if (process.env.APP_ENV === "prod") {
-  try {
-    const problem = await withMigrationSql(databaseUrlFromEnv(), (sql) =>
-      prodStartupCheck(sql, readAvailableMigrations()),
-    );
-    if (problem) {
-      console.error(problem);
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : "Could not check prod's migrations.");
-    process.exit(1);
-  }
+const refusal = await prodStartupRefusal(process.env.APP_ENV);
+if (refusal) {
+  console.error(refusal);
+  process.exit(1);
 }
 
 const app = createApp({

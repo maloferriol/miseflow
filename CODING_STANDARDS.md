@@ -33,6 +33,7 @@ Repo facts for anyone writing or reviewing code here. `code-review` checks the d
 
 ## CI
 
+- Before opening a PR, run `npm run check`: it runs CI's blocking steps locally and says whether CI would pass (README "Local development").
 - Run `npm run format` and `npm run lint` before committing. CI checks formatting first, then lint, and fails on any file Prettier would change or any ESLint error.
 - Lint rules live in `eslint.config.js`. Fix the code rather than switching a rule off. A disable comment names the rule and says on the line above why the rule is wrong there.
 - CI (`.github/workflows/ci.yml`) runs the format check, lint, typecheck, build, `npm run test:coverage`, the e2e and the SonarCloud gate, in three parallel jobs: `static`, `test` (the gate runs after the tests) and `e2e`. The e2e step is non-blocking: it retries once, reports failures and flaky tests, and uploads the HTML and JSON reports, but can't fail the `check` job. It becomes required after 20 runs in a row on `main` with no failure and no flaky test. The `main: require CI check` ruleset blocks merging until the `check` job passes; it passes only when every blocking job does, so a new blocking job goes in its `needs`.

@@ -4,10 +4,14 @@
 /** package.json "engines". */
 const minimumNodeMajor = 24;
 
+/** The major of `version`, as in `process.version` ("v24.11.0" is 24). */
+export function nodeMajor(version: string): number {
+  return Number(/^v?(\d+)\./.exec(version)?.[1]);
+}
+
 /** A message naming the problem and its fix, or undefined when `version` (as in `process.version`) is new enough. */
 export function nodeVersionProblem(version: string): string | undefined {
-  const major = Number(/^v?(\d+)\./.exec(version)?.[1]);
-  if (major >= minimumNodeMajor) return undefined;
+  if (nodeMajor(version) >= minimumNodeMajor) return undefined;
   return (
     `Node ${version} is too old: this repo needs ${minimumNodeMajor} or later. ` +
     `Install it, for example with \`nvm install ${minimumNodeMajor}\`.`

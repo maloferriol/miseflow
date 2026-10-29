@@ -1,9 +1,10 @@
 import { and, asc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
+import { requireVisibleIngredients } from "../catalog/visibility.ts";
 import { replanAffected } from "../plan/replan.ts";
 import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
 import { stepBodySchema, type StepToken } from "../recipe/tokens.ts";
-import { ingredientLines, ingredients, stepDependencies, steps } from "../schema.ts";
+import { ingredientLines, stepDependencies, steps } from "../schema.ts";
 import {
   ConflictError,
   defineMutator,
@@ -292,24 +293,4 @@ async function writeLines(
     if (!written.length)
       throw new ConflictError("An Ingredient line already belongs to another Step");
   }
-}
-
-// Each Ingredient must be a seed one or the caller's own live one; anything else reads as missing.
-async function requireVisibleIngredients(tx: Tx, ownerId: string, ids: string[]) {
-  const wanted = [...new Set(ids)];
-  if (!wanted.length) return;
-  const rows = await tx
-    .select({ id: ingredients.id })
-    .from(ingredients)
-    .where(
-      and(
-        inArray(ingredients.id, wanted),
-        or(
-          and(isNull(ingredients.ownerId), eq(ingredients.source, "seed")),
-          eq(ingredients.ownerId, ownerId),
-        ),
-        isNull(ingredients.deletedAt),
-      ),
-    );
-  if (rows.length !== wanted.length) throw new NotFoundError("Ingredient");
 }

@@ -2,7 +2,14 @@ import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { inRollback } from "../../test/db.ts";
 import { buildWalkthrough, SERVICE_DATE, SERVICE_TIME } from "../../test/walkthrough.ts";
-import { ingredients, recipes, services, shoppingCategories, shoppingMarks } from "../schema.ts";
+import {
+  conversions,
+  ingredients,
+  recipes,
+  services,
+  shoppingCategories,
+  shoppingMarks,
+} from "../schema.ts";
 import { readShoppingList } from "../shopping/read.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
@@ -273,6 +280,38 @@ describe("readShoppingList", () => {
       expect(
         list.categories.flatMap((c) => c.rows).some((r) => r.name.startsWith("all-purpose flour")),
       ).toBe(false);
+    });
+  });
+  it("uses a seed Conversion but not an ownerless one whose source is own", async () => {
+    await inRollback(async (tx) => {
+      const { ids, serviceId } = await shoppingWalkthrough(tx);
+      await tx.update(ingredients).set({ mainUnit: "g" }).where(eq(ingredients.id, ids.apple));
+      const conversion = (source: "seed" | "own") => ({
+        id: crypto.randomUUID(),
+        ownerId: null,
+        ingredientId: ids.apple,
+        fromUnit: "each",
+        toUnit: "g",
+        factor: "150",
+        source,
+      });
+      const apple = async () =>
+        (await readShoppingList(tx, ownerId, serviceId)).categories
+          .flatMap((c) => c.rows)
+          .find((r) => r.ingredientId === ids.apple);
+      await tx.insert(conversions).values(conversion("own"));
+      expect(await apple()).toMatchObject({
+        need: null,
+        unit: "g",
+        unconverted: [{ amount: 6, unit: null }],
+      });
+      await tx.insert(conversions).values(conversion("seed"));
+      expect(await apple()).toMatchObject({
+        need: 900,
+        unit: "g",
+        approximate: true,
+        unconverted: [],
+      });
     });
   });
 });

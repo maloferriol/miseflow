@@ -1,5 +1,6 @@
-import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { loadCatalog } from "../catalog/load.ts";
+import { visibleTo } from "../catalog/visibility.ts";
 import type { Tx } from "../mutators/define.ts";
 import { loadScaleRows } from "../plan/batch-rows.ts";
 import { deriveScale } from "../plan/model.ts";
@@ -25,14 +26,12 @@ export async function readShoppingList(
   const recipes = new Map<string, RecipeSnapshot>(rows.subRecipes);
   for (const d of rows.dishes) recipes.set(d.recipeId, d.recipe);
 
-  const visible = (table: typeof shoppingCategories | typeof conversions) =>
-    and(or(isNull(table.ownerId), eq(table.ownerId, ownerId)), isNull(table.deletedAt));
   const [catalog, categories, [settings], conversionRows, marks] = await Promise.all([
     loadCatalog(tx, ownerId),
     tx
       .select({ id: shoppingCategories.id, name: shoppingCategories.name })
       .from(shoppingCategories)
-      .where(visible(shoppingCategories))
+      .where(visibleTo(shoppingCategories, ownerId))
       .orderBy(asc(sql`${shoppingCategories.position} collate "C"`), asc(shoppingCategories.id)),
     tx
       .select({
@@ -53,7 +52,7 @@ export async function readShoppingList(
         source: conversions.source,
       })
       .from(conversions)
-      .where(visible(conversions))
+      .where(visibleTo(conversions, ownerId))
       .orderBy(asc(conversions.id)),
     tx
       .select({ ingredientId: shoppingMarks.ingredientId })

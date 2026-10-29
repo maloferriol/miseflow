@@ -1,9 +1,9 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { requireVisibleIngredient } from "../catalog/visibility.ts";
 import { findLiveService } from "../plan/replan.ts";
 import { shoppingMarks } from "../schema.ts";
 import { defineMutator } from "./define.ts";
-import { requireVisibleIngredient } from "./ingredients.ts";
 
 // Got ticks on a Service's Shopping list (ADR 0004: a single Got tick). A mark is one
 // `shopping_marks` row per Service and Ingredient; neither mutation changes a Task, so neither

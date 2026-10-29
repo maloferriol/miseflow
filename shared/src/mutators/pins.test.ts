@@ -10,7 +10,7 @@ import {
 } from "../../test/walkthrough.ts";
 import { batchId } from "../plan/batch-rows.ts";
 import { applyPlacements, withPin } from "../plan/pin.ts";
-import { readPlan, type PlanRead } from "../plan/replan.ts";
+import { readPlan, type PlanRead } from "../plan/read.ts";
 import { zonedMinute } from "../plan/time.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { taskKey } from "../scheduler/types.ts";

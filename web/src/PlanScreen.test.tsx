@@ -3,7 +3,7 @@ import { schedule } from "@miseflow/shared/src/scheduler/schedule.ts";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { saturdayMenu, saturdayPlan } from "../test/plan-fixture.ts";
+import { keys, SERVICE_ID, saturdayMenu, taskIn, troubledPlan } from "../test/walkthrough-plan.ts";
 import { renderQueryHook, renderWired } from "../test/render-view.tsx";
 import { fetchMenu, fetchPlan, mutate, type Plan } from "./api.ts";
 import { ganttCourses } from "./plan-screen.ts";
@@ -17,7 +17,7 @@ vi.mock("./api.ts", () => ({
 }));
 
 beforeEach(() => {
-  vi.mocked(fetchPlan).mockReset().mockResolvedValue(saturdayPlan);
+  vi.mocked(fetchPlan).mockReset().mockResolvedValue(troubledPlan);
   vi.mocked(fetchMenu).mockReset().mockResolvedValue(saturdayMenu);
   vi.mocked(mutate).mockReset().mockResolvedValue(undefined);
 });
@@ -47,31 +47,31 @@ function settleLater() {
   };
 }
 
-const duck = saturdayPlan.days[0].tasks[0];
-// Friday 17:30, half an hour after the duck's pinned start.
+const duck = taskIn(troubledPlan, keys.duck);
+// Half an hour after the duck's planned start.
 const later = duck.startMinute + 30;
 
 async function renderLoadedHook() {
-  const rendered = renderQueryHook(() => usePlanScreen("s-saturday"));
+  const rendered = renderQueryHook(() => usePlanScreen(SERVICE_ID));
   await waitFor(() => expect(rendered.result.current.courses).toBeDefined());
   return rendered;
 }
 
 describe("Plan screen hook", () => {
   it("returns the Service's Plan, then the Courses of its Menu for the Gantt chart", async () => {
-    const { result } = renderQueryHook(() => usePlanScreen("s-saturday"));
+    const { result } = renderQueryHook(() => usePlanScreen(SERVICE_ID));
     expect(result.current.plan.status).toBe("pending");
     expect(result.current.courses).toBeUndefined();
     await waitFor(() => expect(result.current.courses).toEqual(ganttCourses(saturdayMenu)));
-    expect(result.current.plan.data).toEqual(saturdayPlan);
-    expect(fetchPlan).toHaveBeenCalledWith("s-saturday");
+    expect(result.current.plan.data).toEqual(troubledPlan);
+    expect(fetchPlan).toHaveBeenCalledWith(SERVICE_ID);
     expect(fetchMenu).toHaveBeenCalledWith("m-dinner");
     expect(result.current).toMatchObject({ fixPending: false, fixError: null });
   });
 
   it("doesn't fetch a Menu while the Plan is loading", () => {
     vi.mocked(fetchPlan).mockReturnValue(new Promise(() => {}));
-    renderQueryHook(() => usePlanScreen("s-saturday"));
+    renderQueryHook(() => usePlanScreen(SERVICE_ID));
     expect(fetchMenu).not.toHaveBeenCalled();
   });
 
@@ -86,9 +86,7 @@ describe("Plan screen hook", () => {
   it("returns a fix as pending, then its error, and still reads the Plan and the Menu again", async () => {
     const save = settleLater();
     const { result } = await renderLoadedHook();
-    act(() =>
-      result.current.onFix({ name: "replanFromScratch", args: { serviceId: "s-saturday" } }),
-    );
+    act(() => result.current.onFix({ name: "replanFromScratch", args: { serviceId: SERVICE_ID } }));
     await waitFor(() => expect(result.current.fixPending).toBe(true));
     save.reject(new Error("replanFromScratch failed (500)"));
     await waitFor(() =>
@@ -108,24 +106,24 @@ describe("Plan screen hook", () => {
         [
           "pinTask",
           {
-            serviceId: "s-saturday",
+            serviceId: SERVICE_ID,
             owner: { kind: "dish", dishId: "d-duck" },
-            firstStepId: "s-sear",
+            firstStepId: "D2",
             start: later,
           },
         ],
       ]),
     );
     const replanned = applyPlacements(
-      saturdayPlan,
-      schedule(withPin(saturdayPlan.model, duck.key, later)),
+      troubledPlan,
+      schedule(withPin(troubledPlan.model, duck.key, later)),
     );
     await waitFor(() => expect(result.current.plan.data).toEqual(replanned));
     expect(fetchPlan).toHaveBeenCalledOnce();
 
     save.resolve();
     await waitFor(() => expect(fetchPlan).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(result.current.plan.data).toEqual(saturdayPlan));
+    await waitFor(() => expect(result.current.plan.data).toEqual(troubledPlan));
   });
 
   it("reads the Plan again only when the last of two pins settles", async () => {
@@ -184,7 +182,7 @@ describe("Plan screen hook", () => {
 });
 
 describe("Plan screen", () => {
-  const renderScreen = () => renderWired(<PlanScreen serviceId="s-saturday" />);
+  const renderScreen = () => renderWired(<PlanScreen serviceId={SERVICE_ID} />);
   const removeTarte = () => screen.getByRole("button", { name: "Remove Tarte tatin" });
 
   it("shows Loading…, then the Plan with its Gantt chart", async () => {
@@ -204,7 +202,7 @@ describe("Plan screen", () => {
 
   it("removes a Dish when the cook confirms, then reads the Plan again", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const calm: Plan = { ...saturdayPlan, unplaced: [] };
+    const calm: Plan = { ...troubledPlan, unplaced: [] };
     renderScreen();
     fireEvent.click(await screen.findByRole("button", { name: "Remove Tarte tatin" }));
     vi.mocked(fetchPlan).mockResolvedValue(calm);
@@ -231,9 +229,9 @@ describe("Plan screen", () => {
       [
         "giveCookMoreTime",
         {
-          serviceId: "s-saturday",
-          owner: { kind: "dish", dishId: "d-tarte" },
-          firstStepId: "s-pastry",
+          serviceId: SERVICE_ID,
+          owner: { kind: "batch", batchId: "b-pastry" },
+          firstStepId: "P1",
           overrideId: expect.any(String) as unknown,
         },
       ],
@@ -244,9 +242,7 @@ describe("Plan screen", () => {
     const save = settleLater();
     renderScreen();
     fireEvent.click(await screen.findByRole("button", { name: "Re-plan from scratch" }));
-    await waitFor(() =>
-      expect(sent()).toEqual([["replanFromScratch", { serviceId: "s-saturday" }]]),
-    );
+    await waitFor(() => expect(sent()).toEqual([["replanFromScratch", { serviceId: SERVICE_ID }]]));
     await waitFor(() => expect((removeTarte() as HTMLButtonElement).disabled).toBe(true));
 
     save.reject(new Error("replanFromScratch failed (500)"));

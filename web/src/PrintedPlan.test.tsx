@@ -2,7 +2,7 @@ import { formatInstant } from "@miseflow/shared/src/plan/time.ts";
 import { act, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderView } from "../test/render-view.tsx";
-import { walkthroughPlan } from "../test/today-plan.ts";
+import { walkthroughPlan } from "../test/walkthrough-plan.ts";
 import { dayHeading, ownerOf, taskTimes } from "./plan-display.ts";
 import { PrintedPlan } from "./PrintedPlan.tsx";
 
@@ -84,6 +84,6 @@ describe("Printed Plan", () => {
           .getAllByRole("listitem")
           .map((li) => li.textContent),
       ),
-    ).toContain("☐ Sweat the shallots");
+    ).toContain("☐ Dry-brine the duck");
   });
 });

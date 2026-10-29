@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   FRIDAY,
+  keys,
   pastryBehindPlan,
-  roastTheBones,
   SATURDAY,
   SERVICE_ID,
+  taskIn,
   THURSDAY,
   walkthroughPlan,
-} from "../test/today-plan.ts";
+} from "../test/walkthrough-plan.ts";
 import { createIntent } from "./intent.ts";
 import {
   boxChecked,
@@ -84,19 +85,23 @@ describe("shownDay", () => {
 });
 
 describe("wasDue", () => {
-  const behind = { dueAt: "19:30", dueDate: FRIDAY, holdsUp: [] };
+  // Friday's pastry, due once its 30 active minutes from 20:30 are up.
+  const behind = taskIn(pastryBehindPlan(), keys.pastry).behind!;
 
   it("is the time alone on the day it was due", () => {
-    expect(wasDue(behind, FRIDAY)).toBe("19:30");
+    expect(wasDue(behind, FRIDAY)).toBe("21:00");
   });
 
   it("names the day it was due when seen on another day", () => {
-    expect(wasDue(behind, SATURDAY)).toBe("Fri 19:30");
+    expect(wasDue(behind, SATURDAY)).toBe("Fri 21:00");
   });
 });
 
+// Saturday's stock, its first Step roasting the bones.
+const roastTheBones = taskIn(walkthroughPlan(), keys.stock);
+
 describe("boxChecked", () => {
-  const key = tickKey(roastTheBones, "st-roast");
+  const key = tickKey(roastTheBones, "S1");
 
   it("is the Step's own done when no tick is on its way", () => {
     expect(boxChecked(null, key, false)).toBe(false);
@@ -109,7 +114,7 @@ describe("boxChecked", () => {
   });
 
   it("ignores a tick on its way for another box", () => {
-    const other = tickKey(roastTheBones, "st-other");
+    const other = tickKey(roastTheBones, "S2");
     expect(boxChecked({ key: other, done: true }, key, false)).toBe(false);
   });
 });
@@ -118,7 +123,7 @@ describe("tickSave", () => {
   const anId: unknown = expect.any(String);
 
   it("ticks a Step with tickStep, for its Task's owner and this Service", () => {
-    const call = tickSave(SERVICE_ID, roastTheBones, "st-roast", true, createIntent());
+    const call = tickSave(SERVICE_ID, roastTheBones, "S1", true, createIntent());
     expect(call).toEqual({
       id: anId,
       name: "tickStep",
@@ -126,23 +131,23 @@ describe("tickSave", () => {
         eventId: anId,
         serviceId: SERVICE_ID,
         owner: { kind: "batch", batchId: "b-stock" },
-        stepId: "st-roast",
+        stepId: "S1",
       },
     });
     expect(call.args.eventId).not.toBe(call.id);
   });
 
   it("unticks a Step with untickStep", () => {
-    expect(tickSave(SERVICE_ID, roastTheBones, "st-roast", false, createIntent()).name).toBe(
+    expect(tickSave(SERVICE_ID, roastTheBones, "S1", false, createIntent()).name).toBe(
       "untickStep",
     );
   });
 
   it("keeps its ids on a retry of the same tick, and starts fresh ones for an untick", () => {
     const intent = createIntent();
-    const tick = tickSave(SERVICE_ID, roastTheBones, "st-roast", true, intent);
-    expect(tickSave(SERVICE_ID, roastTheBones, "st-roast", true, intent)).toEqual(tick);
-    const untick = tickSave(SERVICE_ID, roastTheBones, "st-roast", false, intent);
+    const tick = tickSave(SERVICE_ID, roastTheBones, "S1", true, intent);
+    expect(tickSave(SERVICE_ID, roastTheBones, "S1", true, intent)).toEqual(tick);
+    const untick = tickSave(SERVICE_ID, roastTheBones, "S1", false, intent);
     expect(untick.id).not.toBe(tick.id);
     expect(untick.args.eventId).not.toBe(tick.args.eventId);
   });

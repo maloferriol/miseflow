@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { saturdayMenu, saturdayPlan } from "../test/plan-fixture.ts";
+import {
+  at,
+  keys,
+  SATURDAY,
+  SERVICE_ID,
+  saturdayMenu,
+  taskIn,
+  troubledPlan,
+} from "../test/walkthrough-plan.ts";
 import { confirmedFix, ganttCourses, passive, pinTask, replanFromScratch } from "./plan-screen.ts";
 import { quickFixes } from "./quick-fixes.ts";
 
@@ -21,7 +29,11 @@ describe("ganttCourses", () => {
   it("is each Course with its Dishes, named by Recipe", () => {
     expect(ganttCourses(saturdayMenu)).toEqual([
       { id: "c-0", name: "Starter", dishes: [{ id: "d-veloute", name: "Velouté" }] },
-      { id: "c-1", name: "Main", dishes: [{ id: "d-duck", name: "Duck breast" }] },
+      {
+        id: "c-1",
+        name: "Main",
+        dishes: [{ id: "d-duck", name: "Duck breast with beurre blanc" }],
+      },
       { id: "c-2", name: "Dessert", dishes: [{ id: "d-tarte", name: "Tarte tatin" }] },
     ]);
   });
@@ -29,14 +41,15 @@ describe("ganttCourses", () => {
 
 describe("pinTask", () => {
   it("pins the Task by its owner and first Step at the new start", () => {
-    const duck = saturdayPlan.days[0].tasks[0];
-    expect(pinTask("s-saturday", duck, 29_889_660)).toEqual({
+    const duck = taskIn(troubledPlan, keys.duck);
+    const start = at(SATURDAY, 18);
+    expect(pinTask(SERVICE_ID, duck, start)).toEqual({
       name: "pinTask",
       args: {
-        serviceId: "s-saturday",
+        serviceId: SERVICE_ID,
         owner: { kind: "dish", dishId: "d-duck" },
-        firstStepId: "s-sear",
-        start: 29_889_660,
+        firstStepId: "D2",
+        start,
       },
     });
   });
@@ -44,15 +57,15 @@ describe("pinTask", () => {
 
 describe("replanFromScratch", () => {
   it("re-plans the Service", () => {
-    expect(replanFromScratch("s-saturday")).toEqual({
+    expect(replanFromScratch(SERVICE_ID)).toEqual({
       name: "replanFromScratch",
-      args: { serviceId: "s-saturday" },
+      args: { serviceId: SERVICE_ID },
     });
   });
 });
 
 describe("confirmedFix", () => {
-  const [moreTime, remove] = quickFixes("s-saturday", saturdayPlan.unplaced[0], () => "new-id");
+  const [moreTime, remove] = quickFixes(SERVICE_ID, troubledPlan.unplaced[0], () => "new-id");
 
   it("sends a fix with no question without asking", () => {
     const ask = vi.fn(() => false);

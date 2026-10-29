@@ -2,27 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { fetchPlan, mutate, type PlanTask } from "./api.ts";
 import { useIntent } from "./intent.ts";
+import { dayHeading, ownerOf, shortDay, taskTimes } from "./plan-display.ts";
 import { PrintedPlan } from "./PrintedPlan.tsx";
-
-// "Thursday 29 October", from a kitchen-zone date. Formatted in UTC, so the browser's own zone
-// can't move it to another day.
-export function dayHeading(date: string) {
-  const at = new Date(`${date}T00:00:00Z`);
-  const part = (options: Intl.DateTimeFormatOptions) =>
-    at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
-  return `${part({ weekday: "long" })} ${part({ day: "numeric" })} ${part({ month: "long" })}`;
-}
-
-const shortDay = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
-
-// A Dish's name, or a Batch's label ("Chicken stock ×1.5 · for: Velouté, Beurre blanc").
-export const ownerOf = (task: { dish: { name: string } | null; batch: { label: string } | null }) =>
-  task.batch?.label ?? task.dish?.name;
-
-/** "18:20–18:40", with the end's day when it's another day ("21:50–22:00 (Fri)"). */
-export const taskTimes = (task: PlanTask, date: string) =>
-  `${task.start}–${task.endDate === date ? task.end : `${task.end} (${shortDay(task.endDate)})`}`;
 
 // Today's date in the kitchen's zone ("2026-10-29"); en-CA formats as YYYY-MM-DD.
 const todayIn = (timeZone: string) =>

@@ -1,93 +1,72 @@
+// The Ingredient catalog (ADR 0011): each part's hook, and the part that renders its view with it.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import {
   type CatalogIngredient,
   fetchIngredients,
   fetchShoppingCategories,
   mutate,
 } from "./api.ts";
+import type { NewIngredientInput } from "./catalog-screen.ts";
+import { CatalogView, IngredientView, NewIngredientView } from "./CatalogViews.tsx";
 
-// The Ingredient catalog: search the seed and the kitchen's own Ingredients by name or alias,
-// create an Ingredient, and teach any Ingredient a new alias.
-export function CatalogScreen() {
+/** The search box's text and the Ingredients it finds. Only state and query hooks: no branches. */
+export function useCatalog() {
   const [query, setQuery] = useState("");
   const results = useQuery({
     queryKey: ["ingredients", query],
     queryFn: () => fetchIngredients(query),
   });
+  return { query, onQueryChange: setQuery, results };
+}
 
+export function CatalogScreen() {
+  const catalog = useCatalog();
   return (
-    <section>
-      <h2>Ingredient catalog</h2>
-      <label>
-        Search ingredients{" "}
-        <input
-          type="search"
-          maxLength={200}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </label>
-      {results.isError && <p role="alert">{results.error.message}</p>}
-      <ul aria-label="Ingredients">
-        {results.data?.map((ingredient) => (
-          <IngredientItem key={ingredient.id} ingredient={ingredient} />
-        ))}
-      </ul>
-      <NewIngredient onCreated={setQuery} />
-      <p>
-        <small>Ingredient seed: Open Food Facts contributors and USDA FoodData Central, ODbL</small>
-      </p>
-    </section>
+    <CatalogView
+      {...catalog}
+      renderIngredient={(ingredient) => <IngredientItem ingredient={ingredient} />}
+      renderNewIngredient={() => <NewIngredient onCreated={catalog.onQueryChange} />}
+    />
   );
 }
 
-function IngredientItem({ ingredient }: { ingredient: CatalogIngredient }) {
+/** Teaches one Ingredient an alias. Only query-client and mutation hooks: no branches. */
+export function useAddAlias(ingredientId: string) {
   const queryClient = useQueryClient();
   const addAlias = useMutation({
     mutationFn: async (name: string) =>
       mutate(crypto.randomUUID(), "addAlias", {
         aliasId: crypto.randomUUID(),
-        ingredientId: ingredient.id,
+        ingredientId,
         name,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ingredients"] }),
   });
-
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const name = String(new FormData(form).get("alias") ?? "").trim();
-    if (name) addAlias.mutate(name, { onSuccess: () => form.reset() });
-  }
-
-  return (
-    <li>
-      <strong>{ingredient.name}</strong> · {ingredient.shoppingCategory?.name ?? "No category"} ·{" "}
-      {ingredient.mainUnit ?? `kitchen ${ingredient.preferredKind ?? ""} unit`}
-      {ingredient.source === "own" && " · yours"}
-      {ingredient.aliases.length > 0 && <> · also: {ingredient.aliases.join(", ")}</>}
-      <form onSubmit={onSubmit}>
-        <label>
-          Alias <input name="alias" required />
-        </label>
-        <button type="submit" disabled={addAlias.isPending}>
-          Add alias
-        </button>
-        {addAlias.error && <p role="alert">{addAlias.error.message}</p>}
-      </form>
-    </li>
-  );
+  return {
+    addAliasPending: addAlias.isPending,
+    addAliasError: addAlias.error,
+    onAddAlias: (name: string, onAdded: () => void) =>
+      addAlias.mutate(name, { onSuccess: onAdded }),
+  };
 }
 
-function NewIngredient({ onCreated }: { onCreated: (name: string) => void }) {
+function IngredientItem({ ingredient }: Readonly<{ ingredient: CatalogIngredient }>) {
+  return <IngredientView {...useAddAlias(ingredient.id)} ingredient={ingredient} />;
+}
+
+/**
+ * Creates an Ingredient, then searches for it by its name. Only query, query-client and mutation
+ * hooks: no branches.
+ */
+export function useNewIngredient(onCreated: (name: string) => void) {
   const queryClient = useQueryClient();
   const categories = useQuery({
     queryKey: ["shopping-categories"],
     queryFn: fetchShoppingCategories,
   });
   const createIngredient = useMutation({
-    mutationFn: async (args: { name: string; preferredKind: string; shoppingCategoryId: string }) =>
+    mutationFn: async (args: NewIngredientInput) =>
       mutate(crypto.randomUUID(), "createIngredient", {
         ingredientId: crypto.randomUUID(),
         ...args,
@@ -97,52 +76,15 @@ function NewIngredient({ onCreated }: { onCreated: (name: string) => void }) {
       onCreated(name);
     },
   });
+  return {
+    categories,
+    createPending: createIngredient.isPending,
+    createError: createIngredient.error,
+    onCreate: (input: NewIngredientInput, onSaved: () => void) =>
+      createIngredient.mutate(input, { onSuccess: onSaved }),
+  };
+}
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const name = String(data.get("name") ?? "").trim();
-    if (!name) return;
-    createIngredient.mutate(
-      {
-        name,
-        preferredKind: String(data.get("preferredKind")),
-        shoppingCategoryId: String(data.get("shoppingCategoryId")),
-      },
-      { onSuccess: () => form.reset() },
-    );
-  }
-
-  return (
-    <form onSubmit={onSubmit}>
-      <h3>New Ingredient</h3>
-      <label>
-        Ingredient name <input name="name" required />
-      </label>
-      <label>
-        Kind of measure{" "}
-        <select name="preferredKind" defaultValue="mass">
-          <option value="mass">mass</option>
-          <option value="volume">volume</option>
-          <option value="count">count</option>
-        </select>
-      </label>
-      <label>
-        Shopping category{" "}
-        <select name="shoppingCategoryId" required>
-          {categories.data?.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="submit" disabled={createIngredient.isPending || !categories.data}>
-        Create Ingredient
-      </button>
-      {categories.error && <p role="alert">{categories.error.message}</p>}
-      {createIngredient.error && <p role="alert">{createIngredient.error.message}</p>}
-    </form>
-  );
+function NewIngredient({ onCreated }: Readonly<{ onCreated: (name: string) => void }>) {
+  return <NewIngredientView {...useNewIngredient(onCreated)} />;
 }

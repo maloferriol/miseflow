@@ -2,9 +2,11 @@ import type { AuthChangeEvent, AuthError, Session, User } from "@supabase/supaba
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWired } from "../test/render-view.tsx";
+import { walkthroughPlan } from "../test/walkthrough-plan.ts";
 import {
   fetchAvailability,
   fetchIngredients,
+  fetchMenu,
   fetchMenus,
   fetchPlan,
   fetchRecipe,
@@ -82,14 +84,15 @@ beforeEach(() => {
   for (const read of [
     fetchAvailability,
     fetchIngredients,
+    fetchMenu,
     fetchMenus,
-    fetchPlan,
     fetchRecipe,
     fetchShoppingCategories,
     fetchShoppingList,
   ])
     vi.mocked(read).mockReset().mockImplementation(never);
   vi.mocked(fetchRecipes).mockReset().mockResolvedValue([velouté]);
+  vi.mocked(fetchPlan).mockReset().mockResolvedValue(walkthroughPlan());
 });
 
 describe("the app shell", () => {
@@ -131,12 +134,21 @@ describe("the app shell", () => {
     [
       "/?view=plan&service=s-saturday",
       "the Service's Plan",
-      () => expect(fetchPlan).toHaveBeenCalledWith("s-saturday"),
+      () => {
+        expect(fetchPlan).toHaveBeenCalledWith("s-saturday");
+        // The Plan screen heads its Plan; only the Today checklist has a tab per prep day.
+        expect(screen.getByRole("heading", { name: /^Plan for/ })).toBeTruthy();
+        expect(screen.queryByRole("tablist", { name: "Prep days" })).toBeNull();
+      },
     ],
     [
       "/?view=today&service=s-saturday",
       "the Service's Plan for Today",
-      () => expect(fetchPlan).toHaveBeenCalledWith("s-saturday"),
+      () => {
+        expect(fetchPlan).toHaveBeenCalledWith("s-saturday");
+        expect(screen.getByRole("tablist", { name: "Prep days" })).toBeTruthy();
+        expect(screen.queryByRole("heading", { name: /^Plan for/ })).toBeNull();
+      },
     ],
     [
       "/?view=shopping&service=s-saturday",

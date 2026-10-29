@@ -2,15 +2,19 @@ import "../../scripts/load-env.ts";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { createDb } from "./db.ts";
-import postgres from "postgres";
-import { prodStartupCheck, readAvailableMigrations } from "../../scripts/migration-gate.ts";
+import {
+  prodStartupCheck,
+  readAvailableMigrations,
+  withMigrationSql,
+} from "../../scripts/migration-gate.ts";
 import { authConfigFromEnv, databaseUrlFromEnv, kitchenTimeZoneFromEnv } from "./env.ts";
 
 // Against prod the server refuses to start on an old schema (ADR 0012). Prints no connection string.
 if (process.env.APP_ENV === "prod") {
-  const sql = postgres(databaseUrlFromEnv(), { max: 1, connect_timeout: 10, onnotice: () => {} });
   try {
-    const problem = await prodStartupCheck(sql, readAvailableMigrations());
+    const problem = await withMigrationSql(databaseUrlFromEnv(), (sql) =>
+      prodStartupCheck(sql, readAvailableMigrations()),
+    );
     if (problem) {
       console.error(problem);
       process.exit(1);
@@ -18,8 +22,6 @@ if (process.env.APP_ENV === "prod") {
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Could not check prod's migrations.");
     process.exit(1);
-  } finally {
-    await sql.end();
   }
 }
 

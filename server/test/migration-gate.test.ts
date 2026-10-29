@@ -8,6 +8,7 @@ import {
   prodStartupProblem,
   readAppliedMigrations,
   readAvailableMigrations,
+  withMigrationSql,
 } from "../../scripts/migration-gate.ts";
 
 const available = [
@@ -117,5 +118,32 @@ describe("prodStartupCheck", () => {
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toMatch(/Could not read/);
     expect((error as Error).message).not.toContain("secretpw");
+  });
+});
+
+describe("withMigrationSql", () => {
+  const url = "postgres://postgres:secretpw@db.abcdefgh.supabase.co:5432/postgres";
+
+  it("hands the work a client and returns its result", async () => {
+    // Nothing connects until a query runs, so a reachable server is not needed.
+    expect(await withMigrationSql(url, () => Promise.resolve(42))).toBe(42);
+  });
+
+  it("names only the host when the work fails, never the driver message or password", async () => {
+    const failing = () => Promise.reject(new Error(`connect ${url} failed: password secretpw`));
+    const error = await withMigrationSql(url, failing).catch((e: Error) => e);
+    expect(error).toBeInstanceOf(Error);
+    const message = (error as Error).message;
+    expect(message).toContain("db.abcdefgh.supabase.co");
+    expect(message).not.toContain("secretpw");
+    expect(message).not.toContain("postgres://");
+  });
+
+  it("does not echo an unparseable URL", async () => {
+    const error = await withMigrationSql("not a url secretpw", () => Promise.resolve(1)).catch(
+      (e: Error) => e,
+    );
+    // Either it works lazily or it fails safely; a failure must not carry the text.
+    if (error instanceof Error) expect(error.message).not.toContain("secretpw");
   });
 });

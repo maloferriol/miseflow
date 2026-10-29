@@ -1,7 +1,8 @@
-// The decisions behind `npm run db:migrate:prod` (scripts/db-migrate-prod.ts) and the prod server's
+// The decisions behind `npm run db:migrate:prod` (scripts/db-migrate.ts) and the prod server's
 // start-up gate (#209). The scripts gather the facts (journal, applied rows, typed text); these decide.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import postgres from "postgres";
 
 /** One drizzle journal entry: `tag` is the migration's name, `when` its folderMillis. */
 export type Migration = { tag: string; when: number };
@@ -74,6 +75,15 @@ export function prodMigrationDecision(input: {
   return input.typed.trim() === input.ref ? { action: "confirmed" } : { action: "refused" };
 }
 
+/** For the server started with APP_ENV=prod: a message naming the pending migrations, or undefined. */
+export function prodStartupProblem(pending: string[]): string | undefined {
+  if (pending.length === 0) return undefined;
+  return (
+    `Prod has ${pending.length} migration(s) waiting: ${pending.join(", ")}. ` +
+    "Run `npm run db:migrate:prod`, then start the server again."
+  );
+}
+
 /**
  * The prod server's start-up check: reads what prod has applied and returns the refusal message, or
  * undefined when the server may start. A failed read is rethrown without the driver's message,
@@ -94,11 +104,20 @@ export async function prodStartupCheck(
   return prodStartupProblem(pendingMigrations(available, applied));
 }
 
-/** For the server started with APP_ENV=prod: a message naming the pending migrations, or undefined. */
-export function prodStartupProblem(pending: string[]): string | undefined {
-  if (pending.length === 0) return undefined;
-  return (
-    `Prod has ${pending.length} migration(s) waiting: ${pending.join(", ")}. ` +
-    "Run `npm run db:migrate:prod`, then start the server again."
-  );
+/**
+ * Runs `fn` with a one-connection postgres.js client and always closes it. A failure is rethrown
+ * naming only the database host: the driver's message can carry the connection string and so the
+ * password.
+ */
+export async function withMigrationSql<T>(url: string, fn: (sql: Query) => Promise<T>): Promise<T> {
+  let sql: ReturnType<typeof postgres> | undefined;
+  try {
+    sql = postgres(url, { max: 1, connect_timeout: 10, onnotice: () => {} });
+    return await fn(sql as unknown as Query);
+  } catch {
+    const host = URL.canParse(url) ? new URL(url).host : "an unparseable URL";
+    throw new Error(`Could not read the applied migrations from ${host}. Check DATABASE_URL.`);
+  } finally {
+    await sql?.end().catch(() => {});
+  }
 }

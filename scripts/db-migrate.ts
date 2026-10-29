@@ -5,7 +5,6 @@
 import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
-import postgres from "postgres";
 import { loadEnvIntoProcess } from "./env.ts";
 import { assertLocalEnv } from "./local-only.ts";
 import {
@@ -14,6 +13,7 @@ import {
   prodMigrationDecision,
   readAppliedMigrations,
   readAvailableMigrations,
+  withMigrationSql,
 } from "./migration-gate.ts";
 
 const target = process.argv[2];
@@ -47,13 +47,9 @@ try {
     throw new Error("DATABASE_URL and SUPABASE_URL must be set in .env.prod.");
   const ref = projectRef(supabaseUrl);
 
-  const sql = postgres(url, { max: 1, connect_timeout: 10, onnotice: () => {} });
-  let pending: string[];
-  try {
-    pending = pendingMigrations(readAvailableMigrations(), await readAppliedMigrations(sql));
-  } finally {
-    await sql.end();
-  }
+  const pending = await withMigrationSql(url, async (sql) =>
+    pendingMigrations(readAvailableMigrations(), await readAppliedMigrations(sql)),
+  );
 
   console.log(`Prod project: ${ref}`);
   if (prodMigrationDecision({ ref, pending }).action === "nothing-to-do") {

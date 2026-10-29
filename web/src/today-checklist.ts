@@ -52,12 +52,13 @@ export type Ticking = { key: string; done: boolean };
 export const boxChecked = (ticking: Ticking | null, key: string, done: boolean) =>
   ticking?.key === key ? ticking.done : done;
 
+/** The cook ticking (`done`) or unticking one Step of a Task. */
+export type Tick = { task: Pick<PlanTask, "key" | "owner">; stepId: string; done: boolean };
+
 /** Ticks or unticks one Step, with one mutation and event id per intended tick (ADR 0007). */
 export function tickSave(
   serviceId: string,
-  task: Pick<PlanTask, "key" | "owner">,
-  stepId: string,
-  done: boolean,
+  { task, stepId, done }: Tick,
   intent: Pick<Intent, "id">,
 ): MutationCall {
   const key = `${tickKey(task, stepId)}:${done}`;

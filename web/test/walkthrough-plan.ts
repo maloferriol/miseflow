@@ -233,7 +233,7 @@ export const withoutFriday = (m: PlanningModel): PlanningModel => ({
 });
 
 /** A Step ticked done: the Task it's in, the Step, and when. */
-export type Tick = { key: TaskKey; stepId: string; at: Minute };
+export type DoneStep = { key: TaskKey; stepId: string; at: Minute };
 
 const describeTask = (key: TaskKey) => {
   const info = infoOf(key);
@@ -284,7 +284,7 @@ const clock = (minute: Minute) => {
  */
 export function planOf(
   m: PlanningModel = model,
-  { ticks = [], now = at("2026-10-26", 13) }: { ticks?: Tick[]; now?: Minute } = {},
+  { ticks = [], now = at("2026-10-26", 13) }: { ticks?: DoneStep[]; now?: Minute } = {},
 ): Plan {
   const doneAt = new Map(ticks.map((t) => [`${t.key}:${t.stepId}`, t.at]));
   const ticked: PlanningModel = {
@@ -396,7 +396,7 @@ export function planOf(
 }
 
 /** Thursday 22:00: the cook has dry-brined the duck, on time. */
-export const brined: Tick = { key: keys.brine, stepId: "D1", at: at(THURSDAY, 22) };
+export const brined: DoneStep = { key: keys.brine, stepId: "D1", at: at(THURSDAY, 22) };
 
 /**
  * The walkthrough's Plan read on Thursday at 22:05, changed by `change`: every Task placed, the

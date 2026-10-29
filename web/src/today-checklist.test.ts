@@ -123,7 +123,11 @@ describe("tickSave", () => {
   const anId: unknown = expect.any(String);
 
   it("ticks a Step with tickStep, for its Task's owner and this Service", () => {
-    const call = tickSave(SERVICE_ID, roastTheBones, "S1", true, createIntent());
+    const call = tickSave(
+      SERVICE_ID,
+      { task: roastTheBones, stepId: "S1", done: true },
+      createIntent(),
+    );
     expect(call).toEqual({
       id: anId,
       name: "tickStep",
@@ -138,16 +142,18 @@ describe("tickSave", () => {
   });
 
   it("unticks a Step with untickStep", () => {
-    expect(tickSave(SERVICE_ID, roastTheBones, "S1", false, createIntent()).name).toBe(
-      "untickStep",
-    );
+    expect(
+      tickSave(SERVICE_ID, { task: roastTheBones, stepId: "S1", done: false }, createIntent()).name,
+    ).toBe("untickStep");
   });
 
   it("keeps its ids on a retry of the same tick, and starts fresh ones for an untick", () => {
     const intent = createIntent();
-    const tick = tickSave(SERVICE_ID, roastTheBones, "S1", true, intent);
-    expect(tickSave(SERVICE_ID, roastTheBones, "S1", true, intent)).toEqual(tick);
-    const untick = tickSave(SERVICE_ID, roastTheBones, "S1", false, intent);
+    const tick = tickSave(SERVICE_ID, { task: roastTheBones, stepId: "S1", done: true }, intent);
+    expect(tickSave(SERVICE_ID, { task: roastTheBones, stepId: "S1", done: true }, intent)).toEqual(
+      tick,
+    );
+    const untick = tickSave(SERVICE_ID, { task: roastTheBones, stepId: "S1", done: false }, intent);
     expect(untick.id).not.toBe(tick.id);
     expect(untick.args.eventId).not.toBe(tick.args.eventId);
   });

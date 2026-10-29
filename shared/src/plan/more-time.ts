@@ -1,11 +1,11 @@
 import { schedule } from "../scheduler/schedule.ts";
+import { ceilToGrid, floorToGrid, GRID, type TaskShape, taskShape } from "../task/shape.ts";
 import { fits, normalize, subtract, type Timeline } from "../scheduler/timeline.ts";
 import {
   type Interval,
   type Minute,
   type Plan,
   type TaskKey,
-  type TaskSpec,
   taskKey,
 } from "../scheduler/types.ts";
 import { type Hours, type PlanRows, toPlanningModel } from "./model.ts";
@@ -26,29 +26,9 @@ export type OverrideSearch =
   | { kind: "none"; runs: number }
   | { kind: "capped"; runs: number };
 
-const GRID = 5;
 const DAY = 1440;
 /** The most full `schedule()` runs one search makes past the base run (#121). */
 export const MAX_TRIALS = 50;
-const PLACEHOLDER_ACTIVE = 10;
-const roundUp = (minutes: number) => Math.ceil(minutes / GRID) * GRID;
-
-// A Task's active stretches and length, as the scheduler counts them (a Step with no duration is 10 active).
-function shapeOf(spec: TaskSpec): {
-  duration: number;
-  stretches: { offset: number; minutes: number }[];
-} {
-  let offset = 0;
-  const stretches = [];
-  for (const s of spec.steps) {
-    const passive = s.passiveMinutes === null ? 0 : roundUp(s.passiveMinutes);
-    const unknown = s.activeMinutes === null && passive === 0;
-    const active = unknown ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0);
-    if (active > 0) stretches.push({ offset, minutes: active });
-    offset += active + passive;
-  }
-  return { duration: offset, stretches };
-}
 
 // One date of the searched window: its hours now, each minute of day as an instant, the free time of
 // every other date less the other placements, and how much of that lies in the window.
@@ -106,14 +86,14 @@ function* candidates(days: Day[]): Generator<Candidate> {
 // Whether the Task's active stretches fit `free` at a start on the grid in `[lo, hi]` that reaches
 // into `range`: a start that fits without it would have placed the Task already.
 function fitsAround(
-  task: ReturnType<typeof shapeOf>,
+  task: TaskShape,
   free: Timeline,
   range: Interval,
   lo: Minute,
   hi: Minute,
 ): boolean {
   for (
-    let start = Math.min(hi, Math.floor(range.end / GRID) * GRID);
+    let start = Math.min(hi, floorToGrid(range.end));
     start >= Math.max(lo, range.start - task.duration);
     start -= GRID
   )
@@ -142,21 +122,21 @@ export function smallestOverride(rows: PlanRows, timeZone: string, key: TaskKey)
   if (!unplaced || unplaced.reason.kind === "WindowTooTight") return none;
   const window = unplaced.reason.searched;
   const specs = new Map(model.tasks.map((t) => [taskKey(t.owner, t.steps[0].stepId), t]));
-  const task = shapeOf(specs.get(key)!);
-  const lo = Math.ceil(window.start / GRID) * GRID;
-  const hi = Math.floor((window.end - task.duration) / GRID) * GRID;
+  const task = taskShape(specs.get(key)!.steps);
+  const lo = ceilToGrid(window.start);
+  const hi = floorToGrid(window.end - task.duration);
   if (hi < lo) return none;
 
   // Every other placement's active time, where it is now.
   const taken: Interval[] = base.placements.flatMap((p) =>
-    shapeOf(specs.get(p.key)!).stretches.map((s) => ({
+    taskShape(specs.get(p.key)!.steps).stretches.map((s) => ({
       start: p.start + s.offset,
       end: p.start + s.offset + s.minutes,
     })),
   );
   const withoutTaken = (free: Timeline) =>
     taken.reduce((left, t) => subtract(left, t.start, t.end), free);
-  const active = task.stretches.reduce((n, s) => n + s.minutes, 0);
+  const active = task.activeMinutes;
   const inWindow = (iv: Interval) =>
     Math.max(0, Math.min(iv.end, window.end) - Math.max(iv.start, window.start));
 

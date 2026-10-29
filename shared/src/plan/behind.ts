@@ -1,3 +1,4 @@
+import { dueOffset } from "../task/shape.ts";
 import type { Minute, TaskKey } from "../scheduler/types.ts";
 import type { TaskInfo } from "./model.ts";
 import { stepKey, type StepState } from "./progress.ts";
@@ -31,7 +32,7 @@ export function behindTasks(input: {
   const out = new Map<TaskKey, Behind>();
   for (const [key, start] of startOf) {
     const task = tasks.get(key)!;
-    const dueAt = start + task.activeMinutes + task.passiveMinutes - task.trailingPassiveMinutes;
+    const dueAt = start + dueOffset(task);
     if (isDone(task) || !(now > dueAt)) continue;
     const seen = new Set<TaskKey>();
     const queue = [...(successors.get(key) ?? [])];

@@ -1,4 +1,4 @@
-# Prettier also skips what .gitignore lists (node_modules, dist, coverage, .env, reports).
+# Prettier also skips what .gitignore lists (node_modules, dist, coverage, .env.test, .env.prod, reports).
 
 # Hand-wrapped prose and tables.
 *.md

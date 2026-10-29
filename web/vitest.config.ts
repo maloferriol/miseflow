@@ -5,6 +5,8 @@ import { coverage } from "../scripts/coverage.ts";
 // tests' `*.test.tsx` run under jsdom with Testing Library. The Playwright e2e is the only test in a real browser.
 // Source: https://vitest.dev/guide/projects
 export default defineConfig({
+  // Vite loads no env files of its own (ADR 0012); Vitest's "test" mode would otherwise read .env.test.
+  envDir: false,
   test: {
     coverage,
     projects: [

@@ -1,10 +1,11 @@
 // Signs in the local test user and prints only the access token, for curl:
 //   TOKEN=$(npm run -s token -w server)
+import "../../scripts/load-env.ts";
 import { createClient } from "@supabase/supabase-js";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set. Run npm run setup:local to write a local .env.`);
+  if (!value) throw new Error(`${name} is not set. Run npm run setup:local to write .env.test.`);
   return value;
 }
 

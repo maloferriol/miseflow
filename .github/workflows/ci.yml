@@ -54,7 +54,7 @@ jobs:
       - uses: ./.github/actions/install
 
       # The tests run against the local Supabase stack, as on a laptop: signing key, stack,
-      # .env and test user, then the schema.
+      # .env.test and test user, then the schema.
       - run: npm run setup:local
       - run: npm run db:migrate
       - run: npm run test:coverage

@@ -16,12 +16,16 @@ import {
   type CheckGroup,
   type RunStep,
 } from "./check-steps.ts";
+import { envFileName } from "./env.ts";
 import { dependenciesNeedInstall } from "./preflight-checks.ts";
 
 const repoDir = fileURLToPath(new URL("..", import.meta.url));
 
 let groups: CheckGroup[];
 try {
+  // CI's checks run on the test environment (.env.test), so check does too (ADR 0012).
+  if (envFileName(process.env.APP_ENV) !== ".env.test")
+    throw new Error("npm run check runs on .env.test only. Unset APP_ENV, then rerun.");
   const installedAt = statSync(`${repoDir}node_modules/.package-lock.json`, {
     throwIfNoEntry: false,
   })?.mtimeMs;

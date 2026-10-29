@@ -1,9 +1,8 @@
-import { existsSync } from "node:fs";
 import { defineConfig } from "drizzle-kit";
+import { loadEnvIntoProcess } from "../scripts/env.ts";
 
-// Local development keeps its values in the repo root's git-ignored .env.
-const rootEnv = new URL("../.env", import.meta.url);
-if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
+// One env file for the whole run, picked by APP_ENV (ADR 0012).
+loadEnvIntoProcess();
 
 export default defineConfig({
   dialect: "postgresql",

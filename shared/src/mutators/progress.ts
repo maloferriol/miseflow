@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { ownerSchema } from "../task/owner.ts";
 import { lockService, replan } from "../plan/replan.ts";
 import { batches, courses, dishes, stepEvents, steps } from "../schema.ts";
 import { defineMutator, NotFoundError, type MutatorContext, type Tx } from "./define.ts";
@@ -7,11 +8,12 @@ import { defineMutator, NotFoundError, type MutatorContext, type Tx } from "./de
 // Step progress (#88): a tick appends `done`, an untick appends `undone` to the append-only
 // `step_events` (ADR 0010: a Step's state is its latest event), then this Service is re-planned.
 
-const owner = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("dish"), dishId: z.uuid() }),
-  z.strictObject({ kind: z.literal("batch"), batchId: z.uuid() }),
-]);
-const args = z.strictObject({ eventId: z.uuid(), serviceId: z.uuid(), owner, stepId: z.uuid() });
+const args = z.strictObject({
+  eventId: z.uuid(),
+  serviceId: z.uuid(),
+  owner: ownerSchema,
+  stepId: z.uuid(),
+});
 type Args = z.infer<typeof args>;
 
 // The Step's Recipe, when the owner is live in this Service: a Dish on a live Course of its Menu,

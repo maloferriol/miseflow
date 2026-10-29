@@ -1,6 +1,12 @@
 import { stepPlainText } from "../recipe/planning.ts";
 import { conflictsOf, schedule } from "../scheduler/schedule.ts";
-import type { Conflict, PlanningModel, TaskKey, UnplacedReason } from "../scheduler/types.ts";
+import type {
+  Conflict,
+  Owner,
+  PlanningModel,
+  TaskKey,
+  UnplacedReason,
+} from "../scheduler/types.ts";
 import type { Tx } from "../mutators/define.ts";
 import { formatFactor, toBatchRead, type BatchRead } from "./batches.ts";
 import { behindTasks } from "./behind.ts";
@@ -16,7 +22,7 @@ import { formatInstant, formatMinuteOfDay, type LocalDate, localParts } from "./
 export type PlanTask = {
   key: TaskKey;
   /** What `tickStep` takes. */
-  owner: { kind: "dish"; dishId: string } | { kind: "batch"; batchId: string };
+  owner: Owner;
   /** null on a Batch's Task. */
   dish: { id: string; name: string } | null;
   batch: { id: string; label: string } | null;

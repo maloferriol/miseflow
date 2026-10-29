@@ -1,7 +1,15 @@
+import "../../scripts/load-env.ts";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { createDb } from "./db.ts";
+import { prodStartupRefusal } from "./prod-gate.ts";
 import { authConfigFromEnv, databaseUrlFromEnv, kitchenTimeZoneFromEnv } from "./env.ts";
+
+const refusal = await prodStartupRefusal(process.env.APP_ENV);
+if (refusal) {
+  console.error(refusal);
+  process.exit(1);
+}
 
 const app = createApp({
   auth: authConfigFromEnv(),

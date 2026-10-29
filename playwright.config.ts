@@ -1,16 +1,16 @@
-import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+import { loadEnvIntoProcess } from "./scripts/env.ts";
 import { pickE2ePorts } from "./scripts/e2e-ports.ts";
 import { assertLocalEnv } from "./scripts/local-only.ts";
 
-// Local development keeps its values in the repo root's git-ignored .env.
-if (existsSync(".env")) process.loadEnvFile(".env");
-// Refuse a cloud .env before either server starts.
+// One env file for the whole run, picked by APP_ENV (ADR 0012).
+loadEnvIntoProcess();
+// Refuse prod values before either server starts.
 assertLocalEnv("npm run e2e");
 // The runner loads this config first, picks free ports and marks this run's e2e users with its
 // pid, so another worktree's run leaves them alone. The workers, which inherit its env, read both
 // back: Playwright forks them with `env: { ...process.env }` (ProcessHost.startRunner in
-// node_modules/playwright/lib/runner/index.js, 1.64). Ports from .env or the shell never count.
+// node_modules/playwright/lib/runner/index.js, 1.64). Ports from the env file or the shell never count.
 if (!process.env.E2E_RUN_PID) {
   process.env.E2E_RUN_PID = `${process.pid}`;
   delete process.env.E2E_API_PORT;

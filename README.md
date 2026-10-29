@@ -7,32 +7,44 @@ A software to manage your cooking: recipes, ingredients, and meal prep workflow.
 Needs Node 24+ and Docker.
 
 ```sh
-npm run preflight           # checks Node, Docker and ports; installs dependencies; writes .env
-npm run db:migrate          # drizzle-kit migrate; Supabase CLI migrations are not used
+npm run preflight           # checks Node, Docker and ports; installs dependencies; writes .env.test
+npm run db:migrate          # drizzle-kit migrate against test (local only); Supabase CLI migrations are not used
 npm run seed -w server      # the shared Ingredient seed (ODbL); safe to run again
 npm run dev:server          # API on http://localhost:8787
 npm run dev:web             # web app on http://localhost:5173
 ```
 
+Two environments, each with one git-ignored file at the repo root (ADR 0012): **test**, the local
+Supabase stack (`.env.test`), and **prod**, the hosted project (`.env.prod`). `APP_ENV` picks the
+file; unset means test, and any value but `test` or `prod` is an error. Every part of a run (the
+browser, the server and its scripts, drizzle-kit, the seed, Vitest, Playwright, `preflight` and
+`check`) reads that one file through the loader in `scripts/env.ts`. Vite loads no env files of
+its own, so a `.env.local` or `.env` changes nothing; they are reported by `preflight` and
+`setup:local`, which tell you to rename them (`.env` to `.env.test`, `.env.local` to `.env.prod`).
+
 `npm run preflight` is the first step in any new clone or worktree, and safe to run again. It
-stops at the first problem (Node older than 24, Docker not running, the stack stopped, a `.env`
-with cloud values, or port 8787 or 5173 held by a server from another checkout) and prints the fix.
+stops at the first problem (Node older than 24, Docker not running, the stack stopped, a `.env.test`
+with prod values, or port 8787 or 5173 held by a server from another checkout) and prints the fix.
 Otherwise it runs `npm ci --ignore-scripts` when `node_modules` is missing or older than
-`package-lock.json`, and `npm run setup:local` when `.env` is missing. A missing or logged-out
+`package-lock.json`, and `npm run setup:local` when `.env.test` is missing. A missing or logged-out
 `gh` only warns. It doesn't check Claude skills: sessions need the `mattpocock-skills` plugin
 installed in your Claude config.
 
-`npm run setup:local` (ES256 signing key, starts the stack, writes `.env`, seeds the test user)
+`npm run setup:local` (ES256 signing key, starts the stack, writes `.env.test`; it creates no user)
 starts the stack itself. It creates `supabase/signing_keys.json`, so on a
 fresh clone `npx supabase start` fails until `npm run setup:local` has run once; afterwards
 `npx supabase start` restarts the stack.
 
-It also writes the git-ignored `.env` from `npx supabase status`, with a random password for the
-test user (`.env.example` lists the names). An existing `.env` is kept; delete it to write a fresh
-one. Every checkout on this machine shares one local stack and one test user, so running it in a
-second checkout resets that user's password: only the checkout that ran it last
-logs in. When another checkout's tests fail with `Invalid login credentials`, rerun
-`npm run setup:local` there. Don't copy another checkout's `.env`.
+It also writes the git-ignored `.env.test` from `npx supabase status` (`.env.example` lists the
+names). An existing `.env.test` is kept; delete it to write a fresh one. Don't copy another
+checkout's `.env.test`.
+
+Every checkout signs in as its own test user, `checkout-<directory name>-<hash>@miseflow.test`,
+created on first use on the shared local stack. Each use gives it a new random password that is
+kept in memory only, so no file holds it and one checkout never breaks another. `npm test` signs
+in as it. To sign in by hand in `npm run dev:web`, run `npm run dev:user`: it resets the password
+and prints the email and the new password. Old checkouts' users stay on the stack until
+`npx supabase db reset`. e2e keeps its own user per spec.
 
 - `npm test` runs every workspace's tests against the local stack. `npm run test:coverage` does
   the same and writes `<workspace>/coverage/lcov.info` for `shared`, `server` and `web`.
@@ -55,11 +67,11 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
   - `--coverage` runs `test:coverage` instead of `npm test`.
   - `--e2e` runs `npm run e2e` after the other groups, whatever they did. Its result is reported
     but, as in CI, doesn't fail the run.
-- `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.
+- `TOKEN=$(npm run -s token)` prints an access token for the checkout's test user, for curl.
 - `KITCHEN_TIME_ZONE` (an IANA name such as `Europe/Paris`) sets the kitchen's time zone for
   Service times and Availability. Unset, the server uses its own zone and warns on startup.
-- `npm test`, `npm run e2e` and `npm run setup:local` refuse a `.env` whose `DATABASE_URL`,
-  `SUPABASE_URL` or `VITE_SUPABASE_URL` is not on the local stack, so they never touch cloud data.
+- `npm test`, `npm run e2e` and `npm run setup:local` refuse an env file whose `DATABASE_URL`,
+  `SUPABASE_URL` or `VITE_SUPABASE_URL` is not on the local stack, so they never touch prod data.
 
 ## CI and the quality gate
 
@@ -117,9 +129,9 @@ docker run --rm -v "$PWD:/usr/src" -e SONAR_TOKEN -e SONAR_HOST_URL=https://sona
 `SONAR_TOKEN` comes from your shell, never from a file in the repo. A local run analyzes the
 current branch. Only CI runs report on pull requests.
 
-## Cloud setup
+## Prod setup
 
-The cloud project is set up by hand in the Supabase dashboard (#81):
+The prod project (the hosted Supabase project) is set up by hand in the Supabase dashboard (#81):
 
 - **Auth:** Email provider on. Turn off "Allow new users to sign up" in Authentication → Sign In /
   Providers; the Email provider's own sign-up toggle is not enough. Create the single user in
@@ -128,7 +140,7 @@ The cloud project is set up by hand in the Supabase dashboard (#81):
   accepts only ES256 and RS256.
 - **Data API:** off. Only the server reaches Postgres, through Drizzle (ADR 0006).
 
-A cloud `.env` needs four names only:
+A `.env.prod` needs four names only:
 
 - `DATABASE_URL`: the **session pooler** string (Connect → Session pooler, port 5432). Use the
   session pooler only: the server's postgres.js client uses prepared statements, which the
@@ -139,9 +151,44 @@ A cloud `.env` needs four names only:
 - `VITE_SUPABASE_URL`: the same URL, for the browser.
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: the project's publishable key.
 
-Run `npm run db:migrate`, then `npm run seed -w server` (the shared Ingredient seed), against it.
-Do not run `npm test`, `npm run e2e` or `npm run setup:local` in a checkout whose `.env` holds
-cloud values; they refuse to.
+`.env.prod` replaces the old `.env.local`. It is git-ignored, mode 600 (`chmod 600 .env.prod`) and
+kept only in the main checkout, never in a worktree.
+
+To rebuild it if it is lost:
+
+- `DATABASE_URL`: in the Supabase dashboard, Connect → Session pooler, copy the string. If you no
+  longer know the database password, reset it in Project Settings → Database and put the new one
+  into the string.
+- `SUPABASE_URL` and `VITE_SUPABASE_URL`: `https://<project-ref>.supabase.co`, the project ref
+  being in the dashboard URL.
+- `VITE_SUPABASE_PUBLISHABLE_KEY`: Project Settings → API Keys, the publishable key.
+
+### Using the app against prod
+
+```sh
+npm run dev:prod     # the API and the web app together, both reading .env.prod (APP_ENV=prod)
+```
+
+Signing in and saving then hit the prod project, so a saved Recipe lands in your real data. With
+`APP_ENV=prod` the server checks for pending migrations at startup and refuses to start while any
+are waiting, naming `npm run db:migrate:prod` as the fix. It never prints the database password.
+No automated test runs against prod.
+
+### Migrating and seeding prod
+
+Prod is migrated and seeded on purpose, never by accident. After merging a PR that adds a
+migration, run, from the checkout that holds `.env.prod`:
+
+```sh
+npm run db:migrate:prod     # shows the prod project ref and the migrations waiting, asks you to type the ref back
+npm run db:seed:prod        # the shared Ingredient seed against prod (APP_ENV=prod); safe to run again
+```
+
+`db:migrate:prod` prints the project ref only (never `DATABASE_URL`, which holds the password),
+applies nothing until the typed ref matches, and says "Nothing pending" and exits when prod is up
+to date, so running it again is harmless. Plain `npm run db:migrate` only ever targets test: it
+refuses a `DATABASE_URL`, `SUPABASE_URL` or `VITE_SUPABASE_URL` that is not local. Do not run
+`npm test`, `npm run e2e` or `npm run setup:local` with `APP_ENV=prod`; they refuse prod values.
 
 ## Working with agents
 

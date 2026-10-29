@@ -38,6 +38,9 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
+      # The build reads .env.test through the env loader (ADR 0012), and this job starts no stack, so
+      # it builds with the names from .env.example and empty values.
+      - run: cp .env.example .env.test
       - run: npm run build
 
   test:
@@ -54,7 +57,7 @@ jobs:
       - uses: ./.github/actions/install
 
       # The tests run against the local Supabase stack, as on a laptop: signing key, stack,
-      # .env and test user, then the schema.
+      # .env.test and test user, then the schema.
       - run: npm run setup:local
       - run: npm run db:migrate
       - run: npm run test:coverage

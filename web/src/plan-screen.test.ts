@@ -8,7 +8,16 @@ import {
   taskIn,
   troubledPlan,
 } from "../test/walkthrough-plan.ts";
-import { confirmedFix, ganttCourses, passive, pinTask, replanFromScratch } from "./plan-screen.ts";
+import {
+  confirmedFix,
+  ganttCourses,
+  lastPinSettling,
+  noPinPending,
+  optimisticPlan,
+  passive,
+  pinTask,
+  replanFromScratch,
+} from "./plan-screen.ts";
 import { quickFixes } from "./quick-fixes.ts";
 
 describe("passive", () => {
@@ -52,6 +61,41 @@ describe("pinTask", () => {
         start,
       },
     });
+  });
+});
+
+describe("optimisticPlan", () => {
+  const duck = taskIn(troubledPlan, keys.duck);
+  const start = at(SATURDAY, 17);
+
+  it("pins the dragged Task at its new start and re-fits the rest", () => {
+    const next = optimisticPlan(troubledPlan, duck, start)!;
+    expect(taskIn(next, keys.duck)).toMatchObject({ startMinute: start, pinned: true });
+    expect(next.model.previous).toContainEqual({
+      key: keys.duck,
+      start,
+      cookId: "cook",
+      pinned: true,
+    });
+    // The Beurre blanc the duck waits for moves earlier to fit.
+    expect(taskIn(next, keys.beurre).startMinute).toBeLessThan(start);
+    expect(taskIn(troubledPlan, keys.beurre).startMinute).toBeGreaterThan(start);
+  });
+
+  it("is undefined, leaving the cache alone, before the Plan is read", () => {
+    expect(optimisticPlan(undefined, duck, start)).toBeUndefined();
+  });
+});
+
+describe("the pins pending", () => {
+  it("let the Plan refetch only when none is pending", () => {
+    expect(noPinPending(0)).toBe(true);
+    expect(noPinPending(1)).toBe(false);
+  });
+
+  it("read the Plan again only as the last one settles, itself still counted", () => {
+    expect(lastPinSettling(1)).toBe(true);
+    expect(lastPinSettling(2)).toBe(false);
   });
 });
 

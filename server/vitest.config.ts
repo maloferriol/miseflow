@@ -10,6 +10,9 @@ export default defineConfig({
     // Integration tests share one local database.
     fileParallelism: false,
     globalSetup: ["./test/global-setup.ts"],
-    coverage,
+    // src/index.ts is the entry point: it only wires the app and starts it, so no test can run it.
+    // Its start-up decision lives in src/prod-gate.ts, which is tested. Sonar excludes it too
+    // (sonar.coverage.exclusions in sonar-project.properties), so the two reports agree.
+    coverage: { ...coverage, exclude: [...(coverage.exclude ?? []), "src/index.ts"] },
   },
 });

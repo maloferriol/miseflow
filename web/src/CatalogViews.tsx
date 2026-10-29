@@ -1,5 +1,5 @@
 // The Ingredient catalog's views (ADR 0011): props only, so their tests render them without the API.
-import { type FormEvent, Fragment, type ReactNode } from "react";
+import { Fragment, type ReactNode, type SubmitEvent } from "react";
 import type { CatalogIngredient, fetchShoppingCategories } from "./api.ts";
 import {
   ingredientDetails,
@@ -72,7 +72,7 @@ export function IngredientView({
   addAliasError,
   onAddAlias,
 }: Readonly<IngredientViewProps>) {
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const name = trimmedOrNull(fieldText(new FormData(form), "alias"));
@@ -112,14 +112,14 @@ export function NewIngredientView({
   createError,
   onCreate,
 }: Readonly<NewIngredientViewProps>) {
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
     const input = newIngredientInput(
-      String(data.get("name") ?? ""),
-      String(data.get("preferredKind")),
-      String(data.get("shoppingCategoryId")),
+      fieldText(data, "name"),
+      fieldText(data, "preferredKind"),
+      fieldText(data, "shoppingCategoryId"),
     );
     if (input) onCreate(input, () => form.reset());
   }

@@ -1,6 +1,7 @@
 // The Planning pass's view (ADR 0011): props only, no fetching.
-import { type FormEvent, useState } from "react";
+import { type SubmitEvent, useState } from "react";
 import type { Recipe, RecipeStep } from "./api.ts";
+import { fieldText } from "./form-fields.ts";
 import {
   clearsOwnWindow,
   groupsWithPrevious,
@@ -15,12 +16,10 @@ import {
 } from "./planning-pass.ts";
 import { ReadyToPlan, stepLabel } from "./ReadyToPlan.tsx";
 
-const field = (data: FormData, name: string) => String(data.get(name) ?? "");
-
-function windowFrom(event: FormEvent<HTMLFormElement>): Window {
+function windowFrom(event: SubmitEvent<HTMLFormElement>): Window {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
-  return windowInput(field(data, "beforeDays"), field(data, "shelfLifeDays"));
+  return windowInput(fieldText(data, "beforeDays"), fieldText(data, "shelfLifeDays"));
 }
 
 export type PlanningPassViewProps = {
@@ -144,14 +143,14 @@ function PlanningRow({
   const [ownWindow, setOwnWindow] = useState(() => opensOwnWindow(step));
   const waits = waitsFor(recipe, step.id);
 
-  function onTimesSubmit(event: FormEvent<HTMLFormElement>) {
+  function onTimesSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    onTimes(stepTimesInput(field(data, "activeMinutes"), field(data, "passiveMinutes")));
+    onTimes(stepTimesInput(fieldText(data, "activeMinutes"), fieldText(data, "passiveMinutes")));
   }
-  function onLinkSubmit(event: FormEvent<HTMLFormElement>) {
+  function onLinkSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const before = field(new FormData(event.currentTarget), "beforeStepId");
+    const before = fieldText(new FormData(event.currentTarget), "beforeStepId");
     if (before) onAddLink(before);
   }
 

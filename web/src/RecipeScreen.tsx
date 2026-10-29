@@ -11,7 +11,8 @@ import {
   type Mode,
   modeFromSearch,
   searchWithMode,
-  toggleSelection,
+  selectStep,
+  unselectStep,
 } from "./recipe-screen.ts";
 import { RecipeScreenView } from "./RecipeViews.tsx";
 import { StepEditor } from "./StepEditor.tsx";
@@ -53,8 +54,8 @@ export function useRecipeScreen(recipeId: string) {
       setMode(next);
     },
     selected: liveSelection(stepIds, selected),
-    onSelect: (stepId: string, checked: boolean) =>
-      setSelected((prev) => toggleSelection(prev, stepId, checked)),
+    onSelect: (stepId: string) => setSelected((prev) => selectStep(prev, stepId)),
+    onUnselect: (stepId: string) => setSelected((prev) => unselectStep(prev, stepId)),
     onClearSelection: () => setSelected([]),
     adding,
     onAdding: setAdding,

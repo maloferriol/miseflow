@@ -1,5 +1,6 @@
 // The Availability screen's decisions (ADR 0011): pure functions the hook and the view pass through.
 import type { Availability } from "./api.ts";
+import { fieldText } from "./form-fields.ts";
 import type { Intent } from "./intent.ts";
 import { type MutationCall, overrideCall } from "./mutation-call.ts";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
@@ -61,7 +62,7 @@ export type OverrideInput = {
  * date, or hours missing a From or a To. Not available wins over any hours.
  */
 export function overrideInput(form: Fields): OverrideInput | null {
-  const date = String(form.get("date") ?? "");
+  const date = fieldText(form, "date");
   if (!date) return null;
   if (form.get("off")) return { date, availability: { kind: "off" } };
   const start = minuteOfDay(form.get("from"));

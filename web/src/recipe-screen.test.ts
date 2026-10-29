@@ -10,8 +10,9 @@ import {
   modeFromSearch,
   recipeInput,
   searchWithMode,
+  selectStep,
   stepMoves,
-  toggleSelection,
+  unselectStep,
   yieldSave,
   yieldText,
 } from "./recipe-screen.ts";
@@ -83,8 +84,8 @@ describe("moving a Step", () => {
 
 describe("ticking Steps", () => {
   it("adds a ticked Step and drops an unticked one", () => {
-    expect(toggleSelection(["s-rub"], "s-rest", true)).toEqual(["s-rub", "s-rest"]);
-    expect(toggleSelection(["s-rub", "s-rest"], "s-rub", false)).toEqual(["s-rest"]);
+    expect(selectStep(["s-rub"], "s-rest")).toEqual(["s-rub", "s-rest"]);
+    expect(unselectStep(["s-rub", "s-rest"], "s-rub")).toEqual(["s-rest"]);
   });
 
   it("keeps only the ticked Steps the Recipe still has", () => {

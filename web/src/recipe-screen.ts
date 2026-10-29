@@ -50,9 +50,14 @@ export function stepMoves(
   };
 }
 
-/** The ticked Steps after one is ticked or unticked. */
-export function toggleSelection(selected: string[], stepId: string, checked: boolean): string[] {
-  return checked ? [...selected, stepId] : selected.filter((id) => id !== stepId);
+/** The ticked Steps after the cook ticks one. */
+export function selectStep(selected: string[], stepId: string): string[] {
+  return [...selected, stepId];
+}
+
+/** The ticked Steps after the cook unticks one. */
+export function unselectStep(selected: string[], stepId: string): string[] {
+  return selected.filter((id) => id !== stepId);
 }
 
 /** The ticked Steps that are still the Recipe's, so a removed Step doesn't stay ticked. */

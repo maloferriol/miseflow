@@ -14,7 +14,8 @@ export type PlanMutation = Omit<MutationCall, "id">;
 export function passive(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${m} min` : `${h} h`;
 }
 
 /** The Gantt chart's lanes: the Menu's Courses with their Dishes, named by Recipe. */

@@ -68,11 +68,7 @@ export function PlanView({
           Plan for {dayHeading(service.date)} at {service.time}
           {service.timeIsDefault && " (the kitchen's default)"}
         </h2>
-        {badge && (
-          <span role="status" aria-label={badge}>
-            {badge}
-          </span>
-        )}
+        {badge && <output aria-label={badge}>{badge}</output>}
         <button
           type="button"
           disabled={fixPending}

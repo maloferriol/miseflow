@@ -13,7 +13,10 @@ const stock = { id: "b-stock", label: "Chicken stock ×1.5 · for: Velouté, Beu
 
 /** A placed Task with no Step done, nothing behind and nothing pinned. */
 function task(
-  fields: Pick<PlanTask, "key" | "owner" | "dish" | "batch" | "steps" | "start" | "end" | "endDate">,
+  fields: Pick<
+    PlanTask,
+    "key" | "owner" | "dish" | "batch" | "steps" | "start" | "end" | "endDate"
+  >,
 ): PlanTask {
   return {
     ...fields,

@@ -4,6 +4,7 @@ import {
   pendingMigrations,
   projectRef,
   prodMigrationDecision,
+  prodStartupCheck,
   prodStartupProblem,
   readAppliedMigrations,
   readAvailableMigrations,
@@ -94,5 +95,27 @@ describe("against the local stack", () => {
     } finally {
       await sql.end();
     }
+  });
+});
+
+describe("prodStartupCheck", () => {
+  const sqlWith = (createdAt: number[]) => () =>
+    Promise.resolve(createdAt.map((n) => ({ created_at: n })));
+
+  it("refuses while a migration is waiting, naming the fix", async () => {
+    const problem = await prodStartupCheck(sqlWith([100]), available);
+    expect(problem).toMatch(/0001_b, 0002_c.*npm run db:migrate:prod/);
+  });
+
+  it("allows the start when every migration is applied", async () => {
+    expect(await prodStartupCheck(sqlWith([100, 200, 300]), available)).toBeUndefined();
+  });
+
+  it("does not echo a database password from a failed query", async () => {
+    const failing = () => Promise.reject(new Error("connect postgres://u:secretpw@host/db failed"));
+    const error = await prodStartupCheck(failing, available).catch((e: Error) => e);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/Could not read/);
+    expect((error as Error).message).not.toContain("secretpw");
   });
 });

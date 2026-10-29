@@ -321,7 +321,7 @@ describe("the Gantt chart", () => {
 
   it("collapses a Dish into its own lane with its Batches' Tasks folded in once, and expands it again", () => {
     renderView(<Gantt plan={plan} courses={courses} onPin={noPin} />);
-    expect(screen.queryByRole("button", { name: "Collapse Velouté" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse Velouté" })).toBeTruthy();
     const collapse = screen.getByRole("button", { name: "Collapse Duck breast with beurre blanc" });
     expect(collapse.getAttribute("aria-expanded")).toBe("true");
 

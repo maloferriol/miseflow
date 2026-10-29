@@ -3,6 +3,7 @@
 import { SERVINGS } from "@miseflow/shared/src/recipe/servings.ts";
 import type { FormEvent, ReactNode } from "react";
 import type { Recipe, RecipeStep } from "./api.ts";
+import { fieldText, trimmedOrNull } from "./form-fields.ts";
 import type { QueryState } from "./MenuViews.tsx";
 import {
   type ExtractArgs,
@@ -13,15 +14,8 @@ import {
   type MoveArgs,
   recipeInput,
   stepMoves,
-  yieldInput,
   yieldText,
 } from "./recipe-screen.ts";
-
-/** A form field's text, or "" when the field is missing or holds a file. */
-function fieldText(form: FormData, name: string) {
-  const value = form.get(name);
-  return typeof value === "string" ? value : "";
-}
 
 /** What Extract to sub-recipe needs from the Recipe screen. */
 export type ExtractSlot = { stepIds: string[]; selected: string[]; onDone: () => void };
@@ -205,7 +199,8 @@ export function YieldFieldView({
 }: Readonly<YieldFieldViewProps>) {
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSave(yieldInput(fieldText(new FormData(event.currentTarget), "yield")));
+    // A blank field clears the yield.
+    onSave(trimmedOrNull(fieldText(new FormData(event.currentTarget), "yield")));
   }
 
   return (

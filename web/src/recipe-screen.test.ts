@@ -12,7 +12,6 @@ import {
   searchWithMode,
   stepMoves,
   toggleSelection,
-  yieldInput,
   yieldSave,
   yieldText,
 } from "./recipe-screen.ts";
@@ -126,11 +125,6 @@ describe("the yield", () => {
     expect(yieldText(chickenStockWithYield.yield)).toBe("1.5 L");
     expect(yieldText(yieldOf24)).toBe("24");
     expect(yieldText(null)).toBe("");
-  });
-
-  it("saves the trimmed text, or clears it when blank", () => {
-    expect(yieldInput("  1.5 L ")).toBe("1.5 L");
-    expect(yieldInput("   ")).toBeNull();
   });
 
   it("is saved with setYield, and a retry of the same yield keeps its ids", () => {

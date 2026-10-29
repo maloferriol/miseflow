@@ -81,11 +81,6 @@ export function yieldText(value: Recipe["yield"]): string {
   return value === null ? "" : [value.quantity, value.unit].filter((p) => p !== null).join(" ");
 }
 
-/** The yield field as what to save: the trimmed text, or null to clear it. */
-export function yieldInput(text: string): string | null {
-  return text.trim() || null;
-}
-
 /** Sets a Recipe's yield, with one set of ids per intended yield. */
 export function yieldSave(
   recipeId: string,

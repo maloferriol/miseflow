@@ -3,10 +3,10 @@ import { type FormEvent, Fragment, type ReactNode } from "react";
 import type { CatalogIngredient, fetchShoppingCategories } from "./api.ts";
 import {
   ingredientDetails,
-  nameInput,
   type NewIngredientInput,
   newIngredientInput,
 } from "./catalog-screen.ts";
+import { fieldText, trimmedOrNull } from "./form-fields.ts";
 import type { ListQuery } from "./RecipesViews.tsx";
 
 export type CatalogViewProps = {
@@ -75,7 +75,7 @@ export function IngredientView({
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const name = nameInput(String(new FormData(form).get("alias") ?? ""));
+    const name = trimmedOrNull(fieldText(new FormData(form), "alias"));
     if (name) onAddAlias(name, () => form.reset());
   }
 

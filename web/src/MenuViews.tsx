@@ -2,6 +2,7 @@
 import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { Fragment, type ReactNode, type SubmitEvent, useState } from "react";
 import type { Availability, fetchMenus, Menu } from "./api.ts";
+import { fieldText } from "./form-fields.ts";
 import {
   type DishScale,
   dishScale,
@@ -12,12 +13,6 @@ import {
   serviceInput,
 } from "./menu-screen.ts";
 import { timeValue } from "./time-of-day.ts";
-
-/** A form field's text, or "" when the field is missing or holds a file. */
-function fieldText(form: FormData, name: string) {
-  const value = form.get(name);
-  return typeof value === "string" ? value : "";
-}
 
 /**
  * A submit handler: `send` reads the form's fields and says whether it sent them. Only a sent

@@ -1,10 +1,6 @@
 // The Ingredient catalog's decisions (ADR 0011): pure functions the hooks and the views pass through.
 import type { CatalogIngredient } from "./api.ts";
-
-/** A name field's text, trimmed, or null when it is blank. */
-export function nameInput(text: string): string | null {
-  return text.trim() || null;
-}
+import { trimmedOrNull } from "./form-fields.ts";
 
 /** What the New Ingredient form saves. */
 export type NewIngredientInput = {
@@ -19,7 +15,7 @@ export function newIngredientInput(
   preferredKind: string,
   shoppingCategoryId: string,
 ): NewIngredientInput | null {
-  const trimmed = nameInput(name);
+  const trimmed = trimmedOrNull(name);
   return trimmed ? { name: trimmed, preferredKind, shoppingCategoryId } : null;
 }
 

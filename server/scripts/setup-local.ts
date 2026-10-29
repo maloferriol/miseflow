@@ -1,11 +1,10 @@
 // Prepares the local Supabase stack: an ES256 signing key that Hono's jwk() can verify,
-// the stack itself, a local .env.test, and the single test user (sign-ups are off, ADR 0008).
+// the stack itself and a local .env.test. It creates no user: each checkout signs in as its own
+// test user (scripts/test-user.ts; sign-ups are off, ADR 0008).
 // Run from the repo root with `npm run setup:local`. Local development only.
 import { execFileSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { createClient } from "@supabase/supabase-js";
 import { envFileName, legacyEnvWarnings, loadEnvIntoProcess } from "../../scripts/env.ts";
 import { assertLocalEnv } from "../../scripts/local-only.ts";
 import { supabaseStartArgs } from "./supabase-start.ts";
@@ -18,21 +17,12 @@ function supabase(...args: string[]) {
   execFileSync("npx", ["supabase", ...args], { cwd: repoRoot, stdio: "inherit" });
 }
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value)
-    throw new Error(
-      `${name} is not set in .env.test. Delete .env.test and rerun to write a fresh one.`,
-    );
-  return value;
-}
-
 // setup:local writes the test environment only (ADR 0012).
 if (envFileName(process.env.APP_ENV) !== ".env.test")
   throw new Error("npm run setup:local writes .env.test only. Unset APP_ENV, then rerun.");
 for (const warning of legacyEnvWarnings()) console.warn(`! ${warning}`);
 
-// An existing .env.test is kept as it is, but never one with prod values: this seeds a test user.
+// An existing .env.test is kept as it is, but never one with prod values.
 if (existsSync(envFile)) loadEnvIntoProcess("test");
 assertLocalEnv("npm run setup:local");
 
@@ -63,8 +53,6 @@ if (existsSync(envFile)) {
     SUPABASE_SECRET_KEY: status.SECRET_KEY,
     VITE_SUPABASE_URL: status.API_URL,
     VITE_SUPABASE_PUBLISHABLE_KEY: status.PUBLISHABLE_KEY,
-    TEST_USER_EMAIL: "cook@miseflow.test",
-    TEST_USER_PASSWORD: randomBytes(18).toString("base64url"),
   };
   const lines = Object.entries(values).map(([name, value]) => `${name}=${value}`);
   writeFileSync(
@@ -74,26 +62,4 @@ if (existsSync(envFile)) {
   );
   loadEnvIntoProcess("test");
   console.log("Wrote .env.test for the local stack.");
-}
-
-// 4. The test user, created confirmed. Re-running resets the password to the one in .env.test.
-const admin = createClient(requireEnv("SUPABASE_URL"), requireEnv("SUPABASE_SECRET_KEY"), {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-const email = requireEnv("TEST_USER_EMAIL");
-const password = requireEnv("TEST_USER_PASSWORD");
-
-const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
-if (created.error?.code === "email_exists") {
-  const { data, error } = await admin.auth.admin.listUsers();
-  if (error) throw error;
-  const user = data.users.find((u) => u.email === email);
-  if (!user) throw new Error(`${email} exists but was not listed`);
-  const updated = await admin.auth.admin.updateUserById(user.id, { password });
-  if (updated.error) throw updated.error;
-  console.log(`Test user ${email} already existed; password reset from .env.test.`);
-} else if (created.error) {
-  throw created.error;
-} else {
-  console.log(`Created test user ${email}.`);
 }

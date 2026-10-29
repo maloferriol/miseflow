@@ -1,9 +1,9 @@
 // `npm run check`: runs the checks CI's required `check` job depends on, on this machine, and says
 // whether CI would pass. Fast by default: it skips `npm ci` when node_modules is up to date, reuses
-// the running local stack, and runs `npm test` (`--coverage` for `test:coverage`). `--sonar` adds
-// the SonarQube analysis and `--e2e` the e2e, which is reported but, as in CI, can't fail the run.
+// the running local stack, and runs `npm test` (`--coverage` for `test:coverage`). `--e2e` adds the
+// e2e, which is reported but, as in CI, can't fail the run. The SonarQube gate runs only in CI.
 // The decisions live in check-steps.ts, which has the tests.
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -26,15 +26,7 @@ try {
     throwIfNoEntry: false,
   })?.mtimeMs;
   const lockfileAt = statSync(`${repoDir}package-lock.json`).mtimeMs;
-  const repo = repoDir.replace(/\/$/, "");
-  const gitDir = spawnSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], {
-    cwd: repo,
-    encoding: "utf8",
-  }).stdout.trim();
   groups = checkGroups(parseCheckArgs(process.argv.slice(2)), {
-    repo,
-    gitDir,
-    env: process.env,
     needsInstall: dependenciesNeedInstall({ installedAt, lockfileAt }),
   });
 } catch (error) {

@@ -2,8 +2,8 @@
 // what the report says. The script runs the commands and times them, so the tests need no machine.
 import { nodeMajor } from "./preflight-checks.ts";
 
-/** The opt-in flags. `--sonar` implies `--coverage`, since the analysis reads the lcov files. */
-export type CheckOptions = { coverage: boolean; sonar: boolean; e2e: boolean };
+/** The opt-in flags. */
+export type CheckOptions = { coverage: boolean; e2e: boolean };
 
 export type CheckStep = { name: string; command: string[] };
 
@@ -23,69 +23,25 @@ export type StepResult = {
   ms: number | undefined;
 };
 
-const flags = ["--coverage", "--sonar", "--e2e"];
+const flags = ["--coverage", "--e2e"];
 
 /** The command-line flags. Throws on one it doesn't take. */
 export function parseCheckArgs(args: string[]): CheckOptions {
   const unknown = args.find((arg) => !flags.includes(arg));
   if (unknown)
-    throw new Error(
-      `Unknown option ${unknown}. \`npm run check\` takes --coverage, --sonar and --e2e.`,
-    );
-  const sonar = args.includes("--sonar");
-  return { coverage: sonar || args.includes("--coverage"), sonar, e2e: args.includes("--e2e") };
+    throw new Error(`Unknown option ${unknown}. \`npm run check\` takes --coverage and --e2e.`);
+  return { coverage: args.includes("--coverage"), e2e: args.includes("--e2e") };
 }
 
 const npmRun = (script: string): CheckStep => ({ name: script, command: ["npm", "run", script] });
 
 /**
- * What `npm run check` reads from this machine. `repo` is the checkout's root, `gitDir` its git
- * common directory (both absolute), `env` the shell's, and `needsInstall` the preflight's
- * lock-file rule.
+ * CI's `static` and `test` jobs (.github/workflows/ci.yml), plus what the flags add. `needsInstall`
+ * comes from the preflight's lock-file rule.
  */
-export type CheckFacts = {
-  repo: string;
-  gitDir: string;
-  env: NodeJS.ProcessEnv;
-  needsInstall: boolean;
-};
-
-const sonarCloud = "https://sonarcloud.io";
-
-/**
- * README's local analysis command: the scanner reads sonar-project.properties and the lcov files
- * from the mounted checkout. The token stays in the shell; docker passes it on by name. A
- * worktree's .git file points at the main checkout's git directory, which is mounted at the same
- * path so the scanner has the history CI's full clone gives it.
- */
-function sonarStep({ repo, gitDir, env }: CheckFacts): CheckStep {
-  const why = '(README "CI and the quality gate")';
-  if (!env.SONAR_TOKEN) throw new Error(`--sonar needs SONAR_TOKEN in your shell ${why}.`);
-  const host = env.SONAR_HOST_URL || sonarCloud;
-  if (host === sonarCloud && !env.SONAR_ORGANIZATION)
-    throw new Error(`--sonar needs SONAR_ORGANIZATION in your shell for SonarCloud ${why}.`);
-
-  const command = ["docker", "run", "--rm", "-v", `${repo}:/usr/src`];
-  if (!gitDir.startsWith(`${repo}/`)) command.push("-v", `${gitDir}:${gitDir}`);
-  command.push(
-    "-e",
-    "SONAR_TOKEN",
-    "-e",
-    `SONAR_HOST_URL=${host}`,
-    "sonarsource/sonar-scanner-cli",
-  );
-  if (env.SONAR_ORGANIZATION) command.push(`-Dsonar.organization=${env.SONAR_ORGANIZATION}`);
-  return { name: "sonar", command };
-}
-
-/**
- * CI's `static` and `test` jobs (.github/workflows/ci.yml), plus what the flags add. Throws when
- * `--sonar` can't run, so it fails before the tests rather than after.
- */
-export function checkGroups(options: CheckOptions, facts: CheckFacts): CheckGroup[] {
+export function checkGroups(options: CheckOptions, facts: { needsInstall: boolean }): CheckGroup[] {
   const test = [npmRun("setup:local"), npmRun("db:migrate")];
   test.push(npmRun(options.coverage ? "test:coverage" : "test"));
-  if (options.sonar) test.push(sonarStep(facts));
 
   const groups: CheckGroup[] = [];
   if (facts.needsInstall) {

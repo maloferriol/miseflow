@@ -50,11 +50,9 @@ logs in. When another checkout's tests fail with `Invalid login credentials`, re
   It prints each step's result and duration, then whether CI would pass, and exits non-zero when
   it wouldn't. It runs `npm ci --ignore-scripts` first only when `node_modules` is older than
   `package-lock.json`, and reuses the running local stack. A failed step's output is printed;
-  passing steps stay quiet. Node other than 24, the version CI runs, only warns.
+  passing steps stay quiet. Node other than 24, the version CI runs, only warns. It doesn't run
+  the SonarQube analysis, so a pass here can still fail CI's quality gate (see below).
   - `--coverage` runs `test:coverage` instead of `npm test`.
-  - `--sonar` adds the SonarQube analysis with the scanner command below (implies `--coverage`;
-    needs Docker, the network and `SONAR_TOKEN` in your shell, plus `SONAR_ORGANIZATION` for
-    SonarCloud or `SONAR_HOST_URL` for a SonarQube server).
   - `--e2e` runs `npm run e2e` after the other groups, whatever they did. Its result is reported
     but, as in CI, doesn't fail the run.
 - `TOKEN=$(npm run -s token -w server)` prints the test user's access token for curl.

@@ -6,17 +6,11 @@ import {
   nodeMajorWarning,
   parseCheckArgs,
   runChecks,
-  type CheckFacts,
   type CheckGroup,
   type StepResult,
 } from "../../scripts/check-steps.ts";
 
-const facts: CheckFacts = {
-  repo: "/Users/cook/miseflow",
-  gitDir: "/Users/cook/miseflow/.git",
-  env: { SONAR_TOKEN: "t", SONAR_ORGANIZATION: "cooks" },
-  needsInstall: false,
-};
+const facts = { needsInstall: false };
 const stepNames = (groups: CheckGroup[]) =>
   groups.map((group) => ({ group: group.name, steps: group.steps.map((step) => step.name) }));
 const named = (groups: CheckGroup[], name: string) => groups.find((group) => group.name === name)!;
@@ -40,70 +34,6 @@ describe("npm run check", () => {
         ["npm", "run", "db:migrate"],
         ["npm", "run", "test:coverage"],
       ]);
-    });
-
-    it("adds the SonarQube analysis after coverage on --sonar", () => {
-      const test = named(checkGroups(parseCheckArgs(["--sonar"]), facts), "test");
-
-      expect(test.steps.map((step) => step.name)).toEqual([
-        "setup:local",
-        "db:migrate",
-        "test:coverage",
-        "sonar",
-      ]);
-    });
-
-    describe("the analysis", () => {
-      const sonar = (changes: Partial<CheckFacts>) =>
-        named(checkGroups(parseCheckArgs(["--sonar"]), { ...facts, ...changes }), "test").steps.at(
-          -1,
-        )!.command;
-      const scanner = "sonarsource/sonar-scanner-cli";
-
-      it("runs README's scanner command with the token, host and organization from the shell", () => {
-        expect(sonar({})).toEqual([
-          "docker",
-          "run",
-          "--rm",
-          "-v",
-          "/Users/cook/miseflow:/usr/src",
-          "-e",
-          "SONAR_TOKEN",
-          "-e",
-          "SONAR_HOST_URL=https://sonarcloud.io",
-          scanner,
-          "-Dsonar.organization=cooks",
-        ]);
-        expect(
-          sonar({ env: { SONAR_TOKEN: "t", SONAR_HOST_URL: "https://sonar.example" } }),
-        ).toEqual(expect.arrayContaining(["SONAR_HOST_URL=https://sonar.example"]));
-        expect(
-          sonar({ env: { SONAR_TOKEN: "t", SONAR_HOST_URL: "https://sonar.example" } }).at(-1),
-        ).toBe(scanner);
-      });
-
-      it("mounts a worktree's git directory where its .git file points, for the history", () => {
-        const command = sonar({
-          repo: "/Users/cook/miseflow/.claude/worktrees/menus",
-          gitDir: "/Users/cook/miseflow/.git",
-        });
-
-        expect(command.slice(3, 7)).toEqual([
-          "-v",
-          "/Users/cook/miseflow/.claude/worktrees/menus:/usr/src",
-          "-v",
-          "/Users/cook/miseflow/.git:/Users/cook/miseflow/.git",
-        ]);
-      });
-
-      it("refuses to start without SONAR_TOKEN, or SONAR_ORGANIZATION for SonarCloud", () => {
-        expect(() => sonar({ env: {} })).toThrow(
-          '--sonar needs SONAR_TOKEN in your shell (README "CI and the quality gate").',
-        );
-        expect(() => sonar({ env: { SONAR_TOKEN: "t" } })).toThrow(
-          '--sonar needs SONAR_ORGANIZATION in your shell for SonarCloud (README "CI and the quality gate").',
-        );
-      });
     });
 
     it("adds a non-blocking e2e group that runs after the others on --e2e", () => {
@@ -134,8 +64,8 @@ describe("npm run check", () => {
     });
 
     it("refuses an unknown flag and names the ones it takes", () => {
-      expect(() => parseCheckArgs(["--sonr"])).toThrow(
-        "Unknown option --sonr. `npm run check` takes --coverage, --sonar and --e2e.",
+      expect(() => parseCheckArgs(["--sonar"])).toThrow(
+        "Unknown option --sonar. `npm run check` takes --coverage and --e2e.",
       );
     });
   });

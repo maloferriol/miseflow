@@ -49,6 +49,12 @@ describe("taskShape", () => {
     });
   });
 
+  it("counts a Step with no active time and 0 passive minutes as unknown", () => {
+    const shape = taskShape([{ activeMinutes: null, passiveMinutes: 0 }]);
+    expect(shape.stretches).toEqual([{ offset: 0, minutes: 10 }]);
+    expect(shape.approximate).toBe(true);
+  });
+
   it("rounds both parts of a Step up to the grid", () => {
     expect(taskShape([{ activeMinutes: 7, passiveMinutes: 11 }])).toEqual({
       duration: 25,

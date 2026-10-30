@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { ownerSchema } from "../task/owner.ts";
 import { MAX_BEFORE_DAYS } from "../recipe/planning.ts";
 import { loadDefaultServiceTime, lockService, replan, replanReleasing } from "../plan/replan.ts";
 import { addDays, fromTimeColumn, zonedMinute } from "../plan/time.ts";
@@ -10,17 +11,12 @@ import { defineMutator, InvalidArgsError, NotFoundError } from "./define.ts";
 // Pins (#89, CONTEXT Pin): moving a Task on the Gantt chart pins it there, then the Service is
 // re-planned around it in the same transaction. No Availability check: a pin outside it stays.
 
-const owner = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("dish"), dishId: z.uuid() }),
-  z.strictObject({ kind: z.literal("batch"), batchId: z.uuid() }),
-]);
-
 /** Moves a placed Task to `start` (on the 5-minute grid) and pins it, then re-plans its Service. */
 export const pinTask = defineMutator({
   name: "pinTask",
   args: z.strictObject({
     serviceId: z.uuid(),
-    owner,
+    owner: ownerSchema,
     firstStepId: z.uuid(),
     start: z.int().multipleOf(5),
   }),
@@ -70,7 +66,7 @@ export const pinTask = defineMutator({
  */
 export const unpinTask = defineMutator({
   name: "unpinTask",
-  args: z.strictObject({ serviceId: z.uuid(), owner, firstStepId: z.uuid() }),
+  args: z.strictObject({ serviceId: z.uuid(), owner: ownerSchema, firstStepId: z.uuid() }),
   async run(tx, args, ctx) {
     // FOR NO KEY UPDATE on the Service (D6), before the placement row, as pinTask.
     await lockService(tx, ctx.ownerId, args.serviceId);

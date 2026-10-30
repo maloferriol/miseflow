@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { ownerSchema } from "../task/owner.ts";
 import type { Hours } from "../plan/model.ts";
 import { smallestOverride } from "../plan/more-time.ts";
 import {
@@ -290,11 +291,6 @@ function overrideHours(
   return a;
 }
 
-const owner = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("dish"), dishId: z.uuid() }),
-  z.strictObject({ kind: z.literal("batch"), batchId: z.uuid() }),
-]);
-
 /**
  * "Give the Cook more time" (#90, spec §6.5): the smallest one-date override that places this
  * Unplaced Task and moves no other placement (`smallestOverride`), written as the date's override,
@@ -304,7 +300,12 @@ const owner = z.discriminatedUnion("kind", [
  */
 export const giveCookMoreTime = defineMutator({
   name: "giveCookMoreTime",
-  args: z.strictObject({ serviceId: z.uuid(), owner, firstStepId: z.uuid(), overrideId: z.uuid() }),
+  args: z.strictObject({
+    serviceId: z.uuid(),
+    owner: ownerSchema,
+    firstStepId: z.uuid(),
+    overrideId: z.uuid(),
+  }),
   async run(tx, args, ctx) {
     const { ownerId } = ctx;
     // Lock order Service, then Cook (D6), as setAvailabilityOverride.

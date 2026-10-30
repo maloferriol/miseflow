@@ -1,6 +1,7 @@
 import type { Region } from "../recipe/convert.ts";
 import { effectiveMakeAhead, stepGroups } from "../recipe/planning.ts";
 import type { RecipeSnapshot } from "../recipe/snapshot.ts";
+import { taskShape } from "../task/shape.ts";
 import {
   type Interval,
   type Owner,
@@ -90,9 +91,6 @@ export type TaskInfo = {
   approximate: boolean;
 };
 
-const PLACEHOLDER_ACTIVE = 10;
-const roundUp = (minutes: number) => Math.ceil(minutes / 5) * 5;
-
 const recipesOf = (rows: Pick<PlanRows, "dishes" | "subRecipes">) => {
   const recipes = new Map(rows.subRecipes);
   for (const d of rows.dishes) if (!recipes.has(d.recipeId)) recipes.set(d.recipeId, d.recipe);
@@ -180,21 +178,17 @@ export function toPlanningModel(
         earliestStart,
         keepsMinutes,
       });
-      const unknown = (s: (typeof steps)[number]) =>
-        s.activeMinutes === null && s.passiveMinutes === null;
+      const shape = taskShape(steps);
       tasks.set(key, {
         key,
         owner,
         dishId: owner.kind === "dish" ? owner.dishId : null,
         batchId: owner.kind === "batch" ? owner.batchId : null,
         stepIds: group.stepIds,
-        activeMinutes: steps.reduce(
-          (n, s) => n + (unknown(s) ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0)),
-          0,
-        ),
-        passiveMinutes: steps.reduce((n, s) => n + roundUp(s.passiveMinutes ?? 0), 0),
-        trailingPassiveMinutes: roundUp(steps.at(-1)!.passiveMinutes ?? 0),
-        approximate: steps.some(unknown),
+        activeMinutes: shape.activeMinutes,
+        passiveMinutes: shape.passiveMinutes,
+        trailingPassiveMinutes: shape.trailingPassiveMinutes,
+        approximate: shape.approximate,
       });
       for (const id of group.stepIds) keyOfStep.set(id, key);
       keys.push(key);

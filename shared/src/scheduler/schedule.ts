@@ -1,3 +1,11 @@
+import {
+  ceilToGrid,
+  floorToGrid,
+  GRID,
+  nearestOnGrid,
+  type ActiveStretch,
+  taskShape,
+} from "../task/shape.ts";
 import { fits, normalize, subtract, type Timeline } from "./timeline.ts";
 import {
   SchedulerInputError,
@@ -13,19 +21,10 @@ import {
   type UnplacedReason,
 } from "./types.ts";
 
-const GRID = 5;
-const PLACEHOLDER_ACTIVE = 10;
-
-/** One active stretch of a Task, as an offset from the Task's start. */
-interface Stretch {
-  offset: number;
-  minutes: number;
-}
-
 interface Prepared {
   key: TaskKey;
   duration: number;
-  stretches: Stretch[];
+  stretches: ActiveStretch[];
   approximate: boolean;
   lower: Minute;
   keeps: number | null;
@@ -39,9 +38,6 @@ interface Prepared {
   progress: { done: boolean; ready: Minute } | null;
 }
 
-const roundUp = (minutes: number) => Math.ceil(minutes / GRID) * GRID;
-const floorGrid = (minute: Minute) => Math.floor(minute / GRID) * GRID;
-const ceilGrid = (minute: Minute) => Math.ceil(minute / GRID) * GRID;
 const byKey = <T extends { key: TaskKey }>(a: T, b: T) =>
   a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
 
@@ -67,13 +63,6 @@ function prepare(model: PlanningModel): Prepared[] {
     const key = taskKey(task.owner, task.steps[0].stepId);
     if (task.earliestStart !== null)
       assertTime(task.earliestStart, `Earliest start of ${key}`, [key]);
-    let offset = 0;
-    let approximate = false;
-    const stretches: Stretch[] = [];
-    // The ready time of the latest done Step so far, carried through the Steps after it.
-    let ready: Minute | null = null;
-    let doneReady: Minute | null = null;
-    let allDone = true;
     for (const s of task.steps) {
       if (s.doneAt != null) assertTime(s.doneAt, `Done time of Step ${s.stepId} of ${key}`, [key]);
       if (
@@ -95,13 +84,14 @@ function prepare(model: PlanningModel): Prepared[] {
           );
         }
       }
-      const passive = s.passiveMinutes === null ? 0 : roundUp(s.passiveMinutes);
-      // No duration at all: a 10-minute active placeholder. Passive only: active 0.
-      const unknown = s.activeMinutes === null && passive === 0;
-      if (unknown) approximate = true;
-      const active = unknown ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0);
-      if (active > 0) stretches.push({ offset, minutes: active });
-      offset += active + passive;
+    }
+    const shape = taskShape(task.steps);
+    // The ready time of the latest done Step so far, carried through the Steps after it.
+    let ready: Minute | null = null;
+    let doneReady: Minute | null = null;
+    let allDone = true;
+    for (const [i, s] of task.steps.entries()) {
+      const { activeMinutes: active, passiveMinutes: passive } = shape.steps[i];
       if (s.doneAt != null) {
         ready = s.doneAt + passive;
         doneReady = Math.max(doneReady ?? ready, ready);
@@ -112,15 +102,15 @@ function prepare(model: PlanningModel): Prepared[] {
     }
     return {
       key,
-      duration: offset,
-      stretches,
-      approximate,
+      duration: shape.duration,
+      stretches: shape.stretches,
+      approximate: shape.approximate,
       lower: task.earliestStart ?? model.service.dayStart,
       keeps: task.keepsMinutes ?? null,
       owner:
         task.owner.kind === "dish" ? `dish:${task.owner.dishId}` : `batch:${task.owner.batchId}`,
       progress:
-        ready === null ? null : { done: allDone, ready: ceilGrid(allDone ? doneReady! : ready) },
+        ready === null ? null : { done: allDone, ready: ceilToGrid(allDone ? doneReady! : ready) },
     };
   });
 }
@@ -194,7 +184,7 @@ function fitsAt(free: Timeline, task: Prepared, start: Minute): boolean {
 }
 
 function latestFit(free: Timeline, task: Prepared, lower: Minute, upper: Minute): Minute | null {
-  for (let start = floorGrid(upper - task.duration); start >= ceilGrid(lower); start -= GRID) {
+  for (let start = floorToGrid(upper - task.duration); start >= ceilToGrid(lower); start -= GRID) {
     if (fitsAt(free, task, start)) return start;
   }
   return null;
@@ -208,10 +198,10 @@ function nearestFit(
   upper: Minute,
   previous: Minute,
 ): Minute | null {
-  const lo = ceilGrid(lower);
-  const hi = floorGrid(upper - task.duration);
+  const lo = ceilToGrid(lower);
+  const hi = floorToGrid(upper - task.duration);
   if (hi < lo) return null;
-  const from = Math.min(Math.max(Math.round(previous / GRID) * GRID, lo), hi);
+  const from = Math.min(Math.max(nearestOnGrid(previous), lo), hi);
   const reach = Math.max(hi - from, from - lo);
   for (let d = 0; d <= reach; d += GRID) {
     if (from + d <= hi && fitsAt(free, task, from + d)) return from + d;
@@ -381,7 +371,7 @@ export function schedule(model: PlanningModel): Plan {
     if (!task.progress || fixedStart.has(task.key)) continue;
     const prev = previousOf.get(task.key);
     if (!prev && !task.progress.done) continue;
-    const start = prev ? prev.start : floorGrid(task.progress.ready - task.duration);
+    const start = prev ? prev.start : floorToGrid(task.progress.ready - task.duration);
     place(task, start, prev?.pinned ?? false);
     fixedStart.set(task.key, start);
     previousStart.delete(task.key);

@@ -1,3 +1,4 @@
+import { nearestOnGrid } from "../task/shape.ts";
 import type { Interval, Minute, PlanningModel } from "../scheduler/types.ts";
 import { addDays, type LocalDate, localParts, zonedMinute } from "./time.ts";
 
@@ -139,8 +140,8 @@ export function fromAxis(axis: Axis, x: number): Minute {
   return last.start + (x - last.offset);
 }
 
-/** The nearest minute on the 5-minute grid. */
-export const snap5 = (minute: number): Minute => Math.round(minute / 5) * 5;
+/** The nearest minute on the scheduler's grid. */
+export const snap5 = (minute: number): Minute => nearestOnGrid(minute);
 
 export type BarPart = { from: number; to: number };
 

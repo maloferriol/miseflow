@@ -1,9 +1,11 @@
 export * from "./schema.ts";
 export * from "./scheduler/index.ts";
+export { ownerSchema } from "./task/owner.ts";
 export * from "./mutators/registry.ts";
 export * from "./catalog/match.ts";
 export { positionAfter } from "./mutators/position.ts";
 export * from "./catalog/load.ts";
+export * from "./catalog/visibility.ts";
 export * from "./catalog/units.ts";
 export * from "./recipe/quantity.ts";
 export * from "./recipe/convert.ts";

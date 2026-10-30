@@ -1,5 +1,5 @@
-import { shoppingCategories } from "@miseflow/shared";
-import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { shoppingCategories, visibleTo } from "@miseflow/shared";
+import { asc, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AuthEnv } from "../auth.ts";
 import type { Db } from "../db.ts";
@@ -14,12 +14,7 @@ export function shoppingCategoriesRoute(db: Db) {
         position: shoppingCategories.position,
       })
       .from(shoppingCategories)
-      .where(
-        and(
-          or(isNull(shoppingCategories.ownerId), eq(shoppingCategories.ownerId, c.get("ownerId"))),
-          isNull(shoppingCategories.deletedAt),
-        ),
-      )
+      .where(visibleTo(shoppingCategories, c.get("ownerId")))
       .orderBy(asc(sql`${shoppingCategories.position} collate "C"`));
     return c.json({ shoppingCategories: rows }, 200);
   });

@@ -1,3 +1,5 @@
+import type { Owner } from "../task/owner.ts";
+
 /**
  * Planning-model input and Plan output for the greedy backward scheduler.
  *
@@ -9,7 +11,7 @@
 export type Minute = number;
 
 /** Who a Task belongs to: a Dish or a Batch. */
-export type Owner = { kind: "dish"; dishId: string } | { kind: "batch"; batchId: string };
+export type { Owner };
 
 /** ADR 0010 key: `${kind}:${ownerId}:${firstStepId}`. Build it with `taskKey`. */
 export type TaskKey = string;

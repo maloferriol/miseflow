@@ -1,4 +1,4 @@
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { Tx } from "../mutators/define.ts";
 import {
   ingredientAliases,
@@ -7,6 +7,7 @@ import {
   shoppingCategories,
 } from "../schema.ts";
 import type { CatalogEntry } from "./match.ts";
+import { visibleTo } from "./visibility.ts";
 
 export type VisibleIngredient = CatalogEntry & {
   preferredKind: string | null;
@@ -18,16 +19,10 @@ export type VisibleIngredient = CatalogEntry & {
   overrideId: string | null;
 };
 
-// Seed rows have no owner; everything else must be the caller's. Soft-deleted rows never show.
-const visible = (
-  table: typeof ingredients | typeof ingredientAliases | typeof shoppingCategories,
-  ownerId: string,
-) => and(or(isNull(table.ownerId), eq(table.ownerId, ownerId)), isNull(table.deletedAt));
-
 /** The Ingredient catalog the caller sees: the seed plus their own rows, overrides merged in. */
 export async function loadCatalog(tx: Tx, ownerId: string): Promise<VisibleIngredient[]> {
   const [ingredientRows, aliasRows, overrideRows, categoryRows] = await Promise.all([
-    tx.select().from(ingredients).where(visible(ingredients, ownerId)),
+    tx.select().from(ingredients).where(visibleTo(ingredients, ownerId)),
     tx
       .select({
         ingredientId: ingredientAliases.ingredientId,
@@ -35,7 +30,7 @@ export async function loadCatalog(tx: Tx, ownerId: string): Promise<VisibleIngre
         source: ingredientAliases.source,
       })
       .from(ingredientAliases)
-      .where(visible(ingredientAliases, ownerId)),
+      .where(visibleTo(ingredientAliases, ownerId)),
     tx
       .select()
       .from(ingredientOverrides)
@@ -43,7 +38,7 @@ export async function loadCatalog(tx: Tx, ownerId: string): Promise<VisibleIngre
     tx
       .select({ id: shoppingCategories.id, name: shoppingCategories.name })
       .from(shoppingCategories)
-      .where(visible(shoppingCategories, ownerId)),
+      .where(visibleTo(shoppingCategories, ownerId)),
   ]);
 
   const categories = new Map(categoryRows.map((c) => [c.id, c]));

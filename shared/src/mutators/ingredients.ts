@@ -1,21 +1,11 @@
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { loadCatalog } from "../catalog/load.ts";
 import { findIngredient, normaliseName } from "../catalog/match.ts";
 import { kindSchema, unitFitsKind, unitSchema, type Kind, type Unit } from "../catalog/units.ts";
-import {
-  ingredientAliases,
-  ingredientOverrides,
-  ingredients,
-  shoppingCategories,
-} from "../schema.ts";
-import {
-  ConflictError,
-  defineMutator,
-  InvalidArgsError,
-  NotFoundError,
-  type Tx,
-} from "./define.ts";
+import { requireVisibleCategory, requireVisibleIngredient } from "../catalog/visibility.ts";
+import { ingredientAliases, ingredientOverrides, ingredients } from "../schema.ts";
+import { ConflictError, defineMutator, InvalidArgsError, type Tx } from "./define.ts";
 
 const name = z.string().trim().min(1).max(200);
 
@@ -144,41 +134,4 @@ export const overrideIngredient = defineMutator({
 // Source: https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS
 async function lockCatalog(tx: Tx, ownerId: string) {
   await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`catalog:${ownerId}`}, 0))`);
-}
-
-/** A seed Ingredient, or the caller's own live one; anything else reads as missing. */
-export async function requireVisibleIngredient(tx: Tx, id: string, ownerId: string) {
-  const [row] = await tx
-    .select({
-      id: ingredients.id,
-      source: ingredients.source,
-      preferredKind: ingredients.preferredKind,
-    })
-    .from(ingredients)
-    .where(
-      and(
-        eq(ingredients.id, id),
-        or(
-          and(isNull(ingredients.ownerId), eq(ingredients.source, "seed")),
-          eq(ingredients.ownerId, ownerId),
-        ),
-        isNull(ingredients.deletedAt),
-      ),
-    );
-  if (!row) throw new NotFoundError("Ingredient");
-  return row;
-}
-
-async function requireVisibleCategory(tx: Tx, id: string, ownerId: string) {
-  const [row] = await tx
-    .select({ id: shoppingCategories.id })
-    .from(shoppingCategories)
-    .where(
-      and(
-        eq(shoppingCategories.id, id),
-        or(isNull(shoppingCategories.ownerId), eq(shoppingCategories.ownerId, ownerId)),
-        isNull(shoppingCategories.deletedAt),
-      ),
-    );
-  if (!row) throw new NotFoundError("Shopping category");
 }

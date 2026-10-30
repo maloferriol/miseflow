@@ -13,12 +13,12 @@ export function capture(command: string, args: string[], cwd = repoDir) {
   return { ok: result.status === 0, missing, stdout: result.stdout ?? "" };
 }
 
+const checkouts = new Map<string, string | undefined>();
+
 /** This checkout's git top level. */
 export function checkoutRoot(): string {
-  return capture("git", ["rev-parse", "--show-toplevel"]).stdout.trim();
+  return checkoutOf(repoDir) ?? "";
 }
-
-const checkouts = new Map<string, string | undefined>();
 
 /** The git top level of `cwd`, or undefined when it's unknown or not in a checkout. */
 export function checkoutOf(cwd: string | undefined): string | undefined {

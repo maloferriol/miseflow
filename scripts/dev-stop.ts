@@ -3,7 +3,13 @@
 // because it can't tell who started a process; this can. The SessionEnd hook runs it with
 // --quiet, which prints only what it stopped or failed to stop.
 // The decisions live in dev-stop-plan.ts, which has the tests.
-import { parsePs, planDevStop, type ProcessInfo } from "./dev-stop-plan.ts";
+import {
+  parentsOf,
+  parsePs,
+  planDevStop,
+  processesToResolve,
+  type ProcessInfo,
+} from "./dev-stop-plan.ts";
 import { appPorts } from "./preflight-checks.ts";
 import { capture, checkoutOf, checkoutRoot, listenersOn, workingDirectories } from "./processes.ts";
 
@@ -11,41 +17,26 @@ const quiet = process.argv.includes("--quiet");
 const graceMs = 5_000;
 
 if (capture("lsof", ["-v"]).missing) {
-  console.warn("! lsof isn't installed, so dev:stop can't find the app ports' listeners.");
+  if (!quiet)
+    console.warn("! lsof isn't installed, so dev:stop can't find the app ports' listeners.");
   process.exit(0);
 }
 
 const root = checkoutRoot();
 const ports = appPorts.map((port) => ({ port, listeners: listenersOn(port.port) }));
-const table = parsePs(capture("ps", ["-A", "-o", "pid=,ppid=,pgid="]).stdout);
-const byPid = new Map(table.map((p) => [p.pid, p]));
-
-const ancestry = (pid: number) => {
-  const chain: number[] = [];
-  for (let p = byPid.get(pid); p && p.pid > 1; p = byPid.get(p.ppid)) chain.push(p.pid);
-  return chain;
-};
-
-// Only the groups and parents of this checkout's listeners need a checkout: one lsof, and one git
-// call per directory.
-const relevant = new Set<number>();
-for (const { listeners } of ports)
-  for (const listener of listeners.filter((l) => l.checkout === root)) {
-    const pgid = byPid.get(listener.pid)?.pgid;
-    for (const p of table) if (p.pgid === pgid) relevant.add(p.pid);
-    for (const pid of ancestry(listener.pid)) relevant.add(pid);
-  }
-const cwds = workingDirectories([...relevant]);
-const processes: ProcessInfo[] = table.map((p) => ({
+const psRows = parsePs(capture("ps", ["-A", "-o", "pid=,ppid=,pgid="]).stdout);
+const toResolve = new Set(processesToResolve(ports, psRows, root));
+const cwds = workingDirectories([...toResolve]);
+const processes: ProcessInfo[] = psRows.map((p) => ({
   ...p,
-  checkout: relevant.has(p.pid) ? checkoutOf(cwds.get(p.pid)) : undefined,
+  checkout: toResolve.has(p.pid) ? checkoutOf(cwds.get(p.pid)) : undefined,
 }));
 
 const plan = planDevStop({
   ports,
   processes,
   checkoutRoot: root,
-  protectedPids: ancestry(process.pid),
+  protectedPids: [process.pid, ...parentsOf(process.pid, psRows)],
 });
 
 if (!quiet) for (const line of plan.leftAlone) console.log(line);

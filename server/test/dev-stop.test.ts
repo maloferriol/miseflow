@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePs, planDevStop } from "../../scripts/dev-stop-plan.ts";
+import { parsePs, planDevStop, processesToResolve } from "../../scripts/dev-stop-plan.ts";
 import { appPorts } from "../../scripts/preflight-checks.ts";
 
 // `npm run dev:stop` stops what this decides; the script itself only gathers the facts and signals.
@@ -12,6 +12,30 @@ describe("dev:stop", () => {
       { pid: 1, ppid: 0, pgid: 1 },
       { pid: 41133, ppid: 41100, pgid: 41100 },
     ]);
+  });
+
+  it("needs the checkout of only this checkout's listeners' groups and parents", () => {
+    const table = [
+      { pid: 1, ppid: 0, pgid: 1 },
+      { pid: 50, ppid: 1, pgid: 50 },
+      { pid: 100, ppid: 50, pgid: 100 },
+      { pid: 104, ppid: 100, pgid: 100 },
+      { pid: 105, ppid: 100, pgid: 100 },
+      { pid: 204, ppid: 1, pgid: 204 },
+    ];
+    const ownListener = { pid: 104, command: "node", cwd: `${here}/server`, checkout: here };
+    const otherListener = { pid: 204, command: "node", cwd: "/elsewhere", checkout: "/elsewhere" };
+
+    const pids = processesToResolve(
+      [
+        { port: api, listeners: [ownListener] },
+        { port: web, listeners: [otherListener] },
+      ],
+      table,
+      here,
+    );
+
+    expect(pids.sort((a, b) => a - b)).toEqual([50, 100, 104, 105]);
   });
 
   it("stops nothing when no app port has a listener", () => {

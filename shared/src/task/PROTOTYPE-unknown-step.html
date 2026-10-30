@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unknown Step prototype</title>
+<style>
+  :root {
+    --ink: #1d1d1f; --muted: #6b6b70; --line: #e2e2e6; --bg: #f6f6f4; --card: #ffffff;
+    --accent: #2f5bd3; --bad: #d13b2e; --ok: #2b7a4b; --warn: #a86b00;
+    --blocked: #3d4451; --bar: #2f5bd3; --pass: #b9c7f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #ededf0; --muted: #a0a0a8; --line: #33333a; --bg: #161619; --card: #1f1f24;
+      --accent: #7f9cf0; --bad: #ff7a6e; --ok: #6fd39a; --warn: #f0b64a;
+      --blocked: #9aa3b5; --bar: #7f9cf0; --pass: #3e4a72;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #ededf0; --muted: #a0a0a8; --line: #33333a; --bg: #161619; --card: #1f1f24;
+    --accent: #7f9cf0; --bad: #ff7a6e; --ok: #6fd39a; --warn: #f0b64a;
+    --blocked: #9aa3b5; --bar: #7f9cf0; --pass: #3e4a72;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+  .banner { background: #fff1b8; color: #5a4300; text-align: center; font-weight: 700; letter-spacing: .05em; padding: 8px 12px; font-size: 13px; }
+  main { max-width: 1040px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 8px 0 6px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  h3 { font-size: 16px; margin: 0; }
+  .question { margin: 0 0 6px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .tab { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button { font: inherit; }
+  .btn { border: 1px solid var(--accent); background: var(--card); color: var(--accent); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+  .btn:disabled { border-color: var(--line); color: var(--muted); cursor: default; }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.small { padding: 2px 8px; }
+  .steps-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .notice { border-left: 3px solid var(--accent); padding: 6px 10px; margin: 10px 0 0; background: rgba(127,156,240,.08); }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  input[type=number] { width: 84px; font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--ink); }
+  input[type=time] { font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--ink); }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; margin-bottom: 8px; }
+  .controls label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .slider { width: 260px; }
+  .state-line { font-size: 14px; margin: 4px 0; }
+  .state-line b { font-weight: 600; }
+  .last { font-size: 13px; color: var(--accent); margin-top: 6px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .opt { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .opt .sub { font-size: 13px; color: var(--muted); margin: 2px 0 10px; }
+  .tl { position: relative; padding-bottom: 2px; }
+  .rowlabel { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .track { position: relative; height: 22px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .track.bad { outline: 2px solid var(--bad); outline-offset: 2px; }
+  .seg { position: absolute; top: 0; bottom: 0; }
+  .blocked { background: var(--blocked); }
+  .bar-active { background: var(--bar); }
+  .bar-passive { background: var(--pass); }
+  .mismatch { background: repeating-linear-gradient(45deg, var(--bad) 0 4px, transparent 4px 8px); }
+  .marker { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--ink); z-index: 2; pointer-events: none; }
+  .marker.plan { border-left: 2px dashed var(--accent); }
+  .marker.sched { border-left: 2px solid var(--muted); }
+  .ticks { position: relative; height: 16px; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .tick { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .facts { margin-top: 10px; }
+  .facts td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .warnline { margin-top: 10px; font-size: 14px; }
+  .pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); }
+  .pill.on { background: rgba(168,107,0,.15); color: var(--warn); border-color: var(--warn); }
+  .pill.off { color: var(--muted); }
+  .note { font-size: 13px; color: var(--warn); margin-top: 4px; }
+  .verdict { margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 14px; border: 1px solid; }
+  .verdict.ok { color: var(--ok); border-color: var(--ok); background: rgba(43,122,75,.08); }
+  .verdict.warn { color: var(--warn); border-color: var(--warn); background: rgba(168,107,0,.08); }
+  .verdict.bad { color: var(--bad); border-color: var(--bad); background: rgba(209,59,46,.07); }
+  .key { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+  .empty { color: var(--muted); font-style: italic; }
+  .guide-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="banner">PROTOTYPE · throwaway logic demo · not production code</div>
+<main>
+  <h1>Unknown Step: which rule should the Plan read use?</h1>
+  <p class="question"><strong>The question.</strong> A Step can have active time <code>null</code> and passive time <code>0</code>. The scheduler (Option A, the current <code>shape.ts</code> rule) counts that Step as unknown: 10 placeholder active minutes and the Task is approximate. The old TaskInfo rule (Option B, <code>model.ts</code> at <code>64960c7</code>) counts it as 0 active, not approximate. The scheduler still places with Option A in both cases. Only what the Plan read reports differs: the Gantt bar, the due time (and so "behind"), and the ≈ flag. Which one should the Plan read use?</p>
+  <p class="muted">Free play edits one Task's Steps and times. Every change re-renders the state and both options side by side. Walkthrough tabs preload a scenario and then step through its buttons. Nothing is saved; reloading resets everything.</p>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <section class="card" id="guide"></section>
+
+  <section class="card">
+    <h2>Free play: one Task</h2>
+    <div class="controls">
+      <label>Task start <input type="time" id="start-input" step="300"></label>
+      <label>Now <input type="range" id="now-slider" class="slider" min="420" max="1020" step="5"> <span id="now-label"></span></label>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Active minutes</th><th>Passive minutes</th><th>Done</th><th></th></tr></thead>
+      <tbody id="steps-body"></tbody>
+    </table>
+    <div class="steps-btns">
+      <button class="btn" id="add-step">Add a Step</button>
+      <button class="btn" id="clear-steps">Clear all Steps</button>
+    </div>
+    <p class="muted" style="margin:8px 0 0">Blank = null (no time set). A number is minutes; 0 is an explicit zero.</p>
+  </section>
+
+  <section class="card">
+    <h2>Current state</h2>
+    <div id="state"></div>
+  </section>
+
+  <section class="cols" id="options"></section>
+
+  <p class="muted" style="margin-top:14px">Logic lives in the first script block and is pure (no DOM). It is copied from <code>shared/src/task/shape.ts</code> (taskShape, dueOffset), <code>model.ts</code> at <code>64960c7</code> (old TaskInfo totals), <code>plan/axis.ts</code> (barParts), <code>plan/behind.ts</code> (due and behind), and <code>recipe/planning.ts</code> (missing duration). The Gantt is simplified to one straight day, which is a 1:1 minute mapping for a single Task.</p>
+</main>
+
+<script>
+// ===== PURE LOGIC: no DOM below here. This block is the part worth lifting into the real code. =====
+const Logic = (() => {
+  const GRID = 5;
+  const PLACEHOLDER_ACTIVE = 10;
+  const roundUp = (m) => Math.ceil(m / GRID) * GRID;
+
+  // shape.ts dueOffset: when a Task is due, from its start. Passive time after the last active time runs by itself.
+  const dueOffset = (t) => t.activeMinutes + t.passiveMinutes - t.trailingPassiveMinutes;
+
+  // shape.ts taskShape: how the scheduler places a Task. Same for both options.
+  function taskShape(steps) {
+    let offset = 0;
+    let activeMinutes = 0;
+    let passiveMinutes = 0;
+    let approximate = false;
+    const stretches = [];
+    const parts = steps.map((s) => {
+      const passive = s.passiveMinutes === null ? 0 : roundUp(s.passiveMinutes);
+      const unknown = s.activeMinutes === null && passive === 0;
+      if (unknown) approximate = true;
+      const active = unknown ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0);
+      if (active > 0) stretches.push({ offset, minutes: active });
+      const startOffset = offset;
+      offset += active + passive;
+      activeMinutes += active;
+      passiveMinutes += passive;
+      return { activeMinutes: active, passiveMinutes: passive, startOffset };
+    });
+    const trailingPassiveMinutes = parts.length ? parts[parts.length - 1].passiveMinutes : 0;
+    const totals = { activeMinutes, passiveMinutes, trailingPassiveMinutes };
+    return {
+      duration: offset,
+      stretches,
+      steps: parts,
+      ...totals,
+      approximate,
+      dueOffset: dueOffset(totals),
+    };
+  }
+
+  // model.ts (64960c7) toPlanningModel, the old TaskInfo totals. Option B.
+  function taskInfoOld(steps) {
+    const unknown = (s) => s.activeMinutes === null && s.passiveMinutes === null;
+    const last = steps[steps.length - 1];
+    return {
+      activeMinutes: steps.reduce(
+        (n, s) => n + (unknown(s) ? PLACEHOLDER_ACTIVE : roundUp(s.activeMinutes ?? 0)),
+        0,
+      ),
+      passiveMinutes: steps.reduce((n, s) => n + roundUp(s.passiveMinutes ?? 0), 0),
+      trailingPassiveMinutes: last ? roundUp(last.passiveMinutes ?? 0) : 0,
+      approximate: steps.some(unknown),
+    };
+  }
+
+  // Option A's TaskInfo is just taskShape's totals (the current code path).
+  function taskInfoScheduler(shape) {
+    return {
+      activeMinutes: shape.activeMinutes,
+      passiveMinutes: shape.passiveMinutes,
+      trailingPassiveMinutes: shape.trailingPassiveMinutes,
+      approximate: shape.approximate,
+    };
+  }
+
+  // axis.ts barParts: active part from the start, then the passive part straight after.
+  function barParts(start, info) {
+    const activeEnd = start + info.activeMinutes;
+    const end = activeEnd + info.passiveMinutes;
+    return {
+      active: info.activeMinutes > 0 ? [start, activeEnd] : null,
+      passive: info.passiveMinutes > 0 ? [activeEnd, end] : null,
+    };
+  }
+
+  // planning.ts readyToPlan.missingDuration: both null. An explicit 0 counts as set.
+  const missingDuration = (steps) =>
+    steps.flatMap((s, i) => (s.activeMinutes === null && s.passiveMinutes === null ? [i] : []));
+
+  // behind.ts isDone: every Step of the Task is done (an empty Task counts as done).
+  const isDone = (steps) => steps.every((s) => s.done);
+
+  const minutesOf = (intervals) => {
+    const set = new Set();
+    for (const [a, b] of intervals) for (let m = a; m < b; m++) set.add(m);
+    return set;
+  };
+
+  // Runs of minutes in exactly one of the two sets, as [from, to) pairs.
+  function symmetricRuns(a, b) {
+    const diff = [...a].filter((m) => !b.has(m)).concat([...b].filter((m) => !a.has(m)));
+    diff.sort((x, y) => x - y);
+    const out = [];
+    for (const m of diff) {
+      const last = out[out.length - 1];
+      if (last && last[1] === m) last[1] = m + 1;
+      else out.push([m, m + 1]);
+    }
+    return out;
+  }
+
+  const hhmm = (m) => {
+    const x = ((m % 1440) + 1440) % 1440;
+    return `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+  };
+
+  // One option's read of the Task, compared with where the scheduler places the Cook.
+  function judge({ start, now, steps, shape, info }) {
+    const bar = barParts(start, info);
+    const dueAt = start + dueOffset(info);
+    const schedulerDue = start + shape.dueOffset;
+    const behind = !isDone(steps) && now > dueAt;
+    const blockedTotal = shape.activeMinutes;
+    const barLen = info.activeMinutes + info.passiveMinutes;
+    const amountOk = info.activeMinutes === blockedTotal;
+    const lengthOk = barLen === shape.duration;
+    const mismatch = symmetricRuns(
+      minutesOf(bar.active ? [bar.active] : []),
+      minutesOf(shape.stretches.map((s) => [start + s.offset, start + s.offset + s.minutes])),
+    );
+    const shapeOk = mismatch.length === 0;
+
+    const issues = [];
+    if (!amountOk)
+      issues.push(
+        `the Plan reads ${info.activeMinutes} active min, but the Cook is blocked for ${blockedTotal}`,
+      );
+    if (!lengthOk) {
+      const d = barLen - shape.duration;
+      issues.push(
+        `the bar is ${Math.abs(d)} min ${d < 0 ? "shorter" : "longer"} than the placed span (${shape.duration} min)`,
+      );
+    }
+    let verdict;
+    let level;
+    if (issues.length) {
+      verdict = `Wrong: ${issues.join("; ")}.`;
+      level = "bad";
+    } else if (!shapeOk) {
+      verdict =
+        "Amount and length match what the Cook is blocked for. But the bar draws all active time first and then all passive, so its active block covers different minutes than the blocked stretches (the same in both options).";
+      level = "warn";
+    } else {
+      verdict = "Bar matches what the Cook is blocked for.";
+      level = "ok";
+    }
+    if (dueAt !== schedulerDue)
+      verdict += ` Due: the Plan says ${hhmm(dueAt)}, but the scheduler's last active minute ends at ${hhmm(schedulerDue)}.`;
+
+    return { info, bar, dueAt, schedulerDue, behind, blockedTotal, barLen, amountOk, lengthOk, mismatch, shapeOk, verdict, level };
+  }
+
+  // Everything the page shows for one Task, from its inputs.
+  function evaluate({ start, now, steps }) {
+    const shape = taskShape(steps);
+    const infoA = taskInfoScheduler(shape);
+    const infoB = taskInfoOld(steps);
+    const common = { start, now, steps, shape };
+    return {
+      start,
+      now,
+      steps,
+      shape,
+      schedulerDue: start + shape.dueOffset,
+      warning: missingDuration(steps),
+      A: judge({ ...common, info: infoA }),
+      B: judge({ ...common, info: infoB }),
+    };
+  }
+
+  return { evaluate, hhmm, PLACEHOLDER_ACTIVE };
+})();
+</script>
+
+<script>
+// ===== PAGE: a thin shell over Logic. Nothing here feeds back into Logic. =====
+const S = (active, passive, done = false) => ({ activeMinutes: active, passiveMinutes: passive, done });
+const clock = (h, m) => h * 60 + m;
+
+const WALKS = [
+  {
+    id: "lone",
+    title: "Lone {null, 0} Step",
+    blurb: "One Step: active blank (null), passive 0. The scheduler blocks the Cook for a 10-minute placeholder. Watch whether each option's read agrees with that.",
+    intro: "Now is 10:05. The Cook is blocked 10:00 to 10:10. Option A shows 10 active minutes and ≈, and is not behind yet (due 10:10). Option B shows 0 active minutes, no ≈, and its due is 10:00, so it is already behind with an empty bar.",
+    preload: { start: clock(10, 0), now: clock(10, 5), steps: [S(null, 0)] },
+    buttons: [
+      { label: "Set now to 10:12", apply: (s) => (s.now = clock(10, 12)),
+        notice: "Both options now say behind: A because 10:10 has passed, B because 10:00 has. Only the bar still differs. B's bar is empty while the Cook is blocked until 10:10." },
+      { label: "Mark the Step done", apply: (s) => (s.steps[0].done = true),
+        notice: "A done Step is never behind, in either option. The bar still disagrees under B." },
+    ],
+  },
+  {
+    id: "middle",
+    title: "{null, 0} in the middle",
+    blurb: "Three Steps: {10, 20}, {null, 0}, {15, null}. The scheduler places them back to back, each active part first, then passive. Compare the bar with the blocked stretches and their offsets.",
+    intro: "Now is 10:30. The Cook is blocked 10:00 to 10:10, free 10:10 to 10:30 (passive), blocked 10:30 to 10:40 (placeholder), then blocked 10:40 to 10:55. That is 35 active minutes, due 10:55. Option A's bar has the right total, but it draws the 35 active minutes first, so its active block covers the wrong minutes (red stripes). Option B's bar is 10 minutes short, and its due is 10:45.",
+    preload: { start: clock(10, 0), now: clock(10, 30), steps: [S(10, 20), S(null, 0), S(15, null)] },
+    buttons: [
+      { label: "Set now to 10:50", apply: (s) => (s.now = clock(10, 50)),
+        notice: "At 10:50, B says behind (its due is 10:45) and A does not (due 10:55). The Cook is still blocked until 10:55, so B's warning comes 10 minutes early." },
+      { label: "Set now to 11:00", apply: (s) => (s.now = clock(11, 0)),
+        notice: "At 11:00 both are behind. B was early only because its bar was short." },
+    ],
+  },
+  {
+    id: "last",
+    title: "{null, 0} last, behind",
+    blurb: "Steps {10, 30}, then {null, 0}. The last Step has no active time set. Passive time after the first Step runs by itself, so only the placeholder at the end blocks the Cook.",
+    intro: "Now is 10:45, just after B's due (10:40) and before A's (10:50). B says behind. A says on time. The Cook is actually still blocked until 10:50.",
+    preload: { start: clock(10, 0), now: clock(10, 45), steps: [S(10, 30), S(null, 0)] },
+    buttons: [
+      { label: "Set now to 10:35", apply: (s) => (s.now = clock(10, 35)),
+        notice: "At 10:35 nothing is behind in either option. Both due times are still ahead." },
+      { label: "Set now to 10:45", apply: (s) => (s.now = clock(10, 45)),
+        notice: "At 10:45 the options split: B says behind and A says on time." },
+      { label: "Set now to 10:55", apply: (s) => (s.now = clock(10, 55)),
+        notice: "At 10:55 both are behind. B's warning came 10 minutes before the Cook's real due time." },
+    ],
+  },
+  {
+    id: "null-null",
+    title: "Control: {null, null}",
+    blurb: "One Step with neither time set. This is the case the missing-duration warning is about. Both options should agree here.",
+    intro: "One Step, both blank. Both options: 10 active minutes, due 10:10, ≈ on, and the missing-duration warning fires.",
+    preload: { start: clock(10, 0), now: clock(10, 0), steps: [S(null, null)] },
+    buttons: [
+      { label: "Set now to 10:15", apply: (s) => (s.now = clock(10, 15)),
+        notice: "Both are behind (10:10 has passed, not done). Still identical." },
+      { label: "Set passive to 0 (becomes {null, 0})", apply: (s) => (s.steps[0].passiveMinutes = 0),
+        notice: "Now {null, 0}. The warning goes silent, because its rule needs both times blank. Option B drops to 0 active minutes and loses ≈. Option A keeps 10 active and ≈, with no warning. This is the disagreement from the first walkthrough." },
+    ],
+  },
+  {
+    id: "null-3",
+    title: "Control: {null, 3}",
+    blurb: "A passive-only Step of 3 minutes. Passive rounds up to 5 and there is no active time, so the Cook is never blocked. Both options should agree.",
+    intro: "Both options: 0 active, 5 passive, due 10:00. Its only passive time is trailing, so the due time is where the (empty) active time ends, at the start. The bar is a passive stretch 10:00 to 10:05 with nothing blocked. This Step is not missing a duration.",
+    preload: { start: clock(10, 0), now: clock(10, 0), steps: [S(null, 3)] },
+    buttons: [
+      { label: "Set now to 10:05", apply: (s) => (s.now = clock(10, 5)),
+        notice: "Both are behind at 10:05. Nothing is done and the due time was 10:00." },
+      { label: "Mark the Step done", apply: (s) => (s.steps[0].done = true),
+        notice: "Done, so neither is behind. Still identical." },
+    ],
+  },
+];
+
+// Page state. Logic only ever reads this.
+const state = { start: clock(10, 0), now: clock(10, 5), steps: [S(null, 0)] };
+let walk = null;       // index into WALKS, or null for free play
+let step = 0;          // next walkthrough button to press
+let notice = "Free play. Edit the Steps and times below. Every change re-renders both options.";
+let lastAction = "Free play started.";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const minutesLabel = (v) => (v === null ? "blank (null)" : `${v} min`);
+const parseTime = (text) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(text || "");
+  return m ? clock(Number(m[1]), Number(m[2])) : null;
+};
+const parseMinutes = (raw) => {
+  const t = String(raw).trim();
+  if (t === "") return null;
+  const v = Number(t);
+  return Number.isFinite(v) && v >= 0 ? v : null;
+};
+const copy = (x) => JSON.parse(JSON.stringify(x));
+
+function setAction(text) { lastAction = text; }
+
+function loadWalk(i) {
+  walk = i;
+  const w = WALKS[i];
+  Object.assign(state, copy(w.preload));
+  step = 0;
+  notice = w.intro;
+  setAction(`Walkthrough started: ${w.title}. Preloaded Steps and times.`);
+  renderAll();
+}
+
+function freePlay() {
+  walk = null;
+  notice = "Free play. Edit the Steps and times below. Every change re-renders both options.";
+  setAction("Free play.");
+  renderAll();
+}
+
+function renderTabs() {
+  const tabs = [`<button class="tab ${walk === null ? "on" : ""}" data-w="free">Free play</button>`]
+    .concat(WALKS.map((w, i) => `<button class="tab ${walk === i ? "on" : ""}" data-w="${i}">${esc(w.title)}</button>`));
+  $("tabs").innerHTML = tabs.join("");
+}
+
+function renderGuide() {
+  const g = $("guide");
+  if (walk === null) {
+    g.innerHTML = `<div class="guide-head"><h2>Free play</h2><span class="muted">Pick a walkthrough tab above for a scripted case.</span></div>
+      <p class="muted" style="margin:0">${esc(notice)}</p>`;
+    return;
+  }
+  const w = WALKS[walk];
+  const buttons = w.buttons
+    .map((b, k) => {
+      const done = k < step;
+      const label = `${done ? "✓ " : `${k + 1}. `}${b.label}`;
+      return `<button class="btn ${k === step ? "primary" : ""}" data-walk-btn="${k}" ${k === step ? "" : "disabled"}>${esc(label)}</button>`;
+    })
+    .join("");
+  const finished = step >= w.buttons.length ? `<p class="muted" style="margin:8px 0 0">Walkthrough finished. Free play still works.</p>` : "";
+  g.innerHTML = `
+    <div class="guide-head"><h2>Walkthrough: ${esc(w.title)}</h2><span class="muted">Step ${Math.min(step + 1, w.buttons.length)} of ${w.buttons.length}</span></div>
+    <p style="margin:4px 0 0">${esc(w.blurb)}</p>
+    <div class="notice"><strong>What to notice.</strong> ${esc(notice)}</div>
+    <div class="steps-btns">${buttons}</div>${finished}`;
+}
+
+function renderEditor() {
+  $("steps-body").innerHTML = state.steps.length
+    ? state.steps
+        .map(
+          (s, i) => `<tr>
+            <td>${i + 1}</td>
+            <td><input type="number" min="0" step="any" placeholder="blank" data-i="${i}" data-k="activeMinutes" value="${s.activeMinutes ?? ""}"></td>
+            <td><input type="number" min="0" step="any" placeholder="blank" data-i="${i}" data-k="passiveMinutes" value="${s.passiveMinutes ?? ""}"></td>
+            <td><input type="checkbox" data-i="${i}" data-k="done" ${s.done ? "checked" : ""}></td>
+            <td><button class="btn small" data-remove="${i}">Remove</button></td>
+          </tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="5" class="empty">No Steps. Add one.</td></tr>`;
+}
+
+function syncControls() {
+  $("start-input").value = `${String(Math.floor(state.start / 60)).padStart(2, "0")}:${String(state.start % 60).padStart(2, "0")}`;
+  $("now-slider").value = String(state.now);
+  $("now-label").textContent = Logic.hhmm(state.now);
+}
+
+function renderState(r) {
+  const parts = [];
+  parts.push(`<div class="state-line"><b>Task start</b> ${Logic.hhmm(r.start)} · <b>Now</b> ${Logic.hhmm(r.now)} · <b>Steps</b> ${state.steps.length}</div>`);
+  if (!state.steps.length) parts.push(`<div class="state-line empty">No Steps: nothing to place.</div>`);
+  state.steps.forEach((s, i) => {
+    const placed = r.shape.steps[i];
+    const from = r.start + placed.startOffset;
+    const blockedText = placed.activeMinutes > 0 ? `Cook blocked ${Logic.hhmm(from)}–${Logic.hhmm(from + placed.activeMinutes)}` : "Cook not blocked";
+    parts.push(`<div class="state-line">Step ${i + 1}: active ${minutesLabel(s.activeMinutes)}, passive ${minutesLabel(s.passiveMinutes)}${s.done ? ", done" : ""} · scheduler rounds to ${placed.activeMinutes} active + ${placed.passiveMinutes} passive · ${blockedText}</div>`);
+  });
+  parts.push(`<div class="state-line"><b>Scheduler's last active minute ends</b> ${Logic.hhmm(r.schedulerDue)} (placed span ${r.shape.duration} min)</div>`);
+  parts.push(`<div class="last"><strong>Last action:</strong> ${esc(lastAction)}</div>`);
+  $("state").innerHTML = parts.join("");
+}
+
+function renderOptions(r) {
+  const { start, now, shape } = r;
+  const ends = [start + shape.duration, start + r.A.barLen, start + r.B.barLen, now, r.A.dueAt, r.B.dueAt, r.schedulerDue];
+  const from = Math.floor((Math.min(start, now) - 10) / 15) * 15;
+  let to = Math.ceil((Math.max(...ends) + 10) / 15) * 15;
+  if (to - from < 60) to = from + 60;
+  const span = to - from;
+  const pct = (m) => ((m - from) / span) * 100;
+  const wOf = (a, b) => ((b - a) / span) * 100;
+
+  const ticks = [];
+  for (let m = Math.ceil(from / 15) * 15; m <= to; m += 15)
+    ticks.push(`<span class="tick" style="left:${pct(m)}%">${Logic.hhmm(m)}</span>`);
+
+  const option = (key, title, sub, o, tag) => {
+    const blockedHTML = shape.stretches
+      .map((s) => `<div class="seg blocked" style="left:${pct(start + s.offset)}%;width:${wOf(start + s.offset, start + s.offset + s.minutes)}%"></div>`)
+      .join("");
+    const barHTML = [
+      o.bar.active ? `<div class="seg bar-active" style="left:${pct(o.bar.active[0])}%;width:${wOf(...o.bar.active)}%"></div>` : "",
+      o.bar.passive ? `<div class="seg bar-passive" style="left:${pct(o.bar.passive[0])}%;width:${wOf(...o.bar.passive)}%"></div>` : "",
+    ].join("");
+    const mismatchHTML = o.mismatch.map(([a, b]) => `<div class="seg mismatch" style="left:${pct(a)}%;width:${wOf(a, b)}%"></div>`).join("");
+    const approxOn = o.info.approximate;
+    const warnOn = r.warning.length > 0;
+    let note = "";
+    if (approxOn && !warnOn) note = "≈ is on, but no warning explains it: this Step has passive 0, not null, so the warning's both-blank rule does not fire.";
+    if (!approxOn && warnOn) note = "The warning fires, but ≈ is off.";
+    const warnText = warnOn ? `fires for ${r.warning.map((i) => "Step " + (i + 1)).join(", ")}` : "does not fire";
+    return `
+      <article class="opt">
+        <h3>${esc(title)}</h3>
+        <p class="sub">${esc(sub)}</p>
+        <div class="tl">
+          <div class="rowlabel">Cook blocked (scheduler placement, same in both options)</div>
+          <div class="track">${blockedHTML}</div>
+          <div class="rowlabel">Gantt bar (what the Plan read draws)</div>
+          <div class="track ${o.amountOk && o.lengthOk ? "" : "bad"}">${barHTML}</div>
+          <div class="rowlabel">Disagreement (striped: bar and Cook blocked differ)</div>
+          <div class="track">${mismatchHTML}</div>
+          <div class="marker" style="left:${pct(now)}%" title="now"></div>
+          <div class="marker plan" style="left:${pct(o.dueAt)}%" title="Plan due"></div>
+          <div class="marker sched" style="left:${pct(r.schedulerDue)}%" title="scheduler due"></div>
+          <div class="ticks">${ticks.join("")}</div>
+        </div>
+        <div class="legend"><span class="sw" style="background:var(--blocked)"></span>Cook blocked · <span class="sw" style="background:var(--bar)"></span>bar active · <span class="sw" style="background:var(--pass)"></span>bar passive · black line = now · dashed = Plan due · grey = scheduler due</div>
+        <table class="facts">
+          <tr><td>TaskInfo activeMinutes</td><td>${o.info.activeMinutes}</td></tr>
+          <tr><td>TaskInfo passiveMinutes</td><td>${o.info.passiveMinutes}</td></tr>
+          <tr><td>TaskInfo trailingPassiveMinutes</td><td>${o.info.trailingPassiveMinutes}</td></tr>
+          <tr><td>TaskInfo approximate (≈)</td><td>${approxOn ? "yes" : "no"}</td></tr>
+          <tr><td>Due (start + dueOffset)</td><td>${Logic.hhmm(o.dueAt)}</td></tr>
+          <tr><td>Behind at now (${Logic.hhmm(now)})</td><td>${o.behind ? "<strong>yes</strong>" : "no"}</td></tr>
+          <tr><td>Cook blocked for (scheduler)</td><td>${o.blockedTotal} min</td></tr>
+          <tr><td>Bar length vs placed span</td><td>${o.barLen} vs ${shape.duration} min</td></tr>
+        </table>
+        <div class="warnline"><strong>Missing-duration warning</strong> ${warnText} <span class="pill ${approxOn ? "on" : "off"}">≈ ${approxOn ? "on" : "off"}</span>${note ? `<div class="note">${esc(note)}</div>` : ""}</div>
+        <div class="verdict ${o.level}"><strong>${esc(tag)}:</strong> ${esc(o.verdict)}</div>
+      </article>`;
+  };
+
+  $("options").innerHTML =
+    option(
+      "A",
+      "Option A: scheduler rule (current code)",
+      "Unknown = active null and passive rounds to 0. Counts 10 active minutes and makes the Task approximate.",
+      r.A,
+      "A",
+    ) +
+    option(
+      "B",
+      "Option B: old TaskInfo rule",
+      "Unknown = active null and passive null. {null, 0} counts 0 active and is not approximate.",
+      r.B,
+      "B",
+    );
+}
+
+function renderOutputs() {
+  const r = Logic.evaluate(state);
+  renderState(r);
+  renderOptions(r);
+}
+
+function renderAll() {
+  renderTabs();
+  renderGuide();
+  renderEditor();
+  syncControls();
+  renderOutputs();
+}
+
+// Events: tabs and walkthrough buttons.
+$("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-w]");
+  if (!b) return;
+  const w = b.dataset.w;
+  if (w === "free") freePlay();
+  else loadWalk(Number(w));
+});
+$("guide").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-walk-btn]");
+  if (!b || walk === null) return;
+  const k = Number(b.dataset.walkBtn);
+  const w = WALKS[walk];
+  if (k !== step) return;
+  w.buttons[k].apply(state);
+  notice = w.buttons[k].notice;
+  step += 1;
+  setAction(`Walkthrough: ${w.buttons[k].label}.`);
+  renderAll();
+});
+
+// Events: free-play editor.
+$("steps-body").addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.dataset.i === undefined || t.type !== "number") return;
+  const i = Number(t.dataset.i);
+  state.steps[i][t.dataset.k] = parseMinutes(t.value);
+  setAction(`Step ${i + 1} ${t.dataset.k === "activeMinutes" ? "active" : "passive"} set to ${parseMinutes(t.value) ?? "blank"}.`);
+  renderOutputs();
+});
+$("steps-body").addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.type === "checkbox") {
+    const i = Number(t.dataset.i);
+    state.steps[i].done = t.checked;
+    setAction(`Step ${i + 1} marked ${t.checked ? "done" : "not done"}.`);
+    renderOutputs();
+  }
+});
+$("steps-body").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-remove]");
+  if (!b) return;
+  const i = Number(b.dataset.remove);
+  state.steps.splice(i, 1);
+  setAction(`Removed Step ${i + 1}.`);
+  renderEditor();
+  renderOutputs();
+});
+$("add-step").addEventListener("click", () => {
+  state.steps.push(S(null, null));
+  setAction(`Added Step ${state.steps.length} (both blank).`);
+  renderEditor();
+  renderOutputs();
+});
+$("clear-steps").addEventListener("click", () => {
+  state.steps.length = 0;
+  setAction("Cleared all Steps.");
+  renderEditor();
+  renderOutputs();
+});
+$("start-input").addEventListener("change", (e) => {
+  const v = parseTime(e.target.value);
+  if (v === null) { syncControls(); return; }
+  state.start = v;
+  setAction(`Task start set to ${Logic.hhmm(v)}.`);
+  renderOutputs();
+});
+$("now-slider").addEventListener("input", (e) => {
+  state.now = Number(e.target.value);
+  setAction(`Now set to ${Logic.hhmm(state.now)}.`);
+  $("now-label").textContent = Logic.hhmm(state.now);
+  renderOutputs();
+});
+
+renderAll();
+</script>
+</body>
+</html>

@@ -9,22 +9,15 @@ import { fileURLToPath } from "node:url";
 import { envFileName, legacyEnvWarnings, loadEnv } from "./env.ts";
 import { assertLocalEnv } from "./local-only.ts";
 import {
+  appPorts,
   dependenciesNeedInstall,
   nodeVersionProblem,
-  parseLsof,
   portProblem,
-  type Listener,
 } from "./preflight-checks.ts";
+import { capture, checkoutRoot, listenersOn } from "./processes.ts";
 
 const repoDir = fileURLToPath(new URL("..", import.meta.url));
 const envFile = fileURLToPath(new URL("../.env.test", import.meta.url));
-
-/** Runs a command quietly. `missing` means the command isn't installed. */
-function capture(command: string, args: string[], cwd = repoDir) {
-  const result = spawnSync(command, args, { cwd, encoding: "utf8", timeout: 30_000 });
-  const missing = (result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT";
-  return { ok: result.status === 0, missing, stdout: result.stdout ?? "" };
-}
 
 /** Runs a command that fixes something, with its output shown. */
 function run(command: string, args: string[]) {
@@ -153,28 +146,12 @@ try {
 pass("Local Supabase stack");
 
 // 5. The app ports. A dev server or e2e run from another checkout would serve that checkout's code.
-const appPorts = [
-  { port: 8787, name: "API" },
-  { port: 5173, name: "web" },
-];
-const checkoutRoot = capture("git", ["rev-parse", "--show-toplevel"]).stdout.trim();
+const root = checkoutRoot();
 if (capture("lsof", ["-v"]).missing) {
   warn("lsof isn't installed, so the app ports weren't checked.");
 } else {
   for (const port of appPorts) {
-    const listening = capture("lsof", ["-nP", `-iTCP:${port.port}`, "-sTCP:LISTEN", "-Fpc"]);
-    const listeners: Listener[] = parseLsof(listening.stdout).map(({ pid, command }) => {
-      const cwd = parseLsof(capture("lsof", ["-a", "-p", `${pid}`, "-d", "cwd", "-Fn"]).stdout)[0]
-        ?.name;
-      const top = cwd ? capture("git", ["rev-parse", "--show-toplevel"], cwd) : undefined;
-      return {
-        pid,
-        command: command ?? "a process",
-        cwd,
-        checkout: top?.ok ? top.stdout.trim() : undefined,
-      };
-    });
-    const problem = portProblem(port, listeners, checkoutRoot);
+    const problem = portProblem(port, listenersOn(port.port), root);
     if (problem) fail(problem);
   }
   pass(`Ports ${appPorts.map((p) => p.port).join(" and ")} are free or this checkout's`);

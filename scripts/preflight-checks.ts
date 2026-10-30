@@ -30,6 +30,15 @@ export function dependenciesNeedInstall(times: {
   return times.installedAt === undefined || times.installedAt < times.lockfileAt;
 }
 
+/** A port a dev server listens on. */
+export type AppPort = { port: number; name: string };
+
+/** The app ports, checked by preflight and freed by `npm run dev:stop`. */
+export const appPorts: AppPort[] = [
+  { port: 8787, name: "API" },
+  { port: 5173, name: "web" },
+];
+
 /** One process from `lsof -F`: its pid, and the command (`c`) or file name (`n`) fields asked for. */
 export type LsofProcess = { pid: number; command?: string; name?: string };
 
@@ -59,7 +68,7 @@ export type Listener = {
  * worktrees sit inside the main checkout (.claude/worktrees/).
  */
 export function portProblem(
-  port: { port: number; name: string },
+  port: AppPort,
   listeners: Listener[],
   checkoutRoot: string,
 ): string | undefined {

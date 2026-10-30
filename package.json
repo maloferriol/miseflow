@@ -21,6 +21,7 @@
     "preflight": "node --experimental-strip-types scripts/preflight.ts",
     "check": "node --experimental-strip-types scripts/check.ts",
     "dev:user": "node --experimental-strip-types scripts/dev-user.ts",
+    "dev:stop": "node --experimental-strip-types scripts/dev-stop.ts",
     "token": "node --experimental-strip-types scripts/token.ts",
     "setup:local": "npm run setup:local -w server",
     "db:migrate": "node --experimental-strip-types scripts/db-migrate.ts test",

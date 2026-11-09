@@ -11,6 +11,7 @@ import {
   stepDependencies,
   steps,
 } from "../schema.ts";
+import { applyMutation } from "./apply.ts";
 import { ConflictError } from "./define.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
@@ -21,7 +22,7 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), {
+  await applyMutation(tx, mutator, mutator.args.parse(args), {
     ownerId: owner,
     timeZone: "Europe/Paris",
     now: () => FIXED_NOW,

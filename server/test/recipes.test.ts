@@ -1,4 +1,5 @@
 import {
+  applyMutation,
   getMutator,
   ingredientAliases,
   ingredients,
@@ -47,8 +48,9 @@ async function theirRecipe() {
   const recipeId = crypto.randomUUID();
   const createRecipe = getMutator("createRecipe")!;
   await db.transaction((tx) =>
-    createRecipe.run(
+    applyMutation(
       tx,
+      createRecipe,
       createRecipe.args.parse({ recipeId, revisionId: crypto.randomUUID(), name: "Not yours" }),
       { ownerId: crypto.randomUUID(), timeZone: "Europe/Paris", now: () => FIXED_NOW },
     ),

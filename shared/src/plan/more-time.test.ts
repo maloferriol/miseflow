@@ -7,6 +7,7 @@ import {
   SERVICE_TIME,
   setWalkthroughAvailability,
 } from "../../test/walkthrough.ts";
+import { applyMutation } from "../mutators/apply.ts";
 import { getMutator, type Tx } from "../mutators/registry.ts";
 import type { RecipeSnapshot } from "../recipe/snapshot.ts";
 import { schedule } from "../scheduler/schedule.ts";
@@ -28,7 +29,11 @@ const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 
 async function run(tx: Tx, name: string, args: unknown) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId, timeZone, now: () => FIXED_NOW });
+  await applyMutation(tx, mutator, mutator.args.parse(args), {
+    ownerId,
+    timeZone,
+    now: () => FIXED_NOW,
+  });
 }
 
 // The rows with `proposal` as that date's only override.

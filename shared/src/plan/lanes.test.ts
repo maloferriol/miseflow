@@ -7,6 +7,7 @@ import {
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../../test/walkthrough.ts";
+import { applyMutation } from "../mutators/apply.ts";
 import { getMutator, type Tx } from "../mutators/registry.ts";
 import { collapse, type LaneRow, laneTree } from "./lanes.ts";
 import { readPlan, type PlanRead } from "./read.ts";
@@ -17,7 +18,11 @@ const timeZone = "Europe/Paris";
 
 async function run(tx: Tx, name: string, args: unknown) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), { ownerId, timeZone, now: () => FIXED_NOW });
+  await applyMutation(tx, mutator, mutator.args.parse(args), {
+    ownerId,
+    timeZone,
+    now: () => FIXED_NOW,
+  });
 }
 
 // The stock walkthrough's Plan read, and its Courses as the Menu read lists them.

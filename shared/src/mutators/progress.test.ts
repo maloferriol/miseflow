@@ -13,6 +13,7 @@ import { batchId } from "../plan/batch-rows.ts";
 import { readPlan, type PlanRead } from "../plan/read.ts";
 import { localParts } from "../plan/time.ts";
 import { dishes, stepEvents, taskPlacements } from "../schema.ts";
+import { applyMutation } from "./apply.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
 // A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
@@ -27,7 +28,7 @@ async function run(
   options: { owner?: string; now?: () => Date } = {},
 ) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), {
+  await applyMutation(tx, mutator, mutator.args.parse(args), {
     ownerId: options.owner ?? ownerId,
     timeZone,
     now: options.now ?? (() => FIXED_NOW),

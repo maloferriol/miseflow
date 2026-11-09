@@ -10,6 +10,7 @@ import {
   stepDependencies,
   steps,
 } from "../schema.ts";
+import { applyMutation } from "./apply.ts";
 import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 
 // A fixed clock (a Monday before the walkthrough), so no test reads the wall clock (#88).
@@ -19,7 +20,7 @@ const ownerId = crypto.randomUUID();
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), {
+  await applyMutation(tx, mutator, mutator.args.parse(args), {
     ownerId: owner,
     timeZone: "Europe/Paris",
     now: () => FIXED_NOW,

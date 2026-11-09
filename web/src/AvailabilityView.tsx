@@ -109,7 +109,11 @@ export function AvailabilityView({
         {data.overrides.map((o) => (
           <li key={o.id}>
             {o.date}: {overrideHours(o)}{" "}
-            <button type="button" onClick={() => onRemoveOverride(o.date)}>
+            <button
+              type="button"
+              disabled={overridePending}
+              onClick={() => onRemoveOverride(o.date)}
+            >
               Remove
             </button>
           </li>

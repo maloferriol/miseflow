@@ -22,10 +22,21 @@ function windowFrom(event: SubmitEvent<HTMLFormElement>): Window {
   return windowInput(fieldText(data, "beforeDays"), fieldText(data, "shelfLifeDays"));
 }
 
+/**
+ * Which of the pass's five saves are in flight. Each turns off the controls that start it, in
+ * every row; `window` covers the Recipe's window and every Step's.
+ */
+export type PlanningPending = {
+  times: boolean;
+  window: boolean;
+  group: boolean;
+  addLink: boolean;
+  removeLink: boolean;
+};
+
 export type PlanningPassViewProps = {
   recipe: Recipe;
-  /** A make-ahead window save is in flight, on the Recipe or any Step. */
-  windowPending: boolean;
+  pending: PlanningPending;
   /** The first failed save's error, of any of the pass's mutations. */
   error: Error | null;
   onRecipeWindow: (window: Window | null) => void;
@@ -40,7 +51,7 @@ export type PlanningPassViewProps = {
 // needs. Every control is one named mutation that appends one Revision.
 export function PlanningPassView({
   recipe,
-  windowPending,
+  pending,
   error,
   onRecipeWindow,
   onStepTimes,
@@ -56,12 +67,12 @@ export function PlanningPassView({
       {/* Keyed on the Revision, so the fields show the saved values after each edit. */}
       <form key={recipe.latestRevision} onSubmit={(event) => onRecipeWindow(windowFrom(event))}>
         <WindowFields window={recipe.makeAhead} />
-        <button type="submit" disabled={windowPending}>
+        <button type="submit" disabled={pending.window}>
           Save window
         </button>
         <button
           type="button"
-          disabled={windowPending || recipe.makeAhead === null}
+          disabled={pending.window || recipe.makeAhead === null}
           onClick={() => onRecipeWindow(null)}
         >
           Clear
@@ -77,6 +88,7 @@ export function PlanningPassView({
             recipe={recipe}
             step={step}
             index={index}
+            pending={pending}
             onTimes={(times) => onStepTimes(step.id, times)}
             onWindow={(window) => onStepWindow(step.id, window)}
             onGroup={(value) => onGroup(step.id, value)}
@@ -124,6 +136,7 @@ function PlanningRow({
   recipe,
   step,
   index,
+  pending,
   onTimes,
   onWindow,
   onGroup,
@@ -133,6 +146,7 @@ function PlanningRow({
   recipe: Recipe;
   step: RecipeStep;
   index: number;
+  pending: PlanningPending;
   onTimes: (times: StepTimes) => void;
   onWindow: (window: Window | null) => void;
   onGroup: (value: boolean) => void;
@@ -180,13 +194,16 @@ function PlanningRow({
             defaultValue={step.passiveMinutes ?? ""}
           />
         </label>
-        <button type="submit">Save times</button>
+        <button type="submit" disabled={pending.times}>
+          Save times
+        </button>
       </form>
 
       <label>
         <input
           type="checkbox"
           checked={ownWindow}
+          disabled={pending.window}
           onChange={(event) => {
             setOwnWindow(event.target.checked);
             if (clearsOwnWindow(event.target.checked, step)) onWindow(null);
@@ -197,7 +214,9 @@ function PlanningRow({
       {ownWindow ? (
         <form onSubmit={(event) => onWindow(windowFrom(event))}>
           <WindowFields window={step.makeAhead} />
-          <button type="submit">Save</button>
+          <button type="submit" disabled={pending.window}>
+            Save
+          </button>
         </form>
       ) : (
         <p>{inheritedWindowText(step.effectiveMakeAhead)}</p>
@@ -207,7 +226,7 @@ function PlanningRow({
         <input
           type="checkbox"
           checked={groupsWithPrevious(step, index)}
-          disabled={index === 0}
+          disabled={index === 0 || pending.group}
           onChange={(event) => onGroup(event.target.checked)}
         />{" "}
         Group with previous Step
@@ -225,14 +244,20 @@ function PlanningRow({
             ))}
           </select>
         </label>
-        <button type="submit">Add</button>
+        <button type="submit" disabled={pending.addLink}>
+          Add
+        </button>
       </form>
       {waits.length > 0 && (
         <ul aria-label="Waits for">
           {waits.map((d) => (
             <li key={d.id}>
               {d.label}{" "}
-              <button type="button" onClick={() => onRemoveLink(d.id)}>
+              <button
+                type="button"
+                disabled={pending.removeLink}
+                onClick={() => onRemoveLink(d.id)}
+              >
                 Remove
               </button>
             </li>

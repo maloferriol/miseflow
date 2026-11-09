@@ -174,6 +174,49 @@ describe("Availability hook", () => {
     expect(ids()[2]).not.toBe(ids()[0]);
     expect(sent("setWeeklyAvailability")).not.toEqual(failed);
   });
+
+  // The calls sent with this mutation name: [mutation id, args].
+  const sentAll = (name: string) =>
+    vi
+      .mocked(mutate)
+      .mock.calls.filter((call) => call[1] === name)
+      .map((call) => ({ id: call[0], args: call[2] }));
+  const thursday = { weekday: 4, start: at("18:00"), end: at("22:00") };
+
+  it("retries a failed week save with its own ids after an override is removed", async () => {
+    const { result } = await renderLoaded();
+    const fail = failLater();
+    act(() => result.current.onSaveWeek([thursday]));
+    fail(new Error("Network error"));
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    act(() => result.current.onRemoveOverride("2026-10-30"));
+    await waitFor(() => expect(fetchAvailability).toHaveBeenCalledTimes(2));
+    act(() => result.current.onSaveWeek([thursday]));
+    await waitFor(() => expect(fetchAvailability).toHaveBeenCalledTimes(3));
+
+    const [failed, retry] = sentAll("setWeeklyAvailability");
+    expect(retry).toEqual(failed);
+  });
+
+  it("keeps a save's ids while another save starts and fails meanwhile", async () => {
+    const { result } = await renderLoaded();
+    const failWeek = failLater();
+    const failOverride = failLater();
+    act(() => result.current.onSaveWeek([thursday]));
+    act(() => result.current.onRemoveOverride("2026-10-30"));
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(2));
+    failWeek(new Error("Network error"));
+    failOverride(new Error("Network error"));
+    await waitFor(() => expect(result.current.overridePending).toBe(false));
+    act(() => result.current.onSaveWeek([thursday]));
+    act(() => result.current.onRemoveOverride("2026-10-30"));
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(4));
+
+    const [week, weekRetry] = sentAll("setWeeklyAvailability");
+    const [override, overrideRetry] = sentAll("setAvailabilityOverride");
+    expect(weekRetry).toEqual(week);
+    expect(overrideRetry).toEqual(override);
+  });
 });
 
 const button = (name: string) => screen.getByRole("button", { name });

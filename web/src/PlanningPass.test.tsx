@@ -58,7 +58,10 @@ function renderPass() {
 describe("Planning pass hook", () => {
   it("opens with nothing pending and no error", () => {
     const { result } = renderPass();
-    expect(result.current).toMatchObject({ windowPending: false, error: null });
+    expect(result.current).toMatchObject({
+      pending: { times: false, window: false, group: false, addLink: false, removeLink: false },
+      error: null,
+    });
   });
 
   it("sets a Step's times, then refetches this Recipe only", async () => {
@@ -132,12 +135,12 @@ describe("Planning pass hook", () => {
     const held = holdSaves();
     const { result } = renderPass();
     act(() => result.current.onStepWindow("s-roast", stockWindow));
-    await waitFor(() => expect(result.current.windowPending).toBe(true));
+    await waitFor(() => expect(result.current.pending.window).toBe(true));
     act(() => held[0].done());
-    await waitFor(() => expect(result.current.windowPending).toBe(false));
+    await waitFor(() => expect(result.current.pending.window).toBe(false));
 
     act(() => result.current.onRecipeWindow(stockWindow));
-    await waitFor(() => expect(result.current.windowPending).toBe(true));
+    await waitFor(() => expect(result.current.pending.window).toBe(true));
   });
 
   it("doesn't return a times save as a pending window", async () => {
@@ -145,7 +148,7 @@ describe("Planning pass hook", () => {
     const { result } = renderPass();
     act(() => result.current.onStepTimes("s-roast", { activeMinutes: 20, passiveMinutes: 60 }));
     await waitFor(() => expect(vi.mocked(mutate)).toHaveBeenCalledOnce());
-    expect(result.current.windowPending).toBe(false);
+    expect(result.current.pending.window).toBe(false);
   });
 
   it("returns a failed save's error, without refetching the Recipe", async () => {
@@ -188,6 +191,73 @@ describe("Planning pass hook", () => {
     expect(again.id).not.toBe(failed.id);
     expect(again.args.revisionId).not.toBe(failed.args.revisionId);
   });
+
+  it("retries a failed save with its own ids after another save succeeds", async () => {
+    vi.mocked(mutate).mockRejectedValueOnce(new Error("Network error"));
+    const { result } = renderPass();
+    act(() => result.current.onGroup("s-simmer", true));
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    act(() => result.current.onStepTimes("s-roast", { activeMinutes: 20, passiveMinutes: 60 }));
+    await waitFor(() => expect(sentAll("setStepTimes")).toHaveLength(1));
+    await waitFor(() => expect(result.current.pending.times).toBe(false));
+    act(() => result.current.onGroup("s-simmer", true));
+    await waitFor(() => expect(sentAll("setGroupWithPrevious")).toHaveLength(2));
+
+    const [failed, retry] = sentAll("setGroupWithPrevious");
+    expect(retry).toEqual(failed);
+  });
+
+  it("keeps a save's ids while another save starts and succeeds meanwhile", async () => {
+    // The ticket's repro: tick Group, then save times before the group save answers.
+    const held = holdSaves();
+    const { result } = renderPass();
+    act(() => result.current.onGroup("s-simmer", true));
+    act(() => result.current.onStepTimes("s-roast", { activeMinutes: 20, passiveMinutes: 60 }));
+    await waitFor(() => expect(held).toHaveLength(2));
+    act(() => held[1].done());
+    await waitFor(() => expect(result.current.pending.times).toBe(false));
+    act(() => held[0].fail(new Error("Network error")));
+    await waitFor(() => expect(result.current.pending.group).toBe(false));
+    act(() => result.current.onGroup("s-simmer", true));
+    await waitFor(() => expect(held).toHaveLength(3));
+
+    const [group, groupRetry] = sentAll("setGroupWithPrevious");
+    expect(groupRetry).toEqual(group);
+  });
+
+  const saves = [
+    {
+      pending: "times",
+      save: (pass: ReturnType<typeof usePlanningPass>) =>
+        pass.onStepTimes("s-roast", { activeMinutes: 20, passiveMinutes: 60 }),
+    },
+    {
+      pending: "group",
+      save: (pass: ReturnType<typeof usePlanningPass>) => pass.onGroup("s-simmer", true),
+    },
+    {
+      pending: "addLink",
+      save: (pass: ReturnType<typeof usePlanningPass>) => pass.onAddLink("s-strain", "s-simmer"),
+    },
+    {
+      pending: "removeLink",
+      save: (pass: ReturnType<typeof usePlanningPass>) => pass.onRemoveLink("d-1"),
+    },
+  ] as const;
+
+  it.each(saves)(
+    "returns only the $pending save as pending while it saves",
+    async ({ pending, save }) => {
+      const held = holdSaves();
+      const { result } = renderPass();
+      act(() => save(result.current));
+      await waitFor(() => expect(result.current.pending[pending]).toBe(true));
+      const inFlight = Object.entries(result.current.pending).filter(([, p]) => p);
+      expect(inFlight.map(([name]) => name)).toEqual([pending]);
+      act(() => held[0].done());
+      await waitFor(() => expect(result.current.pending[pending]).toBe(false));
+    },
+  );
 });
 
 // The Planning pass's rows, not the links listed inside them.

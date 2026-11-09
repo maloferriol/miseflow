@@ -228,6 +228,19 @@ describe("Availability view", () => {
     expect(disabled()).toEqual(["Save override"]);
   });
 
+  it("disables every override's Remove while an override save is pending", () => {
+    const { rerender } = renderView(<AvailabilityView {...props()} />);
+    const removes = () =>
+      screen
+        .getAllByRole<HTMLButtonElement>("button", { name: "Remove" })
+        .map((remove) => remove.disabled);
+    expect(removes()).toEqual([false, false]);
+    rerender(<AvailabilityView {...props({ defaultPending: true, weekPending: true })} />);
+    expect(removes()).toEqual([false, false]);
+    rerender(<AvailabilityView {...props({ overridePending: true })} />);
+    expect(removes()).toEqual([true, true]);
+  });
+
   it("shows a failed save as an alert with its message", () => {
     const error = new Error("setWeeklyAvailability failed (500)");
     renderView(<AvailabilityView {...props({ error })} />);

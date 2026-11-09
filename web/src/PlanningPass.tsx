@@ -15,21 +15,21 @@ import { PlanningPassView } from "./PlanningPassView.tsx";
 import { useIntentSave } from "./use-intent-save.ts";
 
 /**
- * The Planning pass's five mutations. The Steps' rows share them with the Recipe's window, so one
- * save pending disables both windows' buttons and one error shows for the whole pass. Only
- * query-client, intent and mutation hooks: no branches.
+ * The Planning pass's five mutations, each with its own intent. The Steps' rows share them with
+ * the Recipe's window, so a pending save turns off its controls in every row, and one error shows
+ * for the whole pass. Only query-client, intent and mutation hooks: no branches.
  */
 export function usePlanningPass(recipe: Recipe) {
   const queryClient = useQueryClient();
-  // One intent slot for the pass: a retry after a lost response replays the same save.
-  const intent = useIntent();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["recipe", recipe.id] });
 
-  const setStepTimes = useIntentSave(intent, stepTimesSave, invalidate);
-  const setMakeAhead = useIntentSave(intent, makeAheadSave, invalidate);
-  const setGroupWithPrevious = useIntentSave(intent, groupSave, invalidate);
-  const addStepDependency = useIntentSave(intent, addLinkSave, invalidate);
-  const removeStepDependency = useIntentSave(intent, removeLinkSave, invalidate);
+  // One intent slot per mutation, so a retry after a lost response replays that save's ids
+  // whatever the others sent or saved in between.
+  const setStepTimes = useIntentSave(useIntent(), stepTimesSave, invalidate);
+  const setMakeAhead = useIntentSave(useIntent(), makeAheadSave, invalidate);
+  const setGroupWithPrevious = useIntentSave(useIntent(), groupSave, invalidate);
+  const addStepDependency = useIntentSave(useIntent(), addLinkSave, invalidate);
+  const removeStepDependency = useIntentSave(useIntent(), removeLinkSave, invalidate);
   const error =
     [
       setStepTimes,
@@ -40,7 +40,13 @@ export function usePlanningPass(recipe: Recipe) {
     ].find((m) => m.error)?.error ?? null;
 
   return {
-    windowPending: setMakeAhead.isPending,
+    pending: {
+      times: setStepTimes.isPending,
+      window: setMakeAhead.isPending,
+      group: setGroupWithPrevious.isPending,
+      addLink: addStepDependency.isPending,
+      removeLink: removeStepDependency.isPending,
+    },
     error,
     onRecipeWindow: (window: Window | null) =>
       setMakeAhead.mutate({ target: { kind: "recipe", recipeId: recipe.id }, window }),

@@ -14,6 +14,8 @@ export function useYieldField(recipeId: string) {
   const setYield = useIntentSave(
     intent,
     (value: string | null, i) => yieldSave(recipeId, value, i),
+    () => undefined,
+    // On settle, like the Recipe screen's other edits (#194).
     async () => {
       await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
       await queryClient.invalidateQueries({ queryKey: ["recipes"] });

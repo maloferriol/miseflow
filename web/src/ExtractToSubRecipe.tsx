@@ -18,12 +18,15 @@ export function useExtractToSubRecipe(recipeId: string, onDone: () => void) {
   const extract = useIntentSave(
     intent,
     (args: ExtractArgs, i) => extractSave(recipeId, args, i),
-    async () => {
+    () => {
       setName("");
       setAmount("1");
+      onDone();
+    },
+    // On settle, like the Recipe screen's other edits (#194). On success it runs before the above.
+    async () => {
       await queryClient.invalidateQueries({ queryKey: ["recipe", recipeId] });
       await queryClient.invalidateQueries({ queryKey: ["recipes"] });
-      onDone();
     },
   );
   return {

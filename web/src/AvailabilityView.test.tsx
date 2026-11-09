@@ -228,7 +228,7 @@ describe("Availability view", () => {
   });
 
   it("disables every override's Remove while an override save is pending", () => {
-    const { rerender } = renderView(<AvailabilityView {...props()} />);
+    const { rerender } = render(<AvailabilityView {...props()} />);
     const removes = () =>
       screen
         .getAllByRole<HTMLButtonElement>("button", { name: "Remove" })

@@ -183,12 +183,12 @@ describe("Availability hook", () => {
     expect(sent("setWeeklyAvailability")).not.toEqual(failed);
   });
 
-  // The calls sent with this mutation name: [mutation id, args].
+  // Every call sent with this mutation name, as its mutation id and args.
   const sentAll = (name: string) =>
     vi
       .mocked(mutate)
-      .mock.calls.filter((call) => call[1] === name)
-      .map((call) => ({ id: call[0], args: call[2] }));
+      .mock.calls.filter((call) => call[0].name === name)
+      .map(([{ id, args }]) => ({ id, args }));
   const thursday = { weekday: 4, start: at("18:00"), end: at("22:00") };
 
   it("retries a failed week save with its own ids after an override is removed", async () => {

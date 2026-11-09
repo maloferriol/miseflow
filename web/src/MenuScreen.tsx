@@ -4,7 +4,14 @@ import { useState } from "react";
 import { toAction } from "./action.ts";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
-import { type DishScale, dishScaleSave, type ServiceInput, serviceSave } from "./menu-screen.ts";
+import {
+  type Course,
+  type Dish,
+  type DishScale,
+  dishScaleSave,
+  type ServiceInput,
+  serviceSave,
+} from "./menu-screen.ts";
 import {
   CourseView,
   DishScaleView,
@@ -87,13 +94,15 @@ function OpenMenu({ menuId }: Readonly<{ menuId: string }>) {
     <MenuView
       {...menu}
       renderServiceForm={(service) => <ServiceForm menuId={menuId} service={service} />}
-      renderCourse={(course) => <Course menuId={menuId} course={course} onChanged={onChanged} />}
+      renderCourse={(course) => (
+        <OpenCourse menuId={menuId} course={course} onChanged={onChanged} />
+      )}
     />
   );
 }
 
 /** Adds a Dish: a new Recipe placed in this Course. Only a mutation hook: no branches. */
-export function useCourse(course: Menu["courses"][number], onChanged: () => Promise<void>) {
+export function useCourse(course: Course, onChanged: () => Promise<void>) {
   // Two mutations, each with its own id.
   const addDish = useMutation({
     mutationFn: async (name: string) => {
@@ -114,13 +123,13 @@ export function useCourse(course: Menu["courses"][number], onChanged: () => Prom
   return { addDish: toAction(addDish) };
 }
 
-function Course({
+function OpenCourse({
   menuId,
   course,
   onChanged,
 }: Readonly<{
   menuId: string;
-  course: Menu["courses"][number];
+  course: Course;
   onChanged: () => Promise<void>;
 }>) {
   return (
@@ -149,7 +158,7 @@ function DishScaleForm({
   dish,
   onChanged,
 }: Readonly<{
-  dish: Menu["courses"][number]["dishes"][number];
+  dish: Dish;
   onChanged: () => Promise<void>;
 }>) {
   return <DishScaleView {...useDishScale(dish.id, onChanged)} dish={dish} />;

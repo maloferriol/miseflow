@@ -18,6 +18,7 @@ import {
   useNewMenu,
   useServiceForm,
 } from "./MenuScreen.tsx";
+import type { Course, Dish } from "./menu-screen.ts";
 import { minuteOfDay } from "./time-of-day.ts";
 
 // The network boundary only: the hooks' queries and mutations run through a real QueryClient.
@@ -30,9 +31,6 @@ vi.mock("./api.ts", () => ({
 
 // Any made-up id: the hooks make ids with crypto.randomUUID.
 const anId: unknown = expect.any(String);
-
-type Course = Menu["courses"][number];
-type Dish = Course["dishes"][number];
 
 // ADR 0004's Saturday dinner for 6, before it has a Course, a Service or a Batch.
 const saturdayDinner: Menu = {

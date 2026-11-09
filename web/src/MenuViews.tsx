@@ -5,6 +5,8 @@ import type { Action } from "./action.ts";
 import type { Availability, fetchMenus, Menu } from "./api.ts";
 import { fieldText } from "./form-fields.ts";
 import {
+  type Course,
+  type Dish,
   type DishScale,
   dishScale,
   newMenuInput,
@@ -93,7 +95,7 @@ export type MenuViewProps = {
   addCourse: Action<string>;
   /** The form for the Menu's one Service, remade when the saved Service changes. */
   renderServiceForm: (service: Menu["service"]) => ReactNode;
-  renderCourse: (course: Menu["courses"][number]) => ReactNode;
+  renderCourse: (course: Course) => ReactNode;
 };
 
 /** One Menu: its guests, its Service, its Courses and their Batches, and a form to add a Course. */
@@ -139,9 +141,6 @@ export function MenuView({
     </section>
   );
 }
-
-type Course = Menu["courses"][number];
-type Dish = Course["dishes"][number];
 
 export type CourseViewProps = {
   menuId: string;

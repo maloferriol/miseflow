@@ -1,7 +1,14 @@
 // The Menu screen's decisions (ADR 0011): pure functions the hooks and the views pass through.
+import type { Menu } from "./api.ts";
 import type { Intent } from "./intent.ts";
 import type { MutationCall } from "./mutation-call.ts";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
+
+/** One Course of an open Menu, with its Dishes. */
+export type Course = Menu["courses"][number];
+
+/** One Dish of a Course: its Recipe, scale and quick fixes. */
+export type Dish = Course["dishes"][number];
 
 // HTML's valid floating-point number, what <input type=number> lets through: "2.0", "1e1".
 const NUMBER_FIELD = /^-?(?:\d+|\d*\.\d+)(?:[eE][-+]?\d+)?$/;

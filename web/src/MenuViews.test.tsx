@@ -15,7 +15,7 @@ import {
   ServiceFormView,
   type ServiceFormViewProps,
 } from "./MenuViews.tsx";
-import { serviceInput } from "./menu-screen.ts";
+import { type Course, type Dish, serviceInput } from "./menu-screen.ts";
 import { minuteOfDay } from "./time-of-day.ts";
 
 const button = (name: string) => screen.getByRole("button", { name });
@@ -152,9 +152,6 @@ describe("Menu", () => {
     expect(screen.getByRole("alert").textContent).toBe("Could not add the Course (500)");
   });
 });
-
-type Course = Menu["courses"][number];
-type Dish = Course["dishes"][number];
 
 // A Dish before the Menu has a scale for it: the server's assumed factor of 1.
 const velouté: Dish = {

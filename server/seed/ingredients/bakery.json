@@ -1,0 +1,30 @@
+[
+  {
+    "id": "11dbb3f9-6731-4980-b243-ab331e461f4c",
+    "name": "bread",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [
+      {
+        "id": "c8272868-c2b5-4e18-a2c1-f1bc7f1875b0",
+        "name": "loaf"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "94b99817-baa2-436f-beaf-00442ebc48e3",
+    "name": "baguette",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [
+      {
+        "id": "1daa9c23-99c7-4c41-addc-2cd34ae8d856",
+        "name": "french stick"
+      }
+    ],
+    "conversions": []
+  }
+]

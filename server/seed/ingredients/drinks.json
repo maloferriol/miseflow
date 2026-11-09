@@ -1,0 +1,30 @@
+[
+  {
+    "id": "fe76b305-052a-4092-9fed-561151c0fa95",
+    "name": "white wine",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [
+      {
+        "id": "5f2cb7a4-1f2f-49ff-b8d7-01e4ad5b6f0c",
+        "name": "dry white wine"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "2e0f6b54-7ac7-4857-a091-23460dedb285",
+    "name": "red wine",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [
+      {
+        "id": "f628d988-b2f2-4774-a308-6bbf2fabd0e0",
+        "name": "dry red wine"
+      }
+    ],
+    "conversions": []
+  }
+]

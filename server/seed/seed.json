@@ -1,0 +1,45 @@
+{
+  "licence": {
+    "notice": "This Ingredient seed (the shopping categories, Ingredients, aliases and reference Conversions in the files of server/seed and its ingredients folder) is made available under the Open Database License (ODbL) v1.0. Any rights in individual contents of the database are licensed under the Database Contents License (DbCL) v1.0. Contains data from Open Food Facts (https://world.openfoodfacts.org), whose ingredients taxonomy is available under the ODbL. FDC ids, and reference Conversions where an FDC id is given, are from USDA FoodData Central (SR Legacy), public domain (CC0 1.0). This licence covers every file in server/seed and its ingredients folder, not MiseFlow's code.",
+    "odbl": "https://opendatacommons.org/licenses/odbl/1-0/",
+    "dbcl": "https://opendatacommons.org/licenses/dbcl/1-0/"
+  },
+  "shoppingCategories": [
+    {
+      "id": "34a4306e-d660-4d23-9f46-ee58f4840411",
+      "name": "Produce"
+    },
+    {
+      "id": "0092548e-7955-4fc8-a145-7fea78d82c69",
+      "name": "Meat & fish"
+    },
+    {
+      "id": "d8325358-fead-42e3-a7e8-f3fe0abc01ce",
+      "name": "Dairy & eggs"
+    },
+    {
+      "id": "bef7096d-c7fd-407c-9c41-37cd618d4392",
+      "name": "Bakery"
+    },
+    {
+      "id": "bb0899e2-beec-4b50-aa8a-686f1e287a7c",
+      "name": "Dry goods"
+    },
+    {
+      "id": "71bd8736-a96f-4059-a6aa-c4e41abc7f5d",
+      "name": "Spices"
+    },
+    {
+      "id": "933d6adf-a8ad-450d-83a3-bd642d95875a",
+      "name": "Frozen"
+    },
+    {
+      "id": "de0475e4-3c08-417a-b354-ca04e485919e",
+      "name": "Drinks"
+    },
+    {
+      "id": "1c98019e-0293-44c0-b3fb-3767f5a29ce7",
+      "name": "Other"
+    }
+  ]
+}

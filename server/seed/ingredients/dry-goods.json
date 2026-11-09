@@ -1,0 +1,302 @@
+[
+  {
+    "id": "b4c7d751-bbb3-46c0-a39d-cb7b54e6d31b",
+    "name": "all-purpose flour",
+    "fdcId": "168894",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "95a842d4-b81a-40ea-af6c-b9b51b70fb64",
+        "name": "flour"
+      },
+      {
+        "id": "8576b76a-3860-4e94-8541-61851cf19626",
+        "name": "AP flour"
+      },
+      {
+        "id": "67b3a333-ba1c-4dbe-8697-1fbced2c42d3",
+        "name": "plain flour"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "e687f066-25e6-43ac-9dbc-ffd5c734d7bb",
+    "name": "sugar",
+    "fdcId": "169655",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "693c8cd1-ef2f-4d4a-93e2-62b59db51bcf",
+        "name": "granulated sugar"
+      },
+      {
+        "id": "cbb825b3-04f0-4d70-a8e2-1b7e1fb6b683",
+        "name": "white sugar"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "d912af93-dce8-4fb1-a289-e73e399f51bd",
+    "name": "white wine vinegar",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "56e1cc10-8707-4c75-a61f-b09b07a43f1e",
+    "name": "olive oil",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "e54233b2-d73f-49b4-94b6-981e606366af",
+    "name": "vegetable oil",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "5ed64a52-e97d-4c68-863b-90999d919b36",
+        "name": "neutral oil"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "4e956b14-c40e-4709-aeb0-99053c75bccf",
+    "name": "canola oil",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "80553722-e2b5-49b3-9b31-f69f191d3bb3",
+        "name": "rapeseed oil"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "faf4a762-c58a-4f32-ba3d-c19b5f9057fe",
+    "name": "long-grain white rice",
+    "fdcId": "168877",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "5408668b-41f5-48f9-add5-947ef31f813f",
+        "name": "rice"
+      },
+      {
+        "id": "9159bfd3-d1ed-48c5-98f5-716b3da28523",
+        "name": "white rice"
+      },
+      {
+        "id": "4383ecc7-54ba-4fdb-b4ff-a5c22b4a3476",
+        "name": "long-grain rice"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "6c958c13-371a-4b60-8166-6f4f3310bba9",
+    "name": "pasta",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "1731b4d0-bda1-4360-bdc9-bd6b4adee601",
+        "name": "dried pasta"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "0f4e2e33-b34c-416b-89a3-f5c715ef566a",
+    "name": "brown sugar",
+    "fdcId": "168833",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "5cd9acc7-89ea-4fd5-946b-9593ababdfa6",
+        "name": "soft brown sugar"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "9ced25a7-a484-401b-b9f2-444d58b4ff2e",
+    "name": "powdered sugar",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "fd955c7f-5c0b-4eb7-9bf8-19519ebdda72",
+        "name": "icing sugar"
+      },
+      {
+        "id": "e439554e-0f28-40bf-abc6-9c1989f77d5c",
+        "name": "confectioners' sugar"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "d5243186-c232-4e9b-b083-e6c102c28bd1",
+    "name": "honey",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "4e26fc93-5baf-4059-8b7a-60af64b5d5c8",
+    "name": "cornstarch",
+    "fdcId": "169698",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "46c13e2f-4139-471b-bd58-5e91637e5a77",
+        "name": "corn starch"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "ac073343-727d-47d2-aeab-40e7752b4f57",
+    "name": "baking powder",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "9dd7e0eb-fa4c-48f2-8354-d5f9b5abc54b",
+    "name": "baking soda",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "37ba1d14-9ecd-4822-a8b4-9b679b0f5681",
+        "name": "bicarbonate of soda"
+      },
+      {
+        "id": "9a484864-6098-4967-970c-e149b9be97f1",
+        "name": "bicarb"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "d95016d7-e285-4393-985b-1953fb48b321",
+    "name": "cocoa powder",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "32cfa379-ff6b-49f9-9099-24e5aef1d9c9",
+        "name": "cocoa"
+      },
+      {
+        "id": "c9d7df01-fbd8-404f-96a1-548001ce9b0d",
+        "name": "unsweetened cocoa"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "6567ad51-538c-453c-a0da-33e204abfd8c",
+    "name": "rolled oats",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "a31838c3-ed83-4881-8d48-3fed3856d8b1",
+        "name": "oats"
+      },
+      {
+        "id": "53465e7e-8191-4a55-b4b2-8025af058a17",
+        "name": "porridge oats"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "5b6eab46-55a6-4d6c-81ca-9130f586af0c",
+    "name": "chickpeas",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "81f8bf5b-5bba-4215-b07b-2271b5f6cfa6",
+        "name": "garbanzo beans"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "c42e1fb1-8b3f-43e6-ba8d-5450913dd2cf",
+    "name": "lentils",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "d79fffb2-c1f0-44d6-9ce7-0e0a27a4d9e0",
+    "name": "soy sauce",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "6fcee83a-0904-4871-99cb-6af237bae555",
+        "name": "soya sauce"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "239ef7de-bd24-44dd-9c48-faf8cf6915f0",
+    "name": "dijon mustard",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "6a973138-4969-49fd-a72d-55dd671b4cda",
+    "name": "vanilla extract",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "99196ce9-085d-42a2-a444-a8b2b98fbacd",
+        "name": "vanilla"
+      }
+    ],
+    "conversions": []
+  }
+]

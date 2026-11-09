@@ -1,8 +1,11 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   conversions,
   ingredientAliases,
   ingredients,
+  normaliseName,
   positionAfter,
   shoppingCategories,
 } from "@miseflow/shared";
@@ -11,40 +14,108 @@ import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { Db } from "./db.ts";
 
-// The shared, read-only Ingredient seed (ADR 0003, ADR 0010). Its data licence and
-// notice live in the seed file itself, which covers that file only.
-const seedFile = new URL("../seed/ingredient-seed.json", import.meta.url);
+// The shared, read-only Ingredient seed (ADR 0003, ADR 0010). `seed.json` holds the licence
+// notice, which covers every file in the folder, and the Shopping categories in their order.
+// `ingredients/<category>.json` holds each Shopping category's Ingredients, so tickets that grow
+// different categories never edit the same file.
+const seedDir = fileURLToPath(new URL("../seed", import.meta.url));
 
 const kind = z.enum(["mass", "volume", "count"]);
-const seedSchema = z.strictObject({
-  licence: z.strictObject({ notice: z.string(), odbl: z.url(), dbcl: z.url() }),
-  shoppingCategories: z.array(z.strictObject({ id: z.uuid(), name: z.string().min(1) })),
-  ingredients: z.array(
+const ingredientSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string().min(1),
+  fdcId: z.string().nullable(),
+  preferredKind: kind,
+  shoppingCategory: z.string(),
+  aliases: z.array(z.strictObject({ id: z.uuid(), name: z.string().min(1) })),
+  conversions: z.array(
     z.strictObject({
       id: z.uuid(),
-      name: z.string().min(1),
+      fromUnit: z.string(),
+      toUnit: z.string(),
+      factor: z.number().positive(),
+      // Where the reference value came from; not stored, the row keeps only its values.
       fdcId: z.string().nullable(),
-      preferredKind: kind,
-      shoppingCategory: z.string(),
-      aliases: z.array(z.strictObject({ id: z.uuid(), name: z.string().min(1) })),
-      conversions: z.array(
-        z.strictObject({
-          id: z.uuid(),
-          fromUnit: z.string(),
-          toUnit: z.string(),
-          factor: z.number().positive(),
-          // Where the reference value came from; not stored, the row keeps only its values.
-          fdcId: z.string().nullable(),
-        }),
-      ),
     }),
   ),
 });
+const headSchema = z.strictObject({
+  licence: z.strictObject({ notice: z.string(), odbl: z.url(), dbcl: z.url() }),
+  shoppingCategories: z.array(z.strictObject({ id: z.uuid(), name: z.string().min(1) })),
+});
 
-export type Seed = z.infer<typeof seedSchema>;
+export type Seed = z.infer<typeof headSchema> & { ingredients: z.infer<typeof ingredientSchema>[] };
 
-export function readSeed(): Seed {
-  return seedSchema.parse(JSON.parse(readFileSync(seedFile, "utf8")));
+/** The file a Shopping category's Ingredients live in: "Meat & fish" → "meat-and-fish.json". */
+function categoryFile(category: string): string {
+  const slug = category
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `${slug}.json`;
+}
+
+/**
+ * Reads and merges the seed folder. Throws, naming the clash, when an id appears twice, an
+ * Ingredient sits in a file that isn't its Shopping category, or two Ingredients' names or
+ * aliases match once normalised the way catalog matching does.
+ */
+export function readSeed(dir: string = seedDir): Seed {
+  const readJson = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"));
+  const head = headSchema.parse(readJson(join(dir, "seed.json")));
+  const files = new Map(head.shoppingCategories.map((c) => [categoryFile(c.name), c.name]));
+
+  const ingredientsDir = join(dir, "ingredients");
+  const present = new Set(readdirSync(ingredientsDir).filter((name) => name.endsWith(".json")));
+  for (const file of present) {
+    if (!files.has(file)) throw new Error(`seed: ${file} names no Shopping category`);
+  }
+  // In Shopping category order, so the merged seed reads the same on every machine.
+  const fileNames = [...files.keys()].filter((file) => present.has(file));
+
+  const ids = new Map<string, string>();
+  const claim = (id: string, what: string) => {
+    const earlier = ids.get(id);
+    if (earlier) throw new Error(`seed: id ${id} appears twice: ${earlier} and ${what}`);
+    ids.set(id, what);
+  };
+  for (const category of head.shoppingCategories) {
+    claim(category.id, `Shopping category ${category.name} (seed.json)`);
+  }
+
+  const names = new Map<string, string>();
+  const ingredientsRead: Seed["ingredients"] = [];
+  for (const file of fileNames) {
+    const rows = z.array(ingredientSchema).parse(readJson(join(ingredientsDir, file)));
+    for (const ingredient of rows) {
+      if (ingredient.shoppingCategory !== files.get(file)) {
+        throw new Error(
+          `seed: ${ingredient.name} is in ${file}, but its Shopping category is ${ingredient.shoppingCategory}`,
+        );
+      }
+      claim(ingredient.id, `Ingredient ${ingredient.name} (${file})`);
+      for (const alias of ingredient.aliases) {
+        claim(alias.id, `alias ${alias.name} of ${ingredient.name} (${file})`);
+      }
+      for (const conversion of ingredient.conversions) {
+        claim(conversion.id, `Conversion of ${ingredient.name} (${file})`);
+      }
+
+      // An Ingredient's own name and aliases may normalise the same; two Ingredients may not.
+      const own = new Map<string, string>();
+      for (const name of [ingredient.name, ...ingredient.aliases.map((a) => a.name)]) {
+        own.set(normaliseName(name), `"${name}" (${ingredient.name})`);
+      }
+      for (const [key, what] of own) {
+        const earlier = names.get(key);
+        if (earlier) throw new Error(`seed: ${earlier} and ${what} match as "${key}"`);
+        names.set(key, what);
+      }
+      ingredientsRead.push(ingredient);
+    }
+  }
+  return { ...head, ingredients: ingredientsRead };
 }
 
 export type SeedResult = {

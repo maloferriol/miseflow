@@ -1,0 +1,30 @@
+[
+  {
+    "id": "60e48fab-5d38-4369-993a-deb1f4101b99",
+    "name": "puff pastry",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [
+      {
+        "id": "29138961-f5f3-4917-bf58-ae01371f58a7",
+        "name": "ready-made puff pastry"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "b404cc7d-2ffc-4c61-a4f7-c24ff1b848ba",
+    "name": "frozen peas",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [
+      {
+        "id": "42219cee-e3c9-4f38-adfe-8af65a4d7446",
+        "name": "petits pois"
+      }
+    ],
+    "conversions": []
+  }
+]

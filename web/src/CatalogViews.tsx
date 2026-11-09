@@ -53,7 +53,10 @@ export function CatalogView({
       </ul>
       {renderNewIngredient()}
       <p>
-        <small>Ingredient seed: Open Food Facts contributors and USDA FoodData Central, ODbL</small>
+        <small>
+          Ingredient seed © Open Food Facts contributors, available under the ODbL; includes
+          public-domain USDA FoodData Central data
+        </small>
       </p>
     </section>
   );

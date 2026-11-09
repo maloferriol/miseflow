@@ -53,7 +53,7 @@ describe("Catalog view", () => {
     expect(screen.getByText("New Ingredient form")).toBeTruthy();
     expect(
       screen.getByText(
-        "Ingredient seed: Open Food Facts contributors and USDA FoodData Central, ODbL",
+        "Ingredient seed © Open Food Facts contributors, available under the ODbL; includes public-domain USDA FoodData Central data",
       ),
     ).toBeTruthy();
   });

@@ -1,0 +1,346 @@
+[
+  {
+    "id": "5b231b3b-c310-4224-94a9-2fedac22df33",
+    "name": "onion",
+    "fdcId": "170000",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "9721f60b-313e-4f15-88b1-b899a51204b3",
+        "name": "yellow onion"
+      },
+      {
+        "id": "6729e980-d6f6-4026-9231-7489aa6c7485",
+        "name": "brown onion"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "e5750cab-c10a-4cd6-8564-e812921c3ffe",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 110,
+        "fdcId": "170000"
+      }
+    ]
+  },
+  {
+    "id": "355342c6-2f79-487f-9955-36d361603ea8",
+    "name": "carrot",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "aa679fb2-9c00-449e-9649-ca6f3c059451",
+    "name": "leek",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "9a34e907-4f60-40bf-8e21-761b592d0131",
+    "name": "celery",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "98a4f792-11be-4d44-86e3-75ca32d3025d",
+        "name": "celery stalk"
+      },
+      {
+        "id": "85e6a770-0f39-4147-822f-fccc2d844b77",
+        "name": "celery stick"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "b4f3b304-269b-423c-b9de-e6d1ffa849ad",
+    "name": "garlic",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "fc6937d4-072d-4616-9815-d2f67ca7b95d",
+        "name": "garlic clove"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "3ae46510-0176-474a-bcd4-403f03e8ac4b",
+        "fromUnit": "clove",
+        "toUnit": "g",
+        "factor": 3,
+        "fdcId": null
+      }
+    ]
+  },
+  {
+    "id": "539d46e5-636e-46e4-88f3-8c0ff7bf493e",
+    "name": "thyme",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "7c44fefa-5eab-4f15-a6c6-199028752689",
+        "name": "fresh thyme"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "5da594fc-c422-4b4c-9cfc-28c844335163",
+    "name": "parsley",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "df5f6f79-f816-48d4-8e17-db3875fa8ab0",
+        "name": "flat-leaf parsley"
+      },
+      {
+        "id": "b41726ea-60f2-46d8-9799-e5ea0c7f1f23",
+        "name": "italian parsley"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "7c3cb9ae-eefc-4355-9969-af484dad4478",
+    "name": "shallot",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "684e7268-0cd4-42ab-9557-87f6df0a87d3",
+        "name": "échalote"
+      },
+      {
+        "id": "c6e66d45-f818-4e41-af72-60a114d2c44a",
+        "name": "eschalot"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "ce346a18-9476-4363-9574-a800c3842954",
+    "name": "apple",
+    "fdcId": "168204",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "ea4c0c9d-507e-4821-bb8f-c6c81c77a2fc",
+    "name": "lemon",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "ccae79db-2f0a-4346-883d-24739550fc44",
+    "name": "lime",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "110633de-df2b-48bf-8479-d21fde7d527b",
+    "name": "potato",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "58bbb754-228e-4c26-aec5-ae7c7a754f4c",
+    "name": "tomato",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "980a6fa4-a76e-473c-8927-13959354690c",
+    "name": "red onion",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "a4ff105c-7c2e-4df1-aed2-b3d60b8f1f7d",
+    "name": "spring onion",
+    "fdcId": "170005",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "b3bab568-31ff-4efd-9df4-0c6abd6dbaad",
+        "name": "green onion"
+      },
+      {
+        "id": "f3eb6c96-3ab1-4690-8bd8-c84c82a860bc",
+        "name": "scallion"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "bf55bbf2-8e5b-4c40-be99-4fe24ae80608",
+    "name": "ginger",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "8dd86c4a-9c5d-452f-b52e-de18116beb74",
+        "name": "fresh ginger"
+      },
+      {
+        "id": "10ab355d-7ed9-4f27-9a1e-a222ddd43135",
+        "name": "ginger root"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "8414ed64-6a97-43dc-a1fc-97811bd57515",
+    "name": "bell pepper",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "1617b5d8-1e27-437e-9c69-ee8021e206f8",
+        "name": "sweet pepper"
+      },
+      {
+        "id": "1dc646e2-6c9c-4d32-b75d-474611511b7d",
+        "name": "capsicum"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "8ca0ebd2-c20e-42a5-8e28-915ed8e04688",
+    "name": "cucumber",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "139b2733-2577-4bbf-aed0-83ea21039996",
+    "name": "zucchini",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "596dc77e-f144-42f4-b74e-554d8820b110",
+        "name": "courgette"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "f053c743-0934-4c96-8bd9-bb29c01ba047",
+    "name": "eggplant",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "122ce4f5-a112-4239-a104-08bfa4f655bb",
+        "name": "aubergine"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "30708cf5-a894-461f-981a-e1f807249666",
+    "name": "mushroom",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "4b01b250-03bf-42a9-a449-dbfaf894e98f",
+        "name": "button mushroom"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "e83dd59c-c386-4bd7-8771-6609a55830f6",
+    "name": "spinach",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "20208d81-9807-4feb-86b8-47ff7c8ae040",
+        "name": "baby spinach"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "ced812a5-8da6-4476-b58f-c74368e80e60",
+    "name": "basil",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "ab110d01-1521-4aee-8f6e-73fef8c001de",
+        "name": "fresh basil"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "06f2376a-6a23-40bd-bdcd-b5841a541052",
+    "name": "chives",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "7f78b3f0-ede6-49f1-8854-c42bf3d89eb4",
+    "name": "rosemary",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "3bd2d23f-a2dc-41ef-8c18-162e752f43c2",
+        "name": "fresh rosemary"
+      }
+    ],
+    "conversions": []
+  }
+]

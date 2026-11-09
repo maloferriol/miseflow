@@ -1,0 +1,38 @@
+[
+  {
+    "id": "929e97bb-5945-43ec-92fb-a6ebe862d4a7",
+    "name": "chicken carcass",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "aca4e844-209a-4323-b766-ff8e5a6d9571",
+        "name": "chicken frame"
+      },
+      {
+        "id": "2506b391-60de-4cac-86bc-c244f9c3fb25",
+        "name": "chicken bones"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "15eef6b2-d747-40df-b05f-3815ba1ced60",
+    "name": "duck breast",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "3db2bd25-47aa-4ffd-a3cc-f66be1d51417",
+        "name": "magret"
+      },
+      {
+        "id": "9e621dc3-8046-4a16-867a-90199452f24d",
+        "name": "duck magret"
+      }
+    ],
+    "conversions": []
+  }
+]

@@ -1,0 +1,135 @@
+[
+  {
+    "id": "66381cdd-eb71-469b-b320-9df6c4a181ea",
+    "name": "bay leaf",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "2c4c8063-bd6d-462e-900e-06252485274a",
+        "name": "bay leaves"
+      },
+      {
+        "id": "9862fbf5-5acb-46f3-a161-1db7763b06f7",
+        "name": "laurel leaf"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "d03397a2-5101-4f10-8131-3386139274fc",
+    "name": "black peppercorns",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "c4f01bc1-0df3-4eb5-9ebf-5eed2b354c9c",
+        "name": "whole black pepper"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "4ad68452-f65c-4cad-9e77-6b242d90e62e",
+    "name": "white pepper",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "9fd988d1-8144-4a13-bd53-856f480879b1",
+        "name": "ground white pepper"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "2e2802d7-10c5-4e16-a09d-b8cf49ed9828",
+    "name": "salt",
+    "fdcId": "173468",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "b6f9ce99-afaa-4866-8a47-f606e712f9f8",
+        "name": "table salt"
+      },
+      {
+        "id": "02f70cbc-00ba-4cf1-8e89-8ade6f15b242",
+        "name": "fine salt"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "011c7666-e3a0-4dcd-bdcb-dca3dcc9989f",
+    "name": "ground cinnamon",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "5d6bd804-1561-40fb-acf2-e2b4ec533ef1",
+        "name": "cinnamon"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "d9c07fad-c6e8-472b-b0da-29871838ea02",
+    "name": "ground cumin",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "020b9fae-f1fa-43e5-9525-82f34924e022",
+        "name": "cumin"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "8b14ac93-3725-45b1-847c-23e2b81fc04f",
+    "name": "paprika",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "8dfe5c09-cc2b-4424-b115-6b1c02f859a2",
+    "name": "nutmeg",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "d5d23c5e-132f-4614-bc8c-155d887adbb5",
+        "name": "ground nutmeg"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "cd5c90a0-d96b-4a84-a67f-3277fc540ff1",
+    "name": "ground black pepper",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "11b682b3-d813-4d7e-b084-28ac44748b34",
+        "name": "black pepper"
+      },
+      {
+        "id": "8eea88b3-1e6a-4b74-a476-5473b54360e3",
+        "name": "pepper"
+      }
+    ],
+    "conversions": []
+  }
+]

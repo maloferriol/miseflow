@@ -10,9 +10,17 @@ Needs Node 24+ and Docker.
 npm run preflight           # checks Node, Docker and ports; installs dependencies; writes .env.test
 npm run db:migrate          # drizzle-kit migrate against test (local only); Supabase CLI migrations are not used
 npm run seed -w server      # the shared Ingredient seed (ODbL); safe to run again
-npm run dev:server          # API on http://localhost:8787
-npm run dev:web             # web app on http://localhost:5173
+npm run dev:server          # API, on http://localhost:8787 in the main checkout
+npm run dev:web             # web app, on http://localhost:5173 in the main checkout
+npm run dev:ports           # every checkout's API and web URLs
 ```
+
+Each checkout runs its dev servers on its own ports, so worktrees can run them side by side. The
+main checkout uses 8787 (API) and 5173 (web) for test, and 8788 and 5174 for `npm run dev:prod`. A
+linked worktree gets a block of 4 free ports from 20000 up, picked the first time a dev command
+needs them and kept in its git-ignored `.dev-ports.json`; `npm run dev:ports` prints them. Setting
+`API_PORT` and `WEB_PORT` overrides both. The web app's `/api` proxy always goes to its own
+checkout's API, and `npm run dev:web` fails rather than move to another port when its port is taken.
 
 Two environments, each with one git-ignored file at the repo root (ADR 0012): **test**, the local
 Supabase stack (`.env.test`), and **prod**, the hosted project (`.env.prod`). `APP_ENV` picks the
@@ -24,7 +32,8 @@ its own, so a `.env.local` or `.env` changes nothing; they are reported by `pref
 
 `npm run preflight` is the first step in any new clone or worktree, and safe to run again. It
 stops at the first problem (Node older than 24, Docker not running, the stack stopped, a `.env.test`
-with prod values, or port 8787 or 5173 held by a server from another checkout) and prints the fix.
+with prod values, or one of this checkout's ports held by a server from another checkout) and
+prints the fix.
 Otherwise it runs `npm ci --ignore-scripts` when `node_modules` is missing or older than
 `package-lock.json`, and `npm run setup:local` when `.env.test` is missing. A missing or logged-out
 `gh` only warns. It doesn't check Claude skills: sessions need the `mattpocock-skills` plugin

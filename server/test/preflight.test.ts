@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mainCheckoutPorts } from "../../scripts/dev-ports-plan.ts";
 import {
+  appPortsOf,
   dependenciesNeedInstall,
   nodeVersionProblem,
   parseLsof,
@@ -31,6 +33,15 @@ describe("preflight", () => {
     ]);
     expect(parseLsof("p41133\nfcwd\nn/Users/cook/miseflow\n")).toEqual([
       { pid: 41133, name: "/Users/cook/miseflow" },
+    ]);
+  });
+
+  it("checks this checkout's 4 app ports, test and prod", () => {
+    expect(appPortsOf(mainCheckoutPorts)).toEqual([
+      { port: 8787, name: "API" },
+      { port: 5173, name: "web" },
+      { port: 8788, name: "prod API" },
+      { port: 5174, name: "prod web" },
     ]);
   });
 

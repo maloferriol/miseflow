@@ -3,6 +3,7 @@ node_modules/
 .env
 .env.test
 .env.prod
+.dev-ports.json
 *.log
 .claude/*
 !.claude/settings.json

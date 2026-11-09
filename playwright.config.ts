@@ -17,6 +17,7 @@ if (!process.env.E2E_RUN_PID) {
   delete process.env.E2E_WEB_PORT;
 }
 const ports = await pickE2ePorts();
+const portsEnv = { API_PORT: `${ports.api}`, WEB_PORT: `${ports.web}` };
 
 // Runs against the local Supabase stack (`npx supabase start`, `npm run setup:local`,
 // `npm run db:migrate`). Always starts its own API and web app, on ports no other server uses, so
@@ -45,14 +46,15 @@ export default defineConfig({
       command: "npm run start -w server",
       url: `http://localhost:${ports.api}/health`,
       // The e2e's Plan days are Paris dates, whatever the machine's zone.
-      env: { PORT: `${ports.api}`, KITCHEN_TIME_ZONE: "Europe/Paris" },
+      // API_PORT and WEB_PORT both set, so neither server reads or makes a .dev-ports.json.
+      env: { ...portsEnv, KITCHEN_TIME_ZONE: "Europe/Paris" },
       reuseExistingServer: false,
     },
     {
-      command: `npm run dev -w web -- --port ${ports.web} --strictPort`,
+      command: "npm run dev -w web",
       url: `http://localhost:${ports.web}`,
-      // The dev proxy sends /api to this run's API.
-      env: { API_PORT: `${ports.api}` },
+      // The web port, and the dev proxy sending /api to this run's API.
+      env: portsEnv,
       reuseExistingServer: false,
     },
   ],

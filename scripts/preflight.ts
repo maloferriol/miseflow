@@ -8,9 +8,12 @@ import { existsSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { envFileName, legacyEnvWarnings, loadEnv } from "./env.ts";
 import { assertLocalEnv } from "./local-only.ts";
+import { checkoutPorts } from "./checkout-ports.ts";
 import {
-  appPorts,
+  appPortsOf,
+  type AppPort,
   dependenciesNeedInstall,
+  listPorts,
   nodeVersionProblem,
   portProblem,
 } from "./preflight-checks.ts";
@@ -145,8 +148,15 @@ try {
 }
 pass("Local Supabase stack");
 
-// 5. The app ports. A dev server or e2e run from another checkout would serve that checkout's code.
+// 5. This checkout's app ports, test and prod (a linked worktree's are in its .dev-ports.json,
+// made here if missing). A dev server from another checkout would serve that checkout's code.
 const root = checkoutRoot();
+let appPorts: AppPort[];
+try {
+  appPorts = appPortsOf(checkoutPorts());
+} catch (error) {
+  fail((error as Error).message);
+}
 if (capture("lsof", ["-v"]).missing) {
   warn("lsof isn't installed, so the app ports weren't checked.");
 } else {
@@ -154,7 +164,7 @@ if (capture("lsof", ["-v"]).missing) {
     const problem = portProblem(port, listenersOn(port.port), root);
     if (problem) fail(problem);
   }
-  pass(`Ports ${appPorts.map((p) => p.port).join(" and ")} are free or this checkout's`);
+  pass(`Ports ${listPorts(appPorts)} are free or this checkout's`);
 }
 
 console.log("\nPreflight passed: this checkout is ready. Next, `npm run db:migrate`.");

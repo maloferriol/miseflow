@@ -1,4 +1,4 @@
-import { getMutator, menus, recipes, services } from "@miseflow/shared";
+import { applyMutation, getMutator, menus, recipes, services } from "@miseflow/shared";
 import { inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -210,13 +210,15 @@ describe("Services and the Plan read", () => {
     const [menuId, theirs] = [crypto.randomUUID(), crypto.randomUUID()];
     const [createMenu, createService] = [getMutator("createMenu")!, getMutator("createService")!];
     await db.transaction(async (tx) => {
-      await createMenu.run(
+      await applyMutation(
         tx,
+        createMenu,
         createMenu.args.parse({ menuId, name: "Not yours", guestCount: 2 }),
         other,
       );
-      await createService.run(
+      await applyMutation(
         tx,
+        createService,
         createService.args.parse({ serviceId: theirs, menuId, date: SERVICE_DATE, time: null }),
         other,
       );

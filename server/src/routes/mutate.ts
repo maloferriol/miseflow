@@ -1,5 +1,6 @@
 import {
   appliedMutations,
+  applyMutation,
   ConflictError,
   getMutator,
   InvalidArgsError,
@@ -62,7 +63,7 @@ export function mutateRoute(
             .where(eq(appliedMutations.id, id));
           return existing?.ownerId === ownerId ? "replayed" : "conflict";
         }
-        await mutator.run(tx, parsedArgs.data, { ownerId, timeZone, now });
+        await applyMutation(tx, mutator, parsedArgs.data, { ownerId, timeZone, now });
         return "applied";
       });
     } catch (error) {

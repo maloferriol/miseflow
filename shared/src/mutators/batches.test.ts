@@ -17,6 +17,7 @@ import { loadPlanRows } from "../plan/rows.ts";
 import { localParts, zonedMinute } from "../plan/time.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { batches, dishes, services, stepEvents, taskPlacements } from "../schema.ts";
+import { applyMutation } from "./apply.ts";
 import { getMutator, InvalidArgsError, NotFoundError, type Tx } from "./registry.ts";
 import { lockRecipe } from "./revision.ts";
 
@@ -28,7 +29,7 @@ const timeZone = "Europe/Paris";
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), {
+  await applyMutation(tx, mutator, mutator.args.parse(args), {
     ownerId: owner,
     timeZone,
     now: () => FIXED_NOW,

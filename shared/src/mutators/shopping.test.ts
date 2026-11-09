@@ -11,6 +11,7 @@ import {
   shoppingMarks,
 } from "../schema.ts";
 import { readShoppingList } from "../shopping/read.ts";
+import { applyMutation } from "./apply.ts";
 import { getMutator, NotFoundError, type Tx } from "./registry.ts";
 
 const ownerId = crypto.randomUUID();
@@ -19,7 +20,7 @@ const FIXED_NOW = new Date("2026-10-26T12:00:00Z");
 
 async function run(tx: Tx, name: string, args: unknown, owner = ownerId) {
   const mutator = getMutator(name)!;
-  await mutator.run(tx, mutator.args.parse(args), {
+  await applyMutation(tx, mutator, mutator.args.parse(args), {
     ownerId: owner,
     timeZone: "Europe/Paris",
     now: () => FIXED_NOW,

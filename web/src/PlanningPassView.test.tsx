@@ -12,10 +12,18 @@ const roast = { id: "s-roast", text: "Roast the bones" };
 const simmer = { id: "s-simmer", text: "Simmer for four hours" };
 const strain = { id: "s-strain", text: "Strain and cool" };
 
+const nothingPending = {
+  times: false,
+  window: false,
+  group: false,
+  addLink: false,
+  removeLink: false,
+};
+
 function renderPass(recipe: Recipe, props: Partial<PlanningPassViewProps> = {}) {
   const all: PlanningPassViewProps = {
     recipe,
-    windowPending: false,
+    pending: nothingPending,
     error: null,
     onRecipeWindow: vi.fn(),
     onStepTimes: vi.fn(),
@@ -99,7 +107,9 @@ describe("Planning pass view: the Recipe's window", () => {
   });
 
   it("turns Save window and Clear off while a window save is pending", () => {
-    renderPass(planningRecipe({ makeAhead: stockWindow, steps: [roast] }), { windowPending: true });
+    renderPass(planningRecipe({ makeAhead: stockWindow, steps: [roast] }), {
+      pending: { ...nothingPending, window: true },
+    });
     const form = within(recipeWindow());
     expect(form.getByRole<HTMLButtonElement>("button", { name: "Save window" }).disabled).toBe(
       true,
@@ -300,5 +310,45 @@ describe("Planning pass view: links", () => {
     expect(waits.getByRole("listitem").textContent).toContain("Step 1 · Roast the bones");
     fireEvent.click(waits.getByRole("button", { name: "Remove" }));
     expect(onRemoveLink).toHaveBeenCalledExactlyOnceWith("d-1");
+  });
+});
+
+describe("Planning pass view: pending saves", () => {
+  // The last Step has its own window and waits for the first, so its row shows every control.
+  const recipe = planningRecipe({
+    steps: [roast, simmer, { ...strain, makeAhead: stockWindow }],
+    dependencies: [{ id: "d-1", beforeStepId: "s-roast", afterStepId: "s-strain" }],
+  });
+  const controls = () => {
+    const last = row(2);
+    const waits = within(last.getByRole("list", { name: "Waits for" }));
+    return {
+      "Save times": last.getByRole<HTMLButtonElement>("button", { name: "Save times" }),
+      "Own make-ahead window": ownWindow(2),
+      Save: last.getByRole<HTMLButtonElement>("button", { name: "Save" }),
+      "Group with previous Step": groupBox(2),
+      Add: last.getByRole<HTMLButtonElement>("button", { name: "Add" }),
+      Remove: waits.getByRole<HTMLButtonElement>("button", { name: "Remove" }),
+    };
+  };
+  const disabled = () =>
+    Object.entries(controls())
+      .filter(([, control]) => control.disabled)
+      .map(([name]) => name);
+
+  it("turns on every control of a Step's row while nothing saves", () => {
+    renderPass(recipe);
+    expect(disabled()).toEqual([]);
+  });
+
+  it.each([
+    ["times", ["Save times"]],
+    ["window", ["Own make-ahead window", "Save"]],
+    ["group", ["Group with previous Step"]],
+    ["addLink", ["Add"]],
+    ["removeLink", ["Remove"]],
+  ] as const)("turns off only the controls of a pending save: %s", (pending, expected) => {
+    renderPass(recipe, { pending: { ...nothingPending, [pending]: true } });
+    expect(disabled()).toEqual(expected);
   });
 });

@@ -21,17 +21,17 @@ import { useIntentSave } from "./use-intent-save.ts";
 export function useAvailabilityScreen() {
   const queryClient = useQueryClient();
   const availability = useQuery({ queryKey: ["availability"], queryFn: fetchAvailability });
-  // One set of ids per intended save, so a retry after a lost response replays it (useIntent).
-  const intent = useIntent();
   const invalidate = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["availability"] }),
       queryClient.invalidateQueries({ queryKey: ["plan"] }),
     ]);
 
-  const setDefault = useIntentSave(intent, kitchenSettingsSave, invalidate);
-  const setWeek = useIntentSave(intent, weeklyAvailabilitySave, invalidate);
-  const setOverride = useIntentSave(intent, availabilityOverrideSave, invalidate);
+  // One intent slot per mutation, so a retry after a lost response replays that save's ids
+  // whatever the others sent or saved in between (useIntent).
+  const setDefault = useIntentSave(useIntent(), kitchenSettingsSave, invalidate);
+  const setWeek = useIntentSave(useIntent(), weeklyAvailabilitySave, invalidate);
+  const setOverride = useIntentSave(useIntent(), availabilityOverrideSave, invalidate);
 
   return {
     availability,

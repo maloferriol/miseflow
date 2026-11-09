@@ -2,18 +2,18 @@ import { execFileSync } from "node:child_process";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import {
   buildWalkthrough,
-  SERVICE_DATE,
   SERVICE_TIME,
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 import { apiUrl } from "../scripts/e2e-ports.ts";
+import { week } from "./walkthrough-week.ts";
 
 // The Unplaced Task quick fixes (#90 AC6): the walkthrough Menu, its Service and Availability are
 // built through POST /mutate; Friday is shortened through the Availability screen, as in
 // plan.spec.ts.
-const FRIDAY = "2026-10-30";
+const FRIDAY = week.friday;
 const s = String(Date.now());
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
@@ -30,11 +30,11 @@ test.beforeAll(async ({ request }) => {
     expect(res.status(), await res.text()).toBe(200);
   };
   w = await buildWalkthrough(run, s);
-  await setWalkthroughAvailability(run);
+  await setWalkthroughAvailability(run, undefined, week.friday);
   await run("createService", {
     serviceId,
     menuId: w.menuId,
-    date: SERVICE_DATE,
+    date: week.saturday,
     time: SERVICE_TIME,
   });
 });

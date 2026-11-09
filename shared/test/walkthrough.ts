@@ -334,8 +334,15 @@ function ingredientContent(
   return { body, lines };
 }
 
-/** Thu and Fri 18:00–22:00, Sat 09:00–19:00, and the override Fri 30 Oct from `fridayStart` to 21:00. */
-export async function setWalkthroughAvailability(run: Run, fridayStart = h(19)) {
+/**
+ * Thu and Fri 18:00–22:00, Sat 09:00–19:00, and the override Fri 30 Oct (or `friday`) from
+ * `fridayStart` to 21:00.
+ */
+export async function setWalkthroughAvailability(
+  run: Run,
+  fridayStart = h(19),
+  friday = "2026-10-30",
+) {
   const row = (weekday: number, start: number, end: number) => ({
     availabilityId: crypto.randomUUID(),
     weekday,
@@ -347,7 +354,7 @@ export async function setWalkthroughAvailability(run: Run, fridayStart = h(19)) 
   });
   await run("setAvailabilityOverride", {
     overrideId: crypto.randomUUID(),
-    date: "2026-10-30",
+    date: friday,
     availability: { kind: "hours", start: fridayStart, end: h(21) },
   });
 }

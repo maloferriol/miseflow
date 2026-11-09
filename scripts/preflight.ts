@@ -11,6 +11,7 @@ import { assertLocalEnv } from "./local-only.ts";
 import { checkoutPorts } from "./checkout-ports.ts";
 import {
   appPortsOf,
+  type AppPort,
   dependenciesNeedInstall,
   listPorts,
   nodeVersionProblem,
@@ -150,7 +151,12 @@ pass("Local Supabase stack");
 // 5. This checkout's app ports, test and prod (a linked worktree's are in its .dev-ports.json,
 // made here if missing). A dev server from another checkout would serve that checkout's code.
 const root = checkoutRoot();
-const appPorts = appPortsOf(checkoutPorts());
+let appPorts: AppPort[];
+try {
+  appPorts = appPortsOf(checkoutPorts());
+} catch (error) {
+  fail((error as Error).message);
+}
 if (capture("lsof", ["-v"]).missing) {
   warn("lsof isn't installed, so the app ports weren't checked.");
 } else {

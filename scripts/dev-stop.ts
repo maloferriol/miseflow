@@ -1,6 +1,6 @@
 // `npm run dev:stop`: stops this checkout's dev servers on its app ports (test and prod, from
-// scripts/checkout-ports.ts), each with its whole
-// `npm run dev:*` chain, and leaves other checkouts' running. The permission check refuses `kill`
+// scripts/checkout-ports.ts), each with its whole `npm run dev:*` chain, and leaves other
+// checkouts' running. The permission check refuses `kill`
 // because it can't tell who started a process; this can. The SessionEnd hook runs it with
 // --quiet, which prints only what it stopped or failed to stop.
 // The decisions live in dev-stop-plan.ts, which has the tests.

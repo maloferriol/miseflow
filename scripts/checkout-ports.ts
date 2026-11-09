@@ -7,7 +7,6 @@ import {
   devPortsFileName,
   listeningPorts,
   mainCheckoutPorts,
-  parseDevPortsFile,
   pickPortBlock,
   portsOf,
   readDevPortsFile,
@@ -94,15 +93,14 @@ function pickFreeBlock(root: string): CheckoutPorts {
   const claimed = worktrees()
     .filter((path) => path !== root)
     .flatMap((path) => {
-      const text = readIfExists(join(path, devPortsFileName));
-      if (text === undefined) return [];
-      try {
-        return portsOf(parseDevPortsFile(text, path));
-      } catch {
-        return [];
-      }
+      const ports = assignedPorts(path);
+      return typeof ports === "object" ? portsOf(ports) : [];
     });
   const lsof = capture("lsof", ["-nP", "-iTCP:20000-29999", "-sTCP:LISTEN", "-Fn"]);
+  if (lsof.missing)
+    console.warn(
+      "! lsof isn't installed, so new dev ports were picked without checking listeners.",
+    );
   return pickPortBlock(claimed, listeningPorts(lsof.stdout));
 }
 

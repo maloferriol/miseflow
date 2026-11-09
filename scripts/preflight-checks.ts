@@ -1,6 +1,6 @@
 // The pass-or-fail decisions behind `npm run preflight` (scripts/preflight.ts). The script gathers
 // the facts (versions, file times, port listeners) and these decide, so the tests need no machine.
-import type { CheckoutPorts } from "./dev-ports-plan.ts";
+import { portsOf, type CheckoutPorts } from "./dev-ports-plan.ts";
 
 /** package.json "engines". */
 const minimumNodeMajor = 24;
@@ -47,12 +47,8 @@ export function listPorts(ports: AppPort[], last: "and" | "or" = "and"): string 
  * by `npm run dev:stop`.
  */
 export function appPortsOf(ports: CheckoutPorts): AppPort[] {
-  return [
-    { port: ports.test.api, name: "API" },
-    { port: ports.test.web, name: "web" },
-    { port: ports.prod.api, name: "prod API" },
-    { port: ports.prod.web, name: "prod web" },
-  ];
+  const names = ["API", "web", "prod API", "prod web"];
+  return portsOf(ports).map((port, index) => ({ port, name: names[index] }));
 }
 
 /** One process from `lsof -F`: its pid, and the command (`c`) or file name (`n`) fields asked for. */

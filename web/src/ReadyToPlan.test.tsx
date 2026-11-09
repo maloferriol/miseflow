@@ -4,9 +4,8 @@ import type {
   SnapshotLine,
   SnapshotStep,
 } from "@miseflow/shared/src/recipe/snapshot.ts";
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { renderView } from "../test/render-view.tsx";
 import { ReadyToPlan } from "./ReadyToPlan.tsx";
 
 const line = (id: string, wording: string, preparation: string | null): SnapshotLine => ({
@@ -47,7 +46,7 @@ function renderReadyToPlan(steps: SnapshotStep[]) {
     steps,
     dependencies: [],
   };
-  renderView(<ReadyToPlan recipe={{ steps, readyToPlan: readyToPlan(snapshot, new Map()) }} />);
+  render(<ReadyToPlan recipe={{ steps, readyToPlan: readyToPlan(snapshot, new Map()) }} />);
 }
 
 describe("Ready to plan", () => {

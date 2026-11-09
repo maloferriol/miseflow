@@ -1,7 +1,7 @@
 import type { AuthError, Session, User } from "@supabase/supabase-js";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderQueryHook, renderView } from "../test/render-view.tsx";
+import { renderQueryHook } from "../test/render-view.tsx";
 import { SignInView, useSignIn } from "./SignIn.tsx";
 import { supabase } from "./supabase.ts";
 
@@ -69,7 +69,7 @@ describe("the sign-in hook", () => {
 describe("the sign-in view", () => {
   it("sends the email and password the cook typed", () => {
     const onSignIn = vi.fn();
-    renderView(<SignInView pending={false} error={null} onSignIn={onSignIn} />);
+    render(<SignInView pending={false} error={null} onSignIn={onSignIn} />);
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "cook@miseflow.test" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "a-password" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -77,12 +77,12 @@ describe("the sign-in view", () => {
   });
 
   it("disables Sign in while it checks", () => {
-    renderView(<SignInView pending error={null} onSignIn={vi.fn()} />);
+    render(<SignInView pending error={null} onSignIn={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Sign in" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("shows the error and no alert without one", () => {
-    const { rerender } = renderView(<SignInView pending={false} error={null} onSignIn={vi.fn()} />);
+    const { rerender } = render(<SignInView pending={false} error={null} onSignIn={vi.fn()} />);
     expect(screen.queryByRole("alert")).toBeNull();
     rerender(<SignInView pending={false} error="Invalid login credentials" onSignIn={vi.fn()} />);
     expect(screen.getByRole("alert").textContent).toBe("Invalid login credentials");

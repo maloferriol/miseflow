@@ -1,8 +1,7 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { action } from "../test/action.ts";
-import { renderView } from "../test/render-view.tsx";
 import { blockingSave, type Inserted, pickerOpensAt, withLink } from "./step-editor.ts";
 import { StepFormView, type StepFormViewProps } from "./StepForm.tsx";
 
@@ -23,7 +22,7 @@ function stepForm(props: Partial<StepFormViewProps> = {}) {
   return <StepFormView {...view} />;
 }
 
-const renderStepForm = (props: Partial<StepFormViewProps> = {}) => renderView(stepForm(props));
+const renderStepForm = (props: Partial<StepFormViewProps> = {}) => render(stepForm(props));
 const save = () => screen.getByRole("button", { name: "Save" });
 
 describe("Step form", () => {
@@ -86,7 +85,7 @@ describe("Step form", () => {
         ),
       });
     }
-    renderView(<Editing />);
+    render(<Editing />);
     fireEvent.click(screen.getByRole("button", { name: "Pick shallots" }));
 
     const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Step text" });

@@ -1,7 +1,6 @@
 import { formatInstant } from "@miseflow/shared/src/plan/time.ts";
-import { act, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderView } from "../test/render-view.tsx";
 import { walkthroughPlan } from "../test/walkthrough-plan.ts";
 import { dayHeading, ownerOf, taskTimes } from "./plan-display.ts";
 import { PrintedPlan } from "./PrintedPlan.tsx";
@@ -23,7 +22,7 @@ const printed = () => screen.getByRole("region", { name: "Printed Plan" });
 describe("Printed Plan", () => {
   it("says when it was printed, in the Plan's zone", () => {
     const plan = walkthroughPlan();
-    renderView(<PrintedPlan plan={plan} />);
+    render(<PrintedPlan plan={plan} />);
     expect(
       within(printed()).getByText(`Printed at ${formatInstant(opened, plan.timeZone)}`),
     ).toBeTruthy();
@@ -31,7 +30,7 @@ describe("Printed Plan", () => {
 
   it("refreshes when it was printed as the print starts", () => {
     const plan = walkthroughPlan({ timeZone: "America/New_York" });
-    renderView(<PrintedPlan plan={plan} />);
+    render(<PrintedPlan plan={plan} />);
     const printing = new Date("2026-10-29T19:45:00Z");
     vi.setSystemTime(printing);
     act(() => {
@@ -45,7 +44,7 @@ describe("Printed Plan", () => {
   it("stops listening for a print once it's gone", () => {
     const add = vi.spyOn(window, "addEventListener");
     const remove = vi.spyOn(window, "removeEventListener");
-    const { unmount } = renderView(<PrintedPlan plan={walkthroughPlan()} />);
+    const { unmount } = render(<PrintedPlan plan={walkthroughPlan()} />);
     const listener = add.mock.calls.find(([type]) => type === "beforeprint")?.[1];
     unmount();
     expect(remove).toHaveBeenCalledWith("beforeprint", listener);
@@ -53,7 +52,7 @@ describe("Printed Plan", () => {
 
   it("has a section per day, each Task with its times and owner and an empty box per Step", () => {
     const plan = walkthroughPlan();
-    renderView(<PrintedPlan plan={plan} />);
+    render(<PrintedPlan plan={plan} />);
     const sections = within(printed()).getAllByRole("region");
     expect(sections.map((s) => s.getAttribute("aria-label"))).toEqual(
       plan.days.map((d) => dayHeading(d.date)),
@@ -76,7 +75,7 @@ describe("Printed Plan", () => {
   });
 
   it("prints a Step's box empty even when the Step is done", () => {
-    renderView(<PrintedPlan plan={walkthroughPlan()} />);
+    render(<PrintedPlan plan={walkthroughPlan()} />);
     const steps = within(printed()).getAllByRole("list", { name: "Steps" });
     expect(
       steps.flatMap((ul) =>

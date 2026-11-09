@@ -1,7 +1,7 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { action } from "../test/action.ts";
-import { renderQueryHook, renderView, renderWired } from "../test/render-view.tsx";
+import { renderQueryHook, renderWired } from "../test/render-view.tsx";
 import {
   type CatalogIngredient,
   fetchShoppingCategories,
@@ -63,7 +63,7 @@ function renderLinkChoice(props: Partial<LinkChoiceViewProps> = {}) {
     subRecipe: action(),
     ...props,
   };
-  return renderView(<LinkChoiceView {...view} />);
+  return render(<LinkChoiceView {...view} />);
 }
 
 const button = (name: string) => screen.getByRole("button", { name });

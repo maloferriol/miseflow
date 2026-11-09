@@ -1,6 +1,5 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { renderView } from "../test/render-view.tsx";
 import {
   at,
   beurreLabel,
@@ -63,7 +62,7 @@ const ticks = (day: string) =>
 
 describe("the Gantt chart", () => {
   it("shows a lane per Dish with its Batches under it, the shared stock again under the Beurre blanc", () => {
-    renderView(<Gantt plan={plan} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={plan} courses={courses} onPin={noPin} />);
     expect(lanes()).toEqual(everyLane);
     expect(screen.getByText("Starter")).toBeTruthy();
     expect(screen.getByText("Main")).toBeTruthy();
@@ -74,7 +73,7 @@ describe("the Gantt chart", () => {
   });
 
   it("puts each Task in its owner's lane at its start in the kitchen's zone, and the shared stock's Task in both its lanes", () => {
-    renderView(<Gantt plan={plan} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={plan} courses={courses} onPin={noPin} />);
     expect(bars("Velouté")).toEqual([`${velouteBar} · 17:20`]);
     expect(bars("Chicken stock")).toEqual([`${stockBar} · 14:10`]);
     expect(bars("Duck breast with beurre blanc")).toEqual([
@@ -88,7 +87,7 @@ describe("the Gantt chart", () => {
   });
 
   it("labels each day of the Plan and its whole hours in the kitchen's zone, with the nights removed", () => {
-    renderView(<Gantt plan={plan} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={plan} courses={courses} onPin={noPin} />);
     expect(ticks("Thu 29 Oct")).toEqual(["18:00", "19:00", "20:00", "21:00", "22:00"]);
     expect(ticks("Fri 30 Oct")).toEqual(["19:00", "20:00", "21:00"]);
     expect(ticks("Sat 31 Oct")).toEqual([
@@ -108,7 +107,7 @@ describe("the Gantt chart", () => {
   });
 
   it("draws each bar from its start, one pixel a minute, active then passive time", () => {
-    renderView(<Gantt plan={plan} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={plan} courses={courses} onPin={noPin} />);
     // Each band starts at the Cook's first free minute that day.
     const [thursdayFree, , saturdayFree] = model.cooks[0].free;
     const cases = [
@@ -137,7 +136,7 @@ describe("the Gantt chart", () => {
   it("marks a date the Cook isn't available as not available", () => {
     const [thu, , sat] = model.cooks[0].free;
     const noFriday = { ...model, cooks: [{ id: "cook", free: [thu, sat] }] };
-    renderView(<Gantt plan={planOf(noFriday)} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={planOf(noFriday)} courses={courses} onPin={noPin} />);
     expect(band("Fri 30 Oct").el.textContent).toContain("not available");
     expect(band("Sat 31 Oct").el.textContent).not.toContain("not available");
   });
@@ -147,7 +146,7 @@ describe("the Gantt chart", () => {
       ...model,
       previous: [{ key: keys.stock, start: at(SATURDAY, 10), cookId: "cook", pinned: true }],
     });
-    renderView(<Gantt plan={pinned} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={pinned} courses={courses} onPin={noPin} />);
     expect(bars("Chicken stock")).toEqual([`${stockBar} · 10:00 · pinned`]);
     expect(bars("Chicken stock (also shown above)")).toEqual([`${stockBar} · 10:00 · pinned`]);
     expect(
@@ -159,7 +158,7 @@ describe("the Gantt chart", () => {
   });
 
   it("collapses a Dish into its own lane with its Batches' Tasks folded in once, and expands it again", () => {
-    renderView(<Gantt plan={plan} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={plan} courses={courses} onPin={noPin} />);
     expect(screen.getByRole("button", { name: "Collapse Velouté" })).toBeTruthy();
     const collapse = screen.getByRole("button", { name: "Collapse Duck breast with beurre blanc" });
     expect(collapse.getAttribute("aria-expanded")).toBe("true");
@@ -190,7 +189,7 @@ describe("the Gantt chart", () => {
   });
 
   it("collapses each Dish on its own", () => {
-    renderView(<Gantt plan={plan} courses={courses} onPin={noPin} />);
+    render(<Gantt plan={plan} courses={courses} onPin={noPin} />);
     fireEvent.click(screen.getByRole("button", { name: "Collapse Velouté" }));
     expect(lanes()).toEqual([
       "Velouté",

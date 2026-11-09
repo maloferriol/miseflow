@@ -1,7 +1,6 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { chickenStock, chickenStockWithYield, tarteTatin } from "../test/recipe-fixtures.ts";
-import { renderView } from "../test/render-view.tsx";
 import { yieldText } from "./recipe-screen.ts";
 import {
   ExtractToSubRecipeView,
@@ -55,19 +54,19 @@ const stepItems = () =>
 
 describe("Recipe screen view", () => {
   it("shows Loading while the Recipe loads", () => {
-    renderView(<RecipeScreenView {...recipeScreenProps({ recipe: { status: "pending" } })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ recipe: { status: "pending" } })} />);
     expect(screen.getByText("Loading…")).toBeTruthy();
     expect(screen.queryByRole("heading")).toBeNull();
   });
 
   it("shows why the Recipe didn't load", () => {
     const error = new Error("Could not load the Recipe (500)");
-    renderView(<RecipeScreenView {...recipeScreenProps({ recipe: { status: "error", error } })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ recipe: { status: "error", error } })} />);
     expect(screen.getByRole("alert").textContent).toBe("Could not load the Recipe (500)");
   });
 
   it("fills the Write mode's slots: the yield, each Step, Extract with the ticked Steps", () => {
-    renderView(<RecipeScreenView {...recipeScreenProps({ selected: ["s-rest"] })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ selected: ["s-rest"] })} />);
     expect(screen.getByText("yield field")).toBeTruthy();
     expect(stepItems().map((li) => within(li).getByText(/^Step s-/).textContent)).toEqual([
       "Step s-rub",
@@ -84,7 +83,7 @@ describe("Recipe screen view", () => {
   });
 
   it("shows the Planning pass in Plan mode, with no Steps to edit", () => {
-    renderView(<RecipeScreenView {...recipeScreenProps({ mode: "plan" })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ mode: "plan" })} />);
     expect(screen.getByText("Planning pass for Tarte tatin")).toBeTruthy();
     expect(button("Plan").getAttribute("aria-pressed")).toBe("true");
     expect(button("Write").getAttribute("aria-pressed")).toBe("false");
@@ -96,7 +95,7 @@ describe("Recipe screen view", () => {
 
   it("asks for the mode the cook picks", () => {
     const onMode = vi.fn();
-    renderView(<RecipeScreenView {...recipeScreenProps({ onMode })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ onMode })} />);
     fireEvent.click(button("Plan"));
     fireEvent.click(button("Write"));
     expect(onMode.mock.calls).toEqual([["plan"], ["write"]]);
@@ -104,7 +103,7 @@ describe("Recipe screen view", () => {
 
   it("sends the trimmed name and Servings, and nothing for a blank name", () => {
     const onEdit = vi.fn();
-    renderView(<RecipeScreenView {...recipeScreenProps({ onEdit })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ onEdit })} />);
     const name = screen.getByRole("textbox", { name: "Recipe name" });
     const servings = screen.getByRole("spinbutton", { name: "Servings" });
 
@@ -118,7 +117,7 @@ describe("Recipe screen view", () => {
   });
 
   it("disables Save Recipe while it saves, and shows a failed save", () => {
-    renderView(
+    render(
       <RecipeScreenView
         {...recipeScreenProps({ editPending: true, editError: new Error("Conflict (409)") })}
       />,
@@ -130,7 +129,7 @@ describe("Recipe screen view", () => {
   it("asks to tick and untick a Step", () => {
     const onSelect = vi.fn();
     const onUnselect = vi.fn();
-    renderView(
+    render(
       <RecipeScreenView {...recipeScreenProps({ onSelect, onUnselect, selected: ["s-rub"] })} />,
     );
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Step 3" }));
@@ -142,7 +141,7 @@ describe("Recipe screen view", () => {
   it("asks to move and remove a Step", () => {
     const onMove = vi.fn();
     const onRemove = vi.fn();
-    renderView(<RecipeScreenView {...recipeScreenProps({ onMove, onRemove })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ onMove, onRemove })} />);
     const [rub, rest] = stepItems();
 
     fireEvent.click(within(rest).getByRole("button", { name: "Move up" }));
@@ -156,9 +155,7 @@ describe("Recipe screen view", () => {
   });
 
   it("disables every move while one is saving, and every remove while one is", () => {
-    renderView(
-      <RecipeScreenView {...recipeScreenProps({ movePending: true, removePending: true })} />,
-    );
+    render(<RecipeScreenView {...recipeScreenProps({ movePending: true, removePending: true })} />);
     const rest = stepItems()[1];
     expect(within(rest).getByRole("button", { name: "Move up" })).toHaveProperty("disabled", true);
     expect(within(rest).getByRole("button", { name: "Move down" })).toHaveProperty(
@@ -169,7 +166,7 @@ describe("Recipe screen view", () => {
   });
 
   it("shows a failed move before a failed remove", () => {
-    const { rerender } = renderView(
+    const { rerender } = render(
       <RecipeScreenView
         {...recipeScreenProps({
           moveError: new Error("Move failed"),
@@ -187,7 +184,7 @@ describe("Recipe screen view", () => {
 
   it("opens a new Step from Add Step, and closes it when the editor does", () => {
     const onAdding = vi.fn();
-    const { rerender } = renderView(<RecipeScreenView {...recipeScreenProps({ onAdding })} />);
+    const { rerender } = render(<RecipeScreenView {...recipeScreenProps({ onAdding })} />);
     fireEvent.click(button("Add Step"));
     expect(onAdding).toHaveBeenLastCalledWith(true);
 
@@ -199,7 +196,7 @@ describe("Recipe screen view", () => {
 
   it("clears the ticks when Extract is done", () => {
     const onClearSelection = vi.fn();
-    renderView(<RecipeScreenView {...recipeScreenProps({ onClearSelection })} />);
+    render(<RecipeScreenView {...recipeScreenProps({ onClearSelection })} />);
     fireEvent.click(button("Extract of s-rub,s-rest,s-caramelise"));
     expect(onClearSelection).toHaveBeenCalledOnce();
   });
@@ -217,7 +214,7 @@ function yieldProps(overrides: Partial<YieldFieldViewProps> = {}): YieldFieldVie
 
 describe("Yield field view", () => {
   it("shows the saved yield", () => {
-    renderView(<YieldFieldView {...yieldProps()} />);
+    render(<YieldFieldView {...yieldProps()} />);
     expect(screen.getByRole("textbox", { name: "Yield" })).toHaveProperty(
       "value",
       yieldText(chickenStockWithYield.yield),
@@ -227,7 +224,7 @@ describe("Yield field view", () => {
 
   it("sends the trimmed yield, or null to clear it", () => {
     const onSave = vi.fn();
-    renderView(<YieldFieldView {...yieldProps({ onSave })} />);
+    render(<YieldFieldView {...yieldProps({ onSave })} />);
     const field = screen.getByRole("textbox", { name: "Yield" });
 
     fireEvent.change(field, { target: { value: " 2 L " } });
@@ -242,7 +239,7 @@ describe("Yield field view", () => {
       ...chickenStock,
       usedBy: [...chickenStock.usedBy, { id: "r-duck", name: "Beurre blanc" }],
     };
-    renderView(<YieldFieldView {...yieldProps({ recipe })} />);
+    render(<YieldFieldView {...yieldProps({ recipe })} />);
     expect(screen.getByRole("textbox", { name: "Yield" })).toHaveProperty("value", "");
     expect(screen.getByText(/used as a sub-recipe by/).textContent).toBe(
       "needs a yield: used as a sub-recipe by Velouté, Beurre blanc",
@@ -250,7 +247,7 @@ describe("Yield field view", () => {
   });
 
   it("disables Save yield while it saves, and shows a failed save", () => {
-    renderView(
+    render(
       <YieldFieldView
         {...yieldProps({ savePending: true, saveError: new Error("Not a yield: 1-2 L") })}
       />,
@@ -284,7 +281,7 @@ const extractButton = () => button("Extract to sub-recipe");
 describe("Extract to sub-recipe view", () => {
   it("extracts the ticked Steps in Step order, with the trimmed name and amount", () => {
     const onExtract = vi.fn();
-    renderView(
+    render(
       <ExtractToSubRecipeView
         {...extractProps({ name: " Pastry ", amount: " 500%g ", onExtract })}
       />,
@@ -299,7 +296,7 @@ describe("Extract to sub-recipe view", () => {
 
   it("extracts an amount of 1 when the amount is blank", () => {
     const onExtract = vi.fn();
-    renderView(<ExtractToSubRecipeView {...extractProps({ amount: "", onExtract })} />);
+    render(<ExtractToSubRecipeView {...extractProps({ amount: "", onExtract })} />);
     fireEvent.click(extractButton());
     expect(onExtract).toHaveBeenCalledWith({
       stepIds: ["s-rub", "s-rest"],
@@ -311,7 +308,7 @@ describe("Extract to sub-recipe view", () => {
   it("passes on what the cook types", () => {
     const onName = vi.fn();
     const onAmount = vi.fn();
-    renderView(<ExtractToSubRecipeView {...extractProps({ onName, onAmount })} />);
+    render(<ExtractToSubRecipeView {...extractProps({ onName, onAmount })} />);
     fireEvent.change(screen.getByRole("textbox", { name: "Name for the sub-recipe" }), {
       target: { value: "Pâte brisée" },
     });
@@ -323,19 +320,19 @@ describe("Extract to sub-recipe view", () => {
   });
 
   it("can't extract without a name", () => {
-    renderView(<ExtractToSubRecipeView {...extractProps({ name: "  " })} />);
+    render(<ExtractToSubRecipeView {...extractProps({ name: "  " })} />);
     expect(extractButton()).toHaveProperty("disabled", true);
   });
 
   it("can't extract before a Step is ticked, and says nothing yet", () => {
-    renderView(<ExtractToSubRecipeView {...extractProps({ selected: [] })} />);
+    render(<ExtractToSubRecipeView {...extractProps({ selected: [] })} />);
     expect(extractButton()).toHaveProperty("disabled", true);
     expect(screen.queryByText("Select Steps that follow one another.")).toBeNull();
   });
 
   it("can't extract Steps with a gap, and asks for Steps that follow one another", () => {
     const onExtract = vi.fn();
-    renderView(
+    render(
       <ExtractToSubRecipeView
         {...extractProps({ selected: ["s-rub", "s-caramelise"], onExtract })}
       />,
@@ -345,7 +342,7 @@ describe("Extract to sub-recipe view", () => {
   });
 
   it("disables Extract while it saves, and shows a failed extract", () => {
-    renderView(
+    render(
       <ExtractToSubRecipeView
         {...extractProps({
           extractPending: true,

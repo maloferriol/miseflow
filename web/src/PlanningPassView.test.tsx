@@ -1,7 +1,6 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { planningRecipe } from "../test/planning-recipe.ts";
-import { renderView } from "../test/render-view.tsx";
 import type { Recipe } from "./api.ts";
 import { PlanningPassView, type PlanningPassViewProps } from "./PlanningPassView.tsx";
 
@@ -25,7 +24,7 @@ function renderPass(recipe: Recipe, props: Partial<PlanningPassViewProps> = {}) 
     onRemoveLink: vi.fn(),
     ...props,
   };
-  const view = renderView(<PlanningPassView {...all} />);
+  const view = render(<PlanningPassView {...all} />);
   return {
     ...all,
     rerender: (next: Recipe) => view.rerender(<PlanningPassView {...all} recipe={next} />),

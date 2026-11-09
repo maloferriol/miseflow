@@ -1,7 +1,6 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { action } from "../test/action.ts";
-import { renderView } from "../test/render-view.tsx";
 import type { Menu } from "./api.ts";
 import {
   CourseView,
@@ -25,12 +24,12 @@ const type = (label: string, value: string) =>
 
 describe("Menu list", () => {
   it("shows Loading… while the Menus load", () => {
-    renderView(<MenuListView menus={{ status: "pending" }} />);
+    render(<MenuListView menus={{ status: "pending" }} />);
     expect(screen.getByText("Loading…")).toBeTruthy();
   });
 
   it("shows a failed load as an alert with its message", () => {
-    renderView(
+    render(
       <MenuListView
         menus={{ status: "error", error: new Error("Could not load the Menus (500)") }}
       />,
@@ -39,13 +38,13 @@ describe("Menu list", () => {
   });
 
   it("shows no list while there are no Menus", () => {
-    renderView(<MenuListView menus={{ status: "success", data: [] }} />);
+    render(<MenuListView menus={{ status: "success", data: [] }} />);
     expect(screen.queryByRole("navigation", { name: "Your Menus" })).toBeNull();
     expect(screen.queryByText("Loading…")).toBeNull();
   });
 
   it("links each Menu to its page", () => {
-    renderView(
+    render(
       <MenuListView
         menus={{ status: "success", data: [{ id: "m-1", name: "Saturday dinner" }] }}
       />,
@@ -59,7 +58,7 @@ describe("Menu list", () => {
 
 describe("New Menu", () => {
   const newMenu = (props: Partial<NewMenuViewProps> = {}) =>
-    renderView(<NewMenuView create={action()} {...props} />);
+    render(<NewMenuView create={action()} {...props} />);
 
   it("creates a Menu from its name and Guests", () => {
     const onCreate = vi.fn();
@@ -107,7 +106,7 @@ const saturdayDinner: Menu = {
 
 describe("Menu", () => {
   const menuView = (props: Partial<MenuViewProps> = {}) =>
-    renderView(
+    render(
       <MenuView
         menu={{ status: "success", data: saturdayDinner }}
         addCourse={action()}
@@ -169,7 +168,7 @@ const starter: Course = { id: "c-starter", name: "Starter", position: "a0", dish
 
 describe("Course", () => {
   const courseView = (props: Partial<CourseViewProps> = {}) =>
-    renderView(
+    render(
       <CourseView
         menuId="m-dinner"
         course={starter}
@@ -208,7 +207,7 @@ describe("Course", () => {
 
 describe("Dish scale", () => {
   const dishScale = (props: Partial<DishScaleViewProps> = {}) =>
-    renderView(<DishScaleView dish={velouté} save={action()} {...props} />);
+    render(<DishScaleView dish={velouté} save={action()} {...props} />);
 
   it("saves a portion count", () => {
     const onSave = vi.fn();
@@ -241,7 +240,7 @@ describe("Service form", () => {
   // ADR 0004's Service: Saturday at 19:30.
   const saturday = { id: "s-saturday", date: "2026-10-31", time: minuteOfDay("19:30") };
   const serviceForm = (props: Partial<ServiceFormViewProps> = {}) =>
-    renderView(
+    render(
       <ServiceFormView
         menuId="m-dinner"
         service={null}

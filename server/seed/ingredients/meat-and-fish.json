@@ -2,7 +2,7 @@
   {
     "id": "929e97bb-5945-43ec-92fb-a6ebe862d4a7",
     "name": "chicken carcass",
-    "fdcId": null,
+    "fdcId": "171047",
     "preferredKind": "mass",
     "shoppingCategory": "Meat & fish",
     "aliases": [
@@ -20,7 +20,7 @@
   {
     "id": "15eef6b2-d747-40df-b05f-3815ba1ced60",
     "name": "duck breast",
-    "fdcId": null,
+    "fdcId": "172408",
     "preferredKind": "mass",
     "shoppingCategory": "Meat & fish",
     "aliases": [
@@ -31,6 +31,798 @@
       {
         "id": "9e621dc3-8046-4a16-867a-90199452f24d",
         "name": "duck magret"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "2b763638-a519-4a19-8374-d61fb84c15f1",
+    "name": "chicken breast",
+    "fdcId": "171077",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "509267ca-4e42-4e12-a8bd-41e734da8def",
+        "name": "boneless skinless chicken breast"
+      },
+      {
+        "id": "da77ffe3-5ab6-4cd5-8b55-a1b45922bc50",
+        "name": "chicken breast fillet"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "eb482dc8-47b3-4980-8184-7e30b9cff311",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 272,
+        "fdcId": "171077"
+      }
+    ]
+  },
+  {
+    "id": "4b90c38a-bbeb-43e6-9481-64e7798b59a7",
+    "name": "chicken thigh",
+    "fdcId": "173627",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "5be47247-6656-4148-8e8b-d1f043b781dc",
+        "name": "chicken thigh fillet"
+      },
+      {
+        "id": "30cddbf2-5fa5-470b-a97a-6b8c73b0df32",
+        "name": "boneless chicken thigh"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "dead82a4-981c-4d93-83b3-49c475fb752b",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 149,
+        "fdcId": "173627"
+      }
+    ]
+  },
+  {
+    "id": "c7fc679d-8265-44f2-a2cd-21ad45096a84",
+    "name": "chicken drumstick",
+    "fdcId": "173614",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "3ddd059e-8951-4454-8e9b-3aeb80fd3602",
+        "name": "drumstick"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "3885bedc-54f2-4f23-beaf-2c9f748dd622",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 122,
+        "fdcId": "173614"
+      }
+    ]
+  },
+  {
+    "id": "0981e143-0479-4a76-a25c-97fe4b3c9c85",
+    "name": "chicken wing",
+    "fdcId": "172390",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "fff20792-cbb3-465e-9a53-e2d0a59a227b",
+        "name": "wing"
+      },
+      {
+        "id": "0a4b6558-7860-4af7-81a7-fabd97e3d006",
+        "name": "chicken wings"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "8c4ac06c-6d18-455b-b592-d78493d23161",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 107,
+        "fdcId": "172390"
+      }
+    ]
+  },
+  {
+    "id": "f8c04e2a-8a7e-4af6-be15-525a22e25167",
+    "name": "whole chicken",
+    "fdcId": "171047",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "a10c1a36-7a05-4bf2-b826-23ca2352d9c6",
+        "name": "roasting chicken"
+      },
+      {
+        "id": "0427162c-7aff-4fb6-9460-d6d72c5c4d88",
+        "name": "chicken"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "dc78a41f-0322-46f1-9044-d2cac6b82a9e",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 1046,
+        "fdcId": "171047"
+      }
+    ]
+  },
+  {
+    "id": "bb51e20b-acbd-442f-b294-c7b1d40ad28a",
+    "name": "ground chicken",
+    "fdcId": "171116",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "8a0e4961-95b7-47d8-bc18-fc3296995f5f",
+        "name": "chicken mince"
+      },
+      {
+        "id": "f5535d8a-c95b-48a0-a9be-069e0d8b5d93",
+        "name": "minced chicken"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "155efd6a-fa4a-4e15-b8e9-cb93af573cec",
+    "name": "turkey breast",
+    "fdcId": "171098",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "f19f9ead-2ebc-4c2d-974e-ad050d0ed072",
+        "name": "turkey breast fillet"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "a6fb7cfd-daad-4e5c-ac7d-30a6e77ff89b",
+    "name": "whole turkey",
+    "fdcId": "171480",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "0727b773-dee9-4b5e-94e9-0ea90b61b58e",
+        "name": "turkey"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "190afeb1-33c1-40cd-a6d5-cdc8b48e979b",
+    "name": "pork shoulder",
+    "fdcId": "167843",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "567f7ae9-19ff-4d69-9543-e6426de969b0",
+        "name": "pork butt"
+      },
+      {
+        "id": "08c85cbf-2869-4b80-8828-1ae07fd9e535",
+        "name": "boston butt"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "2e1fa8b9-5a37-4e17-8f39-10c8f2ea05a4",
+    "name": "pork loin",
+    "fdcId": "167818",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "c74a921d-28e0-4ce6-b10d-98ec8be53e6c",
+        "name": "pork loin roast"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "38bf3983-6b54-4fe9-b2e7-33e2e08db154",
+    "name": "pork tenderloin",
+    "fdcId": "168312",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "0ac9d304-08be-4f91-b7c8-64c788bb0faa",
+        "name": "pork fillet"
+      },
+      {
+        "id": "67941adc-093f-432b-98f6-4b0ee3e18189",
+        "name": "pork tenderloin fillet"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "324d91ae-ae7d-4a05-9798-dc8673a00e87",
+    "name": "pork chop",
+    "fdcId": "168238",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "2036b1f7-75b1-493c-b3d6-9cf9a84d0525",
+        "name": "pork loin chop"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "bada8981-e200-4b9b-a09a-2e20ff83624c",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 199,
+        "fdcId": "168238"
+      }
+    ]
+  },
+  {
+    "id": "f26249a6-9c6d-4807-81c3-96e0dbd1be7b",
+    "name": "pork belly",
+    "fdcId": "167812",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "3628bde0-433b-49ba-80ef-7d58429a8b3b",
+        "name": "belly pork"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "aab0fca0-ccec-48a1-8184-0b2e2e396fa3",
+    "name": "ground pork",
+    "fdcId": "167902",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "d5f3777a-bef9-46a7-a47d-3e34f5881247",
+        "name": "pork mince"
+      },
+      {
+        "id": "4e0189db-9f91-4a11-9e05-0250699db8a1",
+        "name": "minced pork"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "7a70b08c-60f0-4957-8673-0c78b659bab4",
+    "name": "bacon",
+    "fdcId": "168277",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "d99ff286-e7ff-4386-8378-910b0964adf6",
+        "name": "streaky bacon"
+      },
+      {
+        "id": "078273df-cd71-46d6-b043-995118d6bc5a",
+        "name": "bacon rasher"
+      },
+      {
+        "id": "5841945e-1e46-4fbd-bb43-b42bd3d39683",
+        "name": "rasher"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "5c13b252-d071-4f64-9ce5-6113c85b0c34",
+        "fromUnit": "slice",
+        "toUnit": "g",
+        "factor": 28,
+        "fdcId": "168277"
+      }
+    ]
+  },
+  {
+    "id": "ab12c54f-71d2-4083-81f2-e31ee37a1722",
+    "name": "italian sausage",
+    "fdcId": "171631",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "56020a42-a3dd-403a-8964-1bc828cf5abf",
+        "name": "pork sausage"
+      },
+      {
+        "id": "6b5b9bee-cabc-4eae-842a-63fbe34284ea",
+        "name": "sausage"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "7e38a855-bedc-4ed0-948e-23c3f5875a05",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 101,
+        "fdcId": "171631"
+      }
+    ]
+  },
+  {
+    "id": "15f66e34-e4e1-4e0a-a403-ece9034f75d2",
+    "name": "chorizo",
+    "fdcId": "173859",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "24104d59-3b98-4922-92f1-1669b2ab7b8a",
+        "name": "chorizo sausage"
+      },
+      {
+        "id": "1bc9bc46-b061-493d-8f86-1a6e77ed2aba",
+        "name": "fresh chorizo"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "a2cee404-45d4-469c-a563-d8fa8cfaeb72",
+    "name": "ground beef",
+    "fdcId": "174036",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "16370015-bdda-401d-bfc6-0f616ff457fe",
+        "name": "beef mince"
+      },
+      {
+        "id": "5936bd90-03fe-485d-9ac3-2ddb8b3e58b7",
+        "name": "minced beef"
+      },
+      {
+        "id": "117a6451-82ca-4528-b810-8247aaa400db",
+        "name": "hamburger meat"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "57357606-92a4-4a19-bc67-43ee7f92c475",
+    "name": "beef short rib",
+    "fdcId": "169439",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "3adb55fe-3a1a-4b65-a663-ed924eedf8a9",
+        "name": "short ribs"
+      },
+      {
+        "id": "6cf3a537-2722-473e-a6fb-54cdf018bf70",
+        "name": "beef short ribs"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "f65a152c-dbf1-4301-b106-1f11ded7af6a",
+    "name": "beef brisket",
+    "fdcId": "168664",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "7bc8d4e5-33f4-412a-bfff-f26ef457f89e",
+        "name": "brisket"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "103bf9bf-e363-48d7-a95d-7c2642e6a475",
+    "name": "beef chuck",
+    "fdcId": "169491",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "ce2445d4-c6c9-4585-8941-4db2a2dd5f35",
+        "name": "chuck roast"
+      },
+      {
+        "id": "3327d815-0056-4f33-af1d-bb483c4296f7",
+        "name": "braising steak"
+      },
+      {
+        "id": "de378737-b8ed-4a1f-9a6c-4b5c4603a0a5",
+        "name": "pot roast"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "1cf4fde4-cd0b-4e33-ad3b-b6406bffbb35",
+    "name": "ribeye steak",
+    "fdcId": "173402",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "84f33191-d816-48e5-a9b5-88cff8757fc4",
+        "name": "rib eye steak"
+      },
+      {
+        "id": "4b534f2b-ec0e-41f3-b4e2-4de27e501f11",
+        "name": "ribeye"
+      },
+      {
+        "id": "904d4748-bad0-4219-ad42-dd456c6f43d9",
+        "name": "entrecote"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "bcc93e00-cb27-496d-9d31-72cfd8a2dd9b",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 326,
+        "fdcId": "173402"
+      }
+    ]
+  },
+  {
+    "id": "8440ae38-e5b7-4714-a9b0-aea29859008c",
+    "name": "beef tenderloin",
+    "fdcId": "169542",
+    "preferredKind": "count",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "fe6e1521-b76d-40cc-8d0f-62f9b1495fb6",
+        "name": "filet mignon"
+      },
+      {
+        "id": "d316de90-dd9e-49bc-97f8-60a2a057aff7",
+        "name": "fillet steak"
+      },
+      {
+        "id": "8322a317-8165-41cc-a6d7-34de81523d7b",
+        "name": "beef fillet"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "66b8f9be-4336-4053-a9b0-d3011b9ca8ae",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 164,
+        "fdcId": "169542"
+      }
+    ]
+  },
+  {
+    "id": "7982781c-6b84-415a-a937-0b269b3a20b2",
+    "name": "beef shank",
+    "fdcId": "169441",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "6abf548e-0d19-452d-aa9c-77448813fc68",
+        "name": "beef shin"
+      },
+      {
+        "id": "c0fd6e25-9495-4128-9a8d-9eccf6cb48fd",
+        "name": "shin of beef"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "81389e80-6759-4d1d-a4da-f9572868bdad",
+    "name": "leg of lamb",
+    "fdcId": "172560",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "6d608fc1-4e40-4c21-b580-7bd63d55e79a",
+        "name": "lamb leg"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "e9ed6b49-27e8-4d86-b922-84afdd5cc402",
+    "name": "rack of lamb",
+    "fdcId": "174388",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "88dba7d6-dd7b-4eb8-9803-cf44fbce0268",
+        "name": "lamb rack"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "7146e96d-5082-4a5c-9389-6489fa966dad",
+    "name": "lamb shoulder",
+    "fdcId": "174390",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "99b2e37c-e49c-42a9-a249-cd784f6fcb43",
+        "name": "shoulder of lamb"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "286d9ca7-d5ee-4a8a-a90a-5acd2037dded",
+    "name": "ground lamb",
+    "fdcId": "174370",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "0e1ecee9-fe68-49d9-ab68-eef7fe44876b",
+        "name": "lamb mince"
+      },
+      {
+        "id": "01ac1176-bf1f-4044-b35b-f1769d5057c6",
+        "name": "minced lamb"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "b2a4bbce-ffb8-4fe8-8b2a-8eb8965b901b",
+    "name": "salmon fillet",
+    "fdcId": "175167",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "39b0faad-c5e6-4510-9665-ce9816a86d43",
+        "name": "salmon"
+      },
+      {
+        "id": "7a2a9ed2-5363-4f64-a306-f40a816e8f23",
+        "name": "atlantic salmon"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "c13e0d59-e6f1-4851-a529-3f7e064f6ecc",
+    "name": "cod",
+    "fdcId": "171955",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "232f1e4b-5a76-4c96-a6c2-7a97c365d788",
+        "name": "cod fillet"
+      },
+      {
+        "id": "04f37893-71b2-4e34-a785-f1ed6b81606d",
+        "name": "atlantic cod"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "f9ab03b1-bad8-41ef-bf82-ffaae20ba53a",
+    "name": "halibut",
+    "fdcId": "174200",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "2e0eb0c4-bab8-4faa-9d14-679db210d763",
+        "name": "halibut fillet"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "f58b1a8d-3285-4887-8983-f666eb80e659",
+    "name": "sea bass",
+    "fdcId": "175142",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "adaa95ef-e91b-47a0-8d5b-a4b5da4b4308",
+        "name": "seabass"
+      },
+      {
+        "id": "217bff16-9841-4b14-83b0-c7123554f52c",
+        "name": "sea bass fillet"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "7d65d935-0aa1-44d9-8b3b-b85f06fc2798",
+    "name": "rainbow trout",
+    "fdcId": "173717",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "14ba1b20-6acc-4099-9a11-fb8d29543ef8",
+        "name": "trout"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "21a77f6e-43fd-492c-96b6-54ab1dde49a3",
+    "name": "tuna steak",
+    "fdcId": "175159",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "de57cdb1-4ca1-4e17-aa07-dd80965a662b",
+        "name": "yellowfin tuna"
+      },
+      {
+        "id": "aa50ac57-d23b-4b9f-a0a9-e224d71abac6",
+        "name": "fresh tuna"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "a4707b3b-c989-40df-b447-4812331947e7",
+    "name": "mackerel",
+    "fdcId": "175119",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "ad0ee2fa-ae4e-487b-bd24-9154709990bd",
+        "name": "atlantic mackerel"
+      },
+      {
+        "id": "d52702e2-3764-4f8d-954d-f8c58810d5cb",
+        "name": "mackerel fillet"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "b6d1a99f-fd91-49ae-bc25-c9d70d41cdcf",
+    "name": "prawn",
+    "fdcId": "174210",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "a29cceaf-54a6-41a8-9b47-e5c16a103694",
+        "name": "shrimp"
+      },
+      {
+        "id": "de68f88f-381f-4685-b21b-b1d5eddb0071",
+        "name": "king prawn"
+      },
+      {
+        "id": "1dd80379-fbc8-4c4e-80d8-afc89eef3f42",
+        "name": "jumbo shrimp"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "01eb60c5-3ea3-4c66-b093-5e14b3e5ecd7",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 6,
+        "fdcId": "174210"
+      }
+    ]
+  },
+  {
+    "id": "ea299cc5-ee21-48e1-ab28-22f670f25f50",
+    "name": "mussel",
+    "fdcId": "174216",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "fa6fad94-e21c-4481-84e6-e934bd2793b1",
+        "name": "mussels"
+      },
+      {
+        "id": "4eb1b8bd-9535-4fc0-8ce1-966c2e62d648",
+        "name": "blue mussel"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "5ddfcdc4-15b5-46f3-bf5c-704a26c27428",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 20,
+        "fdcId": "174216"
+      }
+    ]
+  },
+  {
+    "id": "780f6b61-86b4-4bab-b59f-3f49c0073fba",
+    "name": "scallop",
+    "fdcId": "174220",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "6cb141a4-7e61-44b5-b581-af9ee738b0e5",
+        "name": "scallops"
+      },
+      {
+        "id": "f0333452-fe3d-4ed4-9935-acc8d48f8e00",
+        "name": "sea scallop"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "5ab85eaf-62ad-4638-bb9a-4b94185c85d4",
+    "name": "squid",
+    "fdcId": "174223",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "74180b27-72c7-423c-b00a-ce7f2f715e62",
+        "name": "calamari"
+      },
+      {
+        "id": "029b689d-c627-4b9e-9cef-d987073ff904",
+        "name": "squid tubes"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "c904f1e9-84cd-46a5-a2d6-6e0c416d16c7",
+    "name": "crab",
+    "fdcId": "171968",
+    "preferredKind": "mass",
+    "shoppingCategory": "Meat & fish",
+    "aliases": [
+      {
+        "id": "fc7baf20-1b84-46a5-ac09-ca5123ede5ea",
+        "name": "dungeness crab"
+      },
+      {
+        "id": "b031cccf-74d4-4be9-9fe3-99181a2635d8",
+        "name": "crab meat"
       }
     ],
     "conversions": []

@@ -359,14 +359,17 @@ describe("Yield field hook", () => {
     expect(client.getQueryState(["recipe", "r-stock"])?.isInvalidated).toBe(true);
   });
 
-  it("shows a failed save, refetches nothing, and retries it with the same ids", async () => {
+  it("shows a failed save, refetches in case it landed, and retries it with the same ids", async () => {
     vi.mocked(mutate).mockRejectedValueOnce(new Error("Network error"));
     const { result, client } = renderQueryHook(() => useYieldField("r-stock"));
     client.setQueryData(["recipe", "r-stock"], chickenStock);
+    client.setQueryData(["recipes"], []);
 
     act(() => result.current.onSave(null));
     await waitFor(() => expect(result.current.saveError?.message).toBe("Network error"));
-    expect(client.getQueryState(["recipe", "r-stock"])?.isInvalidated).toBe(false);
+    expect(client.getQueryState(["recipe", "r-stock"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState(["recipes"])?.isInvalidated).toBe(true);
+    client.setQueryData(["recipe", "r-stock"], chickenStock);
 
     act(() => result.current.onSave(null));
     await waitFor(() =>
@@ -430,16 +433,20 @@ describe("Extract to sub-recipe hook", () => {
     expect(client.getQueryState(["recipes"])?.isInvalidated).toBe(true);
   });
 
-  it("keeps the fields after a failed extract, and retries it with the same ids", async () => {
+  it("keeps the fields after a failed extract, refetches in case it landed, and retries it with the same ids", async () => {
     vi.mocked(mutate).mockRejectedValueOnce(new Error("Network error"));
     const onDone = vi.fn();
-    const { result } = renderQueryHook(() => useExtractToSubRecipe("r-tarte", onDone));
+    const { result, client } = renderQueryHook(() => useExtractToSubRecipe("r-tarte", onDone));
+    client.setQueryData(["recipe", "r-tarte"], tarteTatin);
+    client.setQueryData(["recipes"], []);
     act(() => result.current.onName("Pastry"));
 
     act(() => result.current.onExtract(args));
     await waitFor(() => expect(result.current.extractError?.message).toBe("Network error"));
     expect(result.current.name).toBe("Pastry");
     expect(onDone).not.toHaveBeenCalled();
+    expect(client.getQueryState(["recipe", "r-tarte"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState(["recipes"])?.isInvalidated).toBe(true);
 
     act(() => result.current.onExtract(args));
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());

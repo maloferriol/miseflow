@@ -7,17 +7,26 @@ import type { MutationCall } from "./mutation-call.ts";
 /**
  * A mutation that sends `toCall(variables, intent)`. Once it saves, the intent resets, so the
  * next save starts fresh ids, and then `afterSave` runs: the screen's invalidations.
+ *
+ * `refetch`, when given, runs once the save settles, failed or not, before `afterSave`: a failed
+ * save may still have landed when only its response was lost (#127 B), and a retry replays the
+ * same ids, so refetching after a failure is safe.
  */
 export function useIntentSave<V>(
   intent: Intent,
   toCall: (variables: V, intent: Intent) => MutationCall,
-  afterSave: () => Promise<unknown>,
+  afterSave: () => unknown,
+  refetch?: () => Promise<unknown>,
 ) {
   return useMutation({
     mutationFn: (variables: V) => mutate(toCall(variables, intent)),
     onSuccess: async () => {
       intent.reset();
+      await refetch?.();
       await afterSave();
+    },
+    onError: async () => {
+      await refetch?.();
     },
   });
 }

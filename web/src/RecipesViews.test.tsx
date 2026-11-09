@@ -42,22 +42,32 @@ describe("Recipes view", () => {
     expect(followed).toBe(false);
   });
 
-  it("shows an empty list and the New Recipe form while the Recipes load", () => {
+  it("says it is loading, and keeps the New Recipe form, while the Recipes load", () => {
     render(recipesView({ recipes: { data: undefined, error: null } }));
+    expect(screen.getByText("Loading…")).toBeTruthy();
     expect(within(list()).queryAllByRole("listitem")).toEqual([]);
     expect(screen.queryByRole("alert")).toBeNull();
     expect(create()).toHaveProperty("disabled", false);
   });
 
-  it("shows an empty list when the kitchen has no Recipes", () => {
+  it("says the kitchen has no Recipes yet", () => {
     render(recipesView({ recipes: { data: [], error: null } }));
+    expect(screen.getByText("No Recipes yet")).toBeTruthy();
     expect(within(list()).queryAllByRole("listitem")).toEqual([]);
+    expect(screen.queryByText("Loading…")).toBeNull();
+  });
+
+  it("says neither loading nor empty once the Recipes are listed", () => {
+    render(recipesView());
+    expect(screen.queryByText("Loading…")).toBeNull();
+    expect(screen.queryByText("No Recipes yet")).toBeNull();
   });
 
   it("shows why the Recipes didn't load", () => {
     const error = new Error("Could not load the Recipes (500)");
     render(recipesView({ recipes: { data: undefined, error } }));
     expect(screen.getByRole("alert").textContent).toBe("Could not load the Recipes (500)");
+    expect(screen.queryByText("Loading…")).toBeNull();
   });
 
   it("creates a Recipe with the trimmed name the cook typed", () => {

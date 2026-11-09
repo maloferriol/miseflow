@@ -133,6 +133,7 @@ export function IngredientPicker({
         </div>
       )}
       {results.isError && <p role="alert">{results.error.message}</p>}
+      {recipes.isError && <p role="alert">{recipes.error.message}</p>}
     </div>
   );
 }

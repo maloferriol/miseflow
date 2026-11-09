@@ -32,6 +32,8 @@ export function RecipesView({
     <section>
       <h2>Recipes</h2>
       {recipes.error && <p role="alert">{recipes.error.message}</p>}
+      {!recipes.data && !recipes.error && <p>Loading…</p>}
+      {recipes.data?.length === 0 && <p>No Recipes yet</p>}
       <ul aria-label="Recipes">
         {recipes.data?.map((recipe) => (
           <li key={recipe.id}>

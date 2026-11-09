@@ -2,21 +2,40 @@
   {
     "id": "2c6f88ba-d92e-4d3e-98f9-6e1497c2810b",
     "name": "butter",
-    "fdcId": null,
+    "fdcId": "173410",
     "preferredKind": "mass",
     "shoppingCategory": "Dairy & eggs",
     "aliases": [
       {
         "id": "7cb9562e-0365-450c-83c8-ad4b89fb03d1",
         "name": "unsalted butter"
+      },
+      {
+        "id": "4fbb4eab-1f0d-48a5-a62d-803b0041692f",
+        "name": "salted butter"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "43f82533-990a-42ed-815f-fec23b406118",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 227,
+        "fdcId": "173410"
+      },
+      {
+        "id": "6a59e1cb-c733-4f1c-bc4d-837ea9379735",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 14.2,
+        "fdcId": "173410"
+      }
+    ]
   },
   {
     "id": "0d011981-ba08-4659-aea4-f6089e0dc634",
     "name": "heavy cream",
-    "fdcId": null,
+    "fdcId": "170859",
     "preferredKind": "volume",
     "shoppingCategory": "Dairy & eggs",
     "aliases": [
@@ -29,26 +48,60 @@
         "name": "heavy whipping cream"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "33bd1637-f5f6-4fb1-80e2-ce23a882d8a4",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 238,
+        "fdcId": "170859"
+      },
+      {
+        "id": "ecac7582-1ecb-437d-b469-75764ee962b6",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 15,
+        "fdcId": "170859"
+      }
+    ]
   },
   {
     "id": "b76b1d11-67b2-4d4c-b997-988f97f91df6",
     "name": "milk",
-    "fdcId": null,
+    "fdcId": "171265",
     "preferredKind": "volume",
     "shoppingCategory": "Dairy & eggs",
     "aliases": [
       {
         "id": "48e27fe2-fc74-4ae4-b8b2-e475da3a06ae",
         "name": "whole milk"
+      },
+      {
+        "id": "c61bf008-c9f7-4964-a3d3-33e571d0ef43",
+        "name": "full-fat milk"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "e24e2f40-7a8c-49c1-b397-6c01e242bb8f",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 244,
+        "fdcId": "171265"
+      },
+      {
+        "id": "f1e25a69-a140-468d-a018-5998d0862fbd",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 15,
+        "fdcId": "171265"
+      }
+    ]
   },
   {
     "id": "e9e23e01-b9bf-4c62-ad1f-be8f9a69ed7f",
     "name": "egg",
-    "fdcId": null,
+    "fdcId": "171287",
     "preferredKind": "count",
     "shoppingCategory": "Dairy & eggs",
     "aliases": [
@@ -71,32 +124,67 @@
         "fromUnit": "each",
         "toUnit": "g",
         "factor": 50,
-        "fdcId": null
+        "fdcId": "171287"
       }
     ]
   },
   {
     "id": "24273e2a-10a5-48c6-baaf-5827e62ffe79",
     "name": "double cream",
-    "fdcId": null,
+    "fdcId": "170859",
     "preferredKind": "volume",
     "shoppingCategory": "Dairy & eggs",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "eaf319df-bb8b-4713-b197-51d4c6d9d140",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 238,
+        "fdcId": "170859"
+      },
+      {
+        "id": "1d255ad2-78ac-452a-bf62-d8446f20db35",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 15,
+        "fdcId": "170859"
+      }
+    ]
   },
   {
     "id": "9655149d-3a9d-4a7c-b573-0f42558bde9a",
     "name": "crème fraîche",
-    "fdcId": null,
+    "fdcId": "171257",
     "preferredKind": "volume",
     "shoppingCategory": "Dairy & eggs",
-    "aliases": [],
-    "conversions": []
+    "aliases": [
+      {
+        "id": "eebb2c12-b345-4ce9-9b5c-ef5093c58c03",
+        "name": "creme fraiche"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "cf534917-da68-4e74-aed8-b8769a738480",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 230,
+        "fdcId": "171257"
+      },
+      {
+        "id": "843d8490-b2e0-4027-9ebd-70e869823cf5",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 12,
+        "fdcId": "171257"
+      }
+    ]
   },
   {
     "id": "dc1eeff3-08d7-4322-9ee3-df7c3640b834",
     "name": "plain yogurt",
-    "fdcId": null,
+    "fdcId": "171284",
     "preferredKind": "mass",
     "shoppingCategory": "Dairy & eggs",
     "aliases": [
@@ -109,20 +197,427 @@
         "name": "natural yogurt"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "879bb9c8-64b3-4ac3-a3b4-87a2db7656d6",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 245,
+        "fdcId": "171284"
+      }
+    ]
   },
   {
     "id": "70770181-3a88-4269-923e-073b66494341",
     "name": "parmesan",
-    "fdcId": null,
+    "fdcId": "170848",
     "preferredKind": "mass",
     "shoppingCategory": "Dairy & eggs",
     "aliases": [
       {
         "id": "cee769a4-66bd-4883-b64a-7fb789ab15d4",
         "name": "parmigiano reggiano"
+      },
+      {
+        "id": "b50a4b9b-0f0c-4665-8164-0ecfaaf3d3bc",
+        "name": "parmesan cheese"
+      },
+      {
+        "id": "ab941d82-7c8b-4f60-a9c0-1d5afbeb713e",
+        "name": "parmigiano"
       }
     ],
     "conversions": []
+  },
+  {
+    "id": "10cb7d88-951e-4c03-9d76-87dddc2abdaf",
+    "name": "half and half",
+    "fdcId": "171255",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "8f2fd864-4618-4689-832d-c96c37784082",
+        "name": "half & half"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "653d27ad-fd23-48b5-8a57-260a33e7b5cb",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 242,
+        "fdcId": "171255"
+      },
+      {
+        "id": "27638fd9-6805-4c80-891f-38140d2cc360",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 15,
+        "fdcId": "171255"
+      }
+    ]
+  },
+  {
+    "id": "e4d0ec4b-dd2a-4d35-ba78-1b0792dcdaa2",
+    "name": "buttermilk",
+    "fdcId": "172225",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "92a6ba40-be73-420d-be9b-4c382f61221e",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 245,
+        "fdcId": "172225"
+      }
+    ]
+  },
+  {
+    "id": "7b083953-6e8a-4665-9229-94aea24a0dcf",
+    "name": "sour cream",
+    "fdcId": "171257",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "843bd41d-ba76-4418-9845-01f7eecfcb1f",
+        "name": "soured cream"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "daaabe15-0f93-46ba-ae94-0f67a9891284",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 230,
+        "fdcId": "171257"
+      },
+      {
+        "id": "07dfb7b7-944f-4db2-b4ae-08d8f300dc2b",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 12,
+        "fdcId": "171257"
+      }
+    ]
+  },
+  {
+    "id": "34eb0632-dcf8-4f93-b93a-bb55ab640ef7",
+    "name": "cream cheese",
+    "fdcId": "173418",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "3c212e61-2d62-4639-9dbb-a76e6fb3447b",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 232,
+        "fdcId": "173418"
+      },
+      {
+        "id": "3ea562ab-9baa-4199-b908-014b975ed21c",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 14.5,
+        "fdcId": "173418"
+      }
+    ]
+  },
+  {
+    "id": "b1b1ba2a-7780-442d-a800-952d42c2bdfa",
+    "name": "ricotta",
+    "fdcId": "170851",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "bb0b3133-4c08-4a30-948e-267cdb4a56d4",
+        "name": "ricotta cheese"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "7806f792-140e-4ce2-8158-8764a7c06839",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 246,
+        "fdcId": "170851"
+      }
+    ]
+  },
+  {
+    "id": "3f659a8c-112c-4dbc-938e-8353bada5c78",
+    "name": "cottage cheese",
+    "fdcId": "172179",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "1c176323-8fb8-4a34-b8e1-cb4d651b1443",
+    "name": "mozzarella",
+    "fdcId": "170845",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "1cb111a3-0bc4-484a-a7fe-5fcf586ff638",
+        "name": "mozzarella cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "41b6e50c-fca3-4db9-9eaa-f7a1f5971a35",
+    "name": "cheddar",
+    "fdcId": "173414",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "91683219-7db7-4bdb-a2ad-2974f262ded4",
+        "name": "cheddar cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "8e08704c-ae3e-4135-889f-24e11ba54c19",
+    "name": "feta",
+    "fdcId": "173420",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "a537e891-0282-4783-b91b-e58faef83d1a",
+        "name": "feta cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "cd3501bf-d5cb-4524-85f4-d14deb159a83",
+    "name": "goat cheese",
+    "fdcId": "173435",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "6465afd6-8e9b-4bba-b747-97f27309de83",
+        "name": "goat's cheese"
+      },
+      {
+        "id": "9e80f6e7-148f-4703-99f9-106b4d1c8e55",
+        "name": "chèvre"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "82e3ad18-b13f-4fc9-a97f-ed2a30bdfa6d",
+    "name": "gruyère",
+    "fdcId": "171242",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "bf767c91-387c-43c5-8e24-adcf0f7bf4f0",
+        "name": "gruyere cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "77dabc7a-106b-48c9-a41a-7b67494627a2",
+    "name": "blue cheese",
+    "fdcId": "172175",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "08ada2d4-19e5-40b6-a67b-882fb93b17a0",
+        "name": "bleu cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "d5a95f09-3a6e-4ef2-b8cf-69b20fba4223",
+    "name": "brie",
+    "fdcId": "172177",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "668497ba-b620-4168-9293-2ead0e4f9526",
+        "name": "brie cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "eaaf7435-7da5-44cc-9ec9-3680ad377bf4",
+    "name": "camembert",
+    "fdcId": "172178",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "28c49702-7305-40a5-88af-4f0c94401931",
+    "name": "pecorino romano",
+    "fdcId": "171249",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "70a5e37e-4b21-4a45-a9b7-e15e041a458c",
+        "name": "pecorino"
+      },
+      {
+        "id": "ab6766e0-b5c7-4b73-b4e0-0c058adfe870",
+        "name": "romano"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "ed9d4452-0423-4f1a-9abb-5ed88d518d4a",
+    "name": "provolone",
+    "fdcId": "170850",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "7fed0d08-32ed-4c6b-83c5-c9af01b980af",
+        "name": "provolone cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "c16ecd69-eff0-4604-a4df-7cb4282bbade",
+    "name": "gouda",
+    "fdcId": "171241",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "6a16f67c-347a-4c3f-928a-c9c557ed7b36",
+        "name": "gouda cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "e3480d89-f315-4a59-83b1-7b52425d6123",
+    "name": "fontina",
+    "fdcId": "170843",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "926f8861-2995-4b78-9197-d4eadbea1387",
+        "name": "fontina cheese"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "a1cceb02-c9da-4882-b869-516ce2c5b777",
+    "name": "ghee",
+    "fdcId": "171314",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "d96c16e9-4965-488e-9103-f3ec627e1e0a",
+        "name": "clarified butter"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "ba6be100-83b0-4bb8-b045-470cf5454abe",
+    "name": "greek yogurt",
+    "fdcId": "171304",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "c05d4a25-fee9-42e8-9d1d-6686ff75b25d",
+        "name": "strained yogurt"
+      },
+      {
+        "id": "6b0a37ba-7270-4d0b-b5b1-4327593f6402",
+        "name": "greek-style yogurt"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "2eb3beab-1ac3-4146-96d4-0471b26849d1",
+    "name": "egg white",
+    "fdcId": "172183",
+    "preferredKind": "count",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "848668f2-1fe8-4025-92c2-3793a316d1d9",
+        "name": "egg whites"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "bbe2ed76-73a2-469b-ac70-1d5c798f721a",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 33,
+        "fdcId": "172183"
+      },
+      {
+        "id": "e81359ae-8404-4dd6-962d-a7b6d04aa359",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 243,
+        "fdcId": "172183"
+      }
+    ]
+  },
+  {
+    "id": "5a16adc0-391e-4953-b1f3-79dacbbce7a9",
+    "name": "egg yolk",
+    "fdcId": "172184",
+    "preferredKind": "count",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "ff95af3a-7361-4eb1-a5e0-a6315b6f0a3f",
+        "name": "egg yolks"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "7c1904cf-86e1-4a74-a5e8-83b9c17dd255",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 17,
+        "fdcId": "172184"
+      },
+      {
+        "id": "59ee6a9b-428a-4981-871d-4b3ba573c8dc",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 243,
+        "fdcId": "172184"
+      }
+    ]
   }
 ]

@@ -2,6 +2,10 @@
 
 A software to manage your cooking: recipes, ingredients, and meal prep workflow.
 
+New to the code? Start with the [codebase diagrams](docs/architecture/diagrams/README.md): the
+system context, the workspaces, the database, the write path, sign-in, the Plan, the seed and the
+web screens.
+
 ## Local development
 
 Needs Node 24+ and Docker.

@@ -1,6 +1,5 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { replanAffected } from "../plan/replan.ts";
 import { courses, dishes, menus, recipes } from "../schema.ts";
 import { defineMutator, InvalidArgsError, NotFoundError, type Tx } from "./define.ts";
 import { positionAfter } from "./position.ts";
@@ -70,7 +69,7 @@ export const addDish = defineMutator({
       .select({ menuId: courses.menuId })
       .from(courses)
       .where(eq(courses.id, args.courseId));
-    await replanAffected(tx, ctx, { menuId: course.menuId });
+    ctx.replan.after({ menuId: course.menuId });
   },
 });
 
@@ -121,7 +120,6 @@ export const removeDish = defineMutator({
   name: "removeDish",
   args: z.strictObject({ dishId: z.uuid() }),
   async run(tx, args, ctx) {
-    // The Dish first, then the Services inside the re-plan, as addDish (child row, then Services).
     // FOR NO KEY UPDATE: Step events and placements take FOR KEY SHARE on the Dish when inserted,
     // so a tickStep holding the Service doesn't wait on it (#84, #87).
     const [dish] = await tx
@@ -137,7 +135,7 @@ export const removeDish = defineMutator({
       .update(dishes)
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
       .where(eq(dishes.id, dish.id));
-    await replanAffected(tx, ctx, { menuId: dish.menuId });
+    ctx.replan.after({ menuId: dish.menuId });
   },
 });
 

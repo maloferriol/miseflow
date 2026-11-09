@@ -3,8 +3,7 @@ import { z } from "zod";
 import { ownerSchema } from "../task/owner.ts";
 import { MAX_BEFORE_DAYS } from "../recipe/planning.ts";
 import { loadDefaultServiceTime } from "../kitchen/availability.ts";
-import { replan, replanReleasing } from "../plan/replan.ts";
-import { lockService } from "../plan/rows.ts";
+import { findLiveService } from "../plan/rows.ts";
 import { addDays, fromTimeColumn, zonedMinute } from "../plan/time.ts";
 import { taskKey } from "../scheduler/types.ts";
 import { taskPlacements } from "../schema.ts";
@@ -23,8 +22,9 @@ export const pinTask = defineMutator({
     start: z.int().multipleOf(5),
   }),
   async run(tx, args, ctx) {
-    // FOR NO KEY UPDATE on the Service (D6), before the placement row, as every re-plan does.
-    const service = await lockService(tx, ctx.ownerId, args.serviceId);
+    // Locked before the placement row is read, so the Service time that bounds the pin can't change.
+    await ctx.replan.lock({ serviceId: args.serviceId });
+    const service = await findLiveService(tx, ctx.ownerId, args.serviceId);
     // A pin falls between the start of the day before the earliest make-ahead date can be and the
     // Service itself; nights and dates without Availability inside that are allowed.
     const time =
@@ -58,7 +58,6 @@ export const pinTask = defineMutator({
       .update(taskPlacements)
       .set({ startMinute: args.start, pinned: true, updatedAt: sql`now()` })
       .where(eq(taskPlacements.id, row.id));
-    await replan(tx, ctx, args.serviceId);
   },
 });
 
@@ -70,8 +69,8 @@ export const unpinTask = defineMutator({
   name: "unpinTask",
   args: z.strictObject({ serviceId: z.uuid(), owner: ownerSchema, firstStepId: z.uuid() }),
   async run(tx, args, ctx) {
-    // FOR NO KEY UPDATE on the Service (D6), before the placement row, as pinTask.
-    await lockService(tx, ctx.ownerId, args.serviceId);
+    // Locked before the placement row is read, as pinTask.
+    await ctx.replan.lock({ serviceId: args.serviceId });
     const o = args.owner;
     const [row] = await tx
       .select({ id: taskPlacements.id })
@@ -95,6 +94,6 @@ export const unpinTask = defineMutator({
       .set({ pinned: false, updatedAt: sql`now()` })
       .where(eq(taskPlacements.id, row.id));
     // Only this Task's previous start is dropped, so it can move off the blocked Task's way (addendum 2).
-    await replanReleasing(tx, ctx, args.serviceId, taskKey(o, args.firstStepId));
+    ctx.replan.after({ serviceId: args.serviceId }, { release: taskKey(o, args.firstStepId) });
   },
 });

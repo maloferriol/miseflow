@@ -15,7 +15,6 @@ import { smallestOverride } from "../plan/more-time.ts";
 import { planTrouble } from "../plan/trouble.ts";
 import { readPlan } from "../plan/read.ts";
 import { ensureCook, loadAvailability } from "../kitchen/availability.ts";
-import { lockCook } from "../plan/replan.ts";
 import { loadPlanRows } from "../plan/rows.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import { taskKey } from "../scheduler/types.ts";
@@ -983,9 +982,9 @@ describe("Plan trouble and the Unplaced quick-fix fields", () => {
   });
 });
 
-// #113: the Cook and the Menu are locked FOR NO KEY UPDATE, so an uncommitted child row (which
+// #113: the Menu is locked FOR NO KEY UPDATE, so an uncommitted child row (which
 // holds FOR KEY SHARE on its parent) doesn't block the lock, but two locks of one row still queue.
-describe("Cook and Menu locks", () => {
+describe("Menu locks", () => {
   const softDelete = async (owner: string) => {
     for (const table of ["services", "menus", "recipes", "cooks"]) {
       await db.execute(
@@ -993,27 +992,6 @@ describe("Cook and Menu locks", () => {
       );
     }
   };
-
-  it("lockCook doesn't wait for an uncommitted Availability row of the Cook", async () => {
-    const owner = crypto.randomUUID();
-    try {
-      await db.transaction(async (tx) => void (await ensureCook(tx, owner)));
-      await underUncommittedChild(
-        (tx) =>
-          tx.insert(availabilityWeekly).values({
-            id: crypto.randomUUID(),
-            ownerId: owner,
-            cookId: owner,
-            weekday: 6,
-            startTime: "09:00",
-            endTime: "17:00",
-          }),
-        async (tx) => expect(await lockCook(tx, owner)).toBe(owner),
-      );
-    } finally {
-      await softDelete(owner);
-    }
-  });
 
   it("createService doesn't wait for an uncommitted Course of the Menu", async () => {
     const owner = crypto.randomUUID();

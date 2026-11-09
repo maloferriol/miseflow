@@ -11,7 +11,6 @@ import {
 } from "../../test/walkthrough.ts";
 import { batchId } from "../plan/batch-rows.ts";
 import { readPlan } from "../plan/read.ts";
-import { lockService } from "../plan/rows.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import {
   batches,
@@ -20,6 +19,7 @@ import {
   ingredients,
   menus,
   recipes,
+  services,
   shoppingCategories,
   taskPlacements,
 } from "../schema.ts";
@@ -363,7 +363,11 @@ describe("removeDish locks", () => {
       const aWaitsOrIsDone = new Promise<void>((resolve) => (goOn = resolve));
       // B: tickStep on the Velouté, paused right after it locks the Service (its first lock).
       const txB = b.transaction(async (tx) => {
-        await lockService(tx, owner, serviceId);
+        await tx
+          .select({ id: services.id })
+          .from(services)
+          .where(eq(services.id, serviceId))
+          .for("no key update");
         lockedService();
         await aWaitsOrIsDone;
         await run(

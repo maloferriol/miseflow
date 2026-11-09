@@ -1,7 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { findPlanningCycle, makeAheadSchema, stepPlainText } from "../recipe/planning.ts";
-import { replanAffected } from "../plan/replan.ts";
 import { loadRecipeSnapshot, type RecipeSnapshot } from "../recipe/snapshot.ts";
 import { recipes, stepDependencies, steps } from "../schema.ts";
 import {
@@ -39,7 +38,7 @@ export const setStepTimes = defineMutator({
       })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: step.recipeId });
+    ctx.replan.after({ recipeId: step.recipeId });
   },
 });
 
@@ -71,7 +70,7 @@ export const setMakeAhead = defineMutator({
       await tx.update(steps).set(values).where(eq(steps.id, args.target.stepId));
     }
     await appendRevision(tx, ownerId, recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId });
+    ctx.replan.after({ recipeId });
   },
 });
 
@@ -99,7 +98,7 @@ export const setGroupWithPrevious = defineMutator({
       .set({ groupWithPrevious: args.value, updatedAt: sql`now()` })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: step.recipeId });
+    ctx.replan.after({ recipeId: step.recipeId });
   },
 });
 
@@ -150,7 +149,7 @@ export const addStepDependency = defineMutator({
       .returning({ id: stepDependencies.id });
     if (!written.length) throw new ConflictError("These Steps are already linked");
     await appendRevision(tx, ownerId, recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId });
+    ctx.replan.after({ recipeId });
   },
 });
 
@@ -179,7 +178,7 @@ export const removeStepDependency = defineMutator({
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
       .where(eq(stepDependencies.id, args.dependencyId));
     await appendRevision(tx, ownerId, dependency.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: dependency.recipeId });
+    ctx.replan.after({ recipeId: dependency.recipeId });
   },
 });
 

@@ -79,9 +79,9 @@ describe("dev ports", () => {
     });
 
     it("counts as missing when it names another checkout, as a copied file does", () => {
-      expect(readDevPortsFile(text, file, "/Users/cook/miseflow/.claude/worktrees/plan")).toBe(
-        undefined,
-      );
+      expect(
+        readDevPortsFile(text, file, "/Users/cook/miseflow/.claude/worktrees/plan"),
+      ).toBeUndefined();
     });
 
     it("refuses a file it can't read, naming it and saying to delete it", () => {

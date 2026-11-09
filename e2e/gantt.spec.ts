@@ -3,13 +3,13 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 import { zonedMinute } from "../shared/src/plan/time.ts";
 import {
   buildWalkthrough,
-  SERVICE_DATE,
   SERVICE_TIME,
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 import { apiUrl } from "../scripts/e2e-ports.ts";
+import { week } from "./walkthrough-week.ts";
 
 // The Plan's Gantt chart (#89) on the walkthrough with its Chicken stock and Beurre blanc, its
 // Service and Availability, built through POST /mutate. Sets this spec's own user's Availability.
@@ -36,11 +36,11 @@ test.beforeAll(async ({ request }) => {
     expect(res.status(), await res.text()).toBe(200);
   };
   w = await buildWalkthrough(run, s, { stock: true });
-  await setWalkthroughAvailability(run);
+  await setWalkthroughAvailability(run, undefined, week.friday);
   await run("createService", {
     serviceId,
     menuId: w.menuId,
-    date: SERVICE_DATE,
+    date: week.saturday,
     time: SERVICE_TIME,
   });
 });
@@ -171,7 +171,7 @@ test("AC2 and AC3: the stock shows under the Velouté and, greyed, under the Beu
   ).toHaveCount(1);
 
   // Dragging the ghost copy to Thursday 18:00 moves and pins both copies.
-  const thursday18 = at("2026-10-29", 18);
+  const thursday18 = at(week.thursday, 18);
   await dragTo(page, gantt, ghost, thursday18);
   for (const bar of await roast.all()) {
     await expect(bar).toHaveAttribute("data-start", String(thursday18));
@@ -198,12 +198,12 @@ test("AC4: dragging Roast the bones to Wednesday 18:03 snaps to 18:05, pins it a
   const roast = gantt
     .getByRole("button", { name: /Roast the bones/ })
     .and(gantt.locator('[data-ghost="false"]'));
-  const wednesday1805 = at("2026-10-28", 18, 5);
+  const wednesday1805 = at(week.wednesday, 18, 5);
   const release = await holdMutations(page);
   const answered = page.waitForResponse((r) => r.url().endsWith("/api/mutate"));
 
   // 18:03 is off the grid: it rounds to the nearest 5 minutes.
-  await dragTo(page, gantt, roast, at("2026-10-28", 18, 3));
+  await dragTo(page, gantt, roast, at(week.wednesday, 18, 3));
   await expect(roast).toHaveAttribute("data-start", String(wednesday1805));
   await expect(roast).toHaveAttribute("data-pinned", "true");
   const optimistic = await starts(gantt);
@@ -219,19 +219,19 @@ test("AC4: dragging Roast the bones to Wednesday 18:03 snaps to 18:05, pins it a
   // blanc (D4, 18:40), which the browser moves to 18:50 before the server answers (as pins.test.ts).
   const v3 = gantt.getByRole("button", { name: /Blend and season/ });
   const d4 = gantt.getByRole("button", { name: /Make the beurre blanc/ });
-  await expect(v3).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 50)));
-  await expect(d4).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 40)));
+  await expect(v3).toHaveAttribute("data-start", String(at(week.saturday, 18, 50)));
+  await expect(d4).toHaveAttribute("data-start", String(at(week.saturday, 18, 40)));
   const releaseV3 = await holdMutations(page);
   const answeredV3 = page.waitForResponse((r) => r.url().endsWith("/api/mutate"));
-  await dragTo(page, gantt, v3, at(SERVICE_DATE, 18, 40));
-  await expect(v3).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 40)));
-  await expect(d4).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 50)));
+  await dragTo(page, gantt, v3, at(week.saturday, 18, 40));
+  await expect(v3).toHaveAttribute("data-start", String(at(week.saturday, 18, 40)));
+  await expect(d4).toHaveAttribute("data-start", String(at(week.saturday, 18, 50)));
   const refitted = await starts(gantt);
 
   releaseV3();
   expect((await answeredV3).status()).toBe(200);
   await page.reload();
-  await expect(d4).toHaveAttribute("data-start", String(at(SERVICE_DATE, 18, 50)));
+  await expect(d4).toHaveAttribute("data-start", String(at(week.saturday, 18, 50)));
   await expect(v3).toHaveAttribute("data-pinned", "true");
   expect(await starts(gantt)).toEqual(refitted);
 });
@@ -244,7 +244,7 @@ test("AC5: two quick drags leave the Plan matching the second, never showing the
     .getByRole("button", { name: /Roast the bones/ })
     .and(gantt.locator('[data-ghost="false"]'));
   const key = (await roast.getAttribute("data-key"))!;
-  const [first, second] = [at("2026-10-28", 19), at("2026-10-28", 20)];
+  const [first, second] = [at(week.wednesday, 19), at(week.wednesday, 20)];
   const release = await holdMutations(page);
   let answers = 0;
   page.on("response", (r) => {
@@ -280,7 +280,7 @@ test("AC5: coming back to the tab while the second drag is still saving doesn't 
     .getByRole("button", { name: /Roast the bones/ })
     .and(gantt.locator('[data-ghost="false"]'));
   const key = (await roast.getAttribute("data-key"))!;
-  const [first, second] = [at("2026-10-28", 21), at("2026-10-28", 19, 30)];
+  const [first, second] = [at(week.wednesday, 21), at(week.wednesday, 19, 30)];
   const release = await holdEachMutation(page);
   const answer = (n: number) =>
     page.waitForResponse(

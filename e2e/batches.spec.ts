@@ -2,13 +2,13 @@ import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import {
   buildWalkthrough,
-  SERVICE_DATE,
   SERVICE_TIME,
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 import { apiUrl } from "../scripts/e2e-ports.ts";
+import { heading, week } from "./walkthrough-week.ts";
 
 // The walkthrough with its Chicken stock and Beurre blanc sub-recipes, its Service and Availability,
 // built through POST /mutate. Sets this spec's own user's Availability.
@@ -29,11 +29,11 @@ test.beforeAll(async ({ request }) => {
     expect(res.status(), await res.text()).toBe(200);
   };
   w = await buildWalkthrough(run, s, { stock: true });
-  await setWalkthroughAvailability(run);
+  await setWalkthroughAvailability(run, undefined, week.friday);
   await run("createService", {
     serviceId,
     menuId: w.menuId,
-    date: SERVICE_DATE,
+    date: week.saturday,
     time: SERVICE_TIME,
   });
 });
@@ -57,7 +57,7 @@ test("shows the stock Batch's label on the Menu and its Tasks on Thursday in the
   await expect(page.getByRole("list", { name: "Batches" })).toContainText(label);
 
   await page.getByRole("link", { name: "Open Plan" }).click();
-  const thursday = page.getByRole("list", { name: "Thursday 29 October" });
+  const thursday = page.getByRole("list", { name: heading(week.thursday) });
   await expect(thursday).toContainText(label);
   for (const step of ["Roast the bones", "Simmer the stock", "Strain the stock"])
     await expect(thursday).toContainText(step);

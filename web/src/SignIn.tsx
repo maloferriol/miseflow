@@ -19,8 +19,8 @@ export function useSignIn() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setError(error?.message ?? null);
-    } catch (thrown) {
-      setError(signInFailureMessage(thrown));
+    } catch (error_) {
+      setError(signInFailureMessage(error_));
     } finally {
       setPending(false);
     }

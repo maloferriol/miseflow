@@ -2,7 +2,7 @@
   {
     "id": "66381cdd-eb71-469b-b320-9df6c4a181ea",
     "name": "bay leaf",
-    "fdcId": null,
+    "fdcId": "170917",
     "preferredKind": "count",
     "shoppingCategory": "Spices",
     "aliases": [
@@ -20,7 +20,7 @@
   {
     "id": "d03397a2-5101-4f10-8131-3386139274fc",
     "name": "black peppercorns",
-    "fdcId": null,
+    "fdcId": "170931",
     "preferredKind": "mass",
     "shoppingCategory": "Spices",
     "aliases": [
@@ -29,12 +29,20 @@
         "name": "whole black pepper"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "86bcde0e-a695-4b5f-a836-913ee5a26bfd",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.9,
+        "fdcId": "170931"
+      }
+    ]
   },
   {
     "id": "4ad68452-f65c-4cad-9e77-6b242d90e62e",
     "name": "white pepper",
-    "fdcId": null,
+    "fdcId": "170933",
     "preferredKind": "mass",
     "shoppingCategory": "Spices",
     "aliases": [
@@ -43,7 +51,22 @@
         "name": "ground white pepper"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "6a25b6ad-a281-44a8-bffe-130868e8171f",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.4,
+        "fdcId": "170933"
+      },
+      {
+        "id": "f3f84e1d-956f-4d85-8190-e5018b832151",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 7.1,
+        "fdcId": "170933"
+      }
+    ]
   },
   {
     "id": "2e2802d7-10c5-4e16-a09d-b8cf49ed9828",
@@ -61,12 +84,27 @@
         "name": "fine salt"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "0add000e-55a3-49a8-a2b4-ce3ff30cbf63",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 6.0,
+        "fdcId": "173468"
+      },
+      {
+        "id": "444e9578-2be8-4bce-97a5-e55e54be3c50",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 18.0,
+        "fdcId": "173468"
+      }
+    ]
   },
   {
     "id": "011c7666-e3a0-4dcd-bdcb-dca3dcc9989f",
     "name": "ground cinnamon",
-    "fdcId": null,
+    "fdcId": "171320",
     "preferredKind": "mass",
     "shoppingCategory": "Spices",
     "aliases": [
@@ -75,35 +113,93 @@
         "name": "cinnamon"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "a829ffe7-6587-4516-a2df-15b8fc39d5fe",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.6,
+        "fdcId": "171320"
+      },
+      {
+        "id": "1a42ea87-62ec-4e6d-9d91-3c0c678fa323",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 7.8,
+        "fdcId": "171320"
+      }
+    ]
   },
   {
     "id": "d9c07fad-c6e8-472b-b0da-29871838ea02",
     "name": "ground cumin",
-    "fdcId": null,
+    "fdcId": "170923",
     "preferredKind": "mass",
     "shoppingCategory": "Spices",
     "aliases": [
       {
         "id": "020b9fae-f1fa-43e5-9525-82f34924e022",
         "name": "cumin"
+      },
+      {
+        "id": "89590950-58bb-4a3e-a7ae-c680ad5ebafc",
+        "name": "cumin seed"
+      },
+      {
+        "id": "344cbb37-75a9-47a5-8516-b4eea683a3cc",
+        "name": "cumin seeds"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "74f42d30-60aa-4de0-98ae-c28dfdb92747",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.1,
+        "fdcId": "170923"
+      },
+      {
+        "id": "a4c0861b-d389-47a0-99aa-ebc5c823095e",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.0,
+        "fdcId": "170923"
+      }
+    ]
   },
   {
     "id": "8b14ac93-3725-45b1-847c-23e2b81fc04f",
     "name": "paprika",
-    "fdcId": null,
+    "fdcId": "171329",
     "preferredKind": "mass",
     "shoppingCategory": "Spices",
-    "aliases": [],
-    "conversions": []
+    "aliases": [
+      {
+        "id": "7da08064-7503-4c94-8dac-b7fce2f23f45",
+        "name": "sweet paprika"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "a0ef88ee-7723-42a0-b2de-6361193bbb5f",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.3,
+        "fdcId": "171329"
+      },
+      {
+        "id": "18c1e9a9-fddb-44cc-8432-5ec5eb990529",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.8,
+        "fdcId": "171329"
+      }
+    ]
   },
   {
     "id": "8dfe5c09-cc2b-4424-b115-6b1c02f859a2",
     "name": "nutmeg",
-    "fdcId": null,
+    "fdcId": "171326",
     "preferredKind": "mass",
     "shoppingCategory": "Spices",
     "aliases": [
@@ -112,12 +208,27 @@
         "name": "ground nutmeg"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "93ea62b2-9039-475b-bc15-d39077f66e19",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.2,
+        "fdcId": "171326"
+      },
+      {
+        "id": "8284cc6e-52bc-4cce-b7c1-4f74672b54f8",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 7.0,
+        "fdcId": "171326"
+      }
+    ]
   },
   {
     "id": "cd5c90a0-d96b-4a84-a67f-3277fc540ff1",
     "name": "ground black pepper",
-    "fdcId": null,
+    "fdcId": "170931",
     "preferredKind": "mass",
     "shoppingCategory": "Spices",
     "aliases": [
@@ -130,6 +241,1021 @@
         "name": "pepper"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "5bbd1959-1ee7-4982-9da7-ef7734bea7c1",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.3,
+        "fdcId": "170931"
+      },
+      {
+        "id": "f13178f0-8740-4ed7-b70b-bb770621d67b",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.9,
+        "fdcId": "170931"
+      }
+    ]
+  },
+  {
+    "id": "57b8c6e8-51e4-4ae1-969a-6deeb51886d4",
+    "name": "caraway seed",
+    "fdcId": "170918",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "e6ef5a2e-2332-4bf2-bc63-5c6559c29e17",
+        "name": "caraway"
+      },
+      {
+        "id": "340c8bee-5aec-4f5d-83fe-917ec75ea001",
+        "name": "caraway seeds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "43fa5f1c-2a2d-4529-937f-a93ad014e11c",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.1,
+        "fdcId": "170918"
+      },
+      {
+        "id": "088c7158-7388-4403-8b32-ca7472a851d6",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.7,
+        "fdcId": "170918"
+      }
+    ]
+  },
+  {
+    "id": "b9c83b26-566f-42f8-8c6b-1fe47f87fa24",
+    "name": "cardamom",
+    "fdcId": "170919",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "d3262475-d806-49d9-a8f0-6e7f74a2a5ee",
+        "name": "ground cardamom"
+      },
+      {
+        "id": "54202836-00a6-4c9d-8fe6-a296554080e6",
+        "name": "cardamom powder"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "bfd36990-ab8e-4ff4-aaf5-991e2bfbdd40",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.0,
+        "fdcId": "170919"
+      },
+      {
+        "id": "e76dad64-c0ef-46af-9b31-55b833559e34",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5.8,
+        "fdcId": "170919"
+      }
+    ]
+  },
+  {
+    "id": "0e5c80bc-eb5c-41a5-8589-d274b83f76cd",
+    "name": "celery seed",
+    "fdcId": "170920",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "35354215-a6d2-4b22-80da-662719d7e274",
+        "name": "celery seeds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "4b1cbae9-6b10-4933-b005-7b24b5f82abd",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.0,
+        "fdcId": "170920"
+      },
+      {
+        "id": "9f8e79c6-5cab-4a9e-94dd-05c1a3ba2819",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.5,
+        "fdcId": "170920"
+      }
+    ]
+  },
+  {
+    "id": "aea35258-d810-45ac-a48d-0f17697c7b46",
+    "name": "coriander seed",
+    "fdcId": "170922",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "3d7969f3-9d4e-4151-b7d8-86bf327144dd",
+        "name": "coriander seeds"
+      },
+      {
+        "id": "91b9fcc4-2f1b-49b8-a93c-6c36463e72a9",
+        "name": "ground coriander"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "dcaf048b-a396-4936-b42e-7a1d21ae08aa",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.8,
+        "fdcId": "170922"
+      },
+      {
+        "id": "fbaf2dc4-6d63-4b63-b715-6a32013ad202",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5.0,
+        "fdcId": "170922"
+      }
+    ]
+  },
+  {
+    "id": "95430255-7a50-4199-abcd-791b9dab4bf4",
+    "name": "curry powder",
+    "fdcId": "170924",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "a784ac43-df12-4f72-ae21-8e58c0cf7391",
+        "name": "curry"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "593b747a-f642-4921-acf4-f7323a1d472c",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.0,
+        "fdcId": "170924"
+      },
+      {
+        "id": "a29ac4a1-8b91-4fe2-b6fe-440bda49e8e1",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.3,
+        "fdcId": "170924"
+      }
+    ]
+  },
+  {
+    "id": "f85e78d4-0e4b-4f32-89d8-0866809669f2",
+    "name": "dill seed",
+    "fdcId": "170925",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "91fec39c-ee6d-4008-8a86-481abaed94a5",
+        "name": "dill seeds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "9e8b3d4d-7218-4355-9054-37cc68b93526",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.1,
+        "fdcId": "170925"
+      },
+      {
+        "id": "7b65159b-bd13-46a0-83ef-9b4f45fad417",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.6,
+        "fdcId": "170925"
+      }
+    ]
+  },
+  {
+    "id": "dcfcd7ff-16a4-4d6f-80af-a879f3f66c86",
+    "name": "ground ginger",
+    "fdcId": "170926",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "c0768bfd-c482-4c22-9ba8-fe6c93119789",
+        "name": "ginger powder"
+      },
+      {
+        "id": "5aa88fd8-db1e-4580-abf2-24b4a18801aa",
+        "name": "dried ginger"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "c9d7ff22-2854-4fab-94fd-28e26e1cca22",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.8,
+        "fdcId": "170926"
+      },
+      {
+        "id": "6970941a-2200-478e-86ab-a9aed897f13f",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5.2,
+        "fdcId": "170926"
+      }
+    ]
+  },
+  {
+    "id": "c213d48c-0c9b-411e-b1af-c0da347a54f2",
+    "name": "mace",
+    "fdcId": "170927",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "0cbb906f-21a1-4361-a4a8-d3ecdef8fe1e",
+        "name": "ground mace"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "3334e541-2bbc-47b6-855e-191e1ecb0b4f",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.7,
+        "fdcId": "170927"
+      },
+      {
+        "id": "20a4c4b2-ee66-4229-b3bb-c57dcdd41832",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5.3,
+        "fdcId": "170927"
+      }
+    ]
+  },
+  {
+    "id": "554e4e76-a21e-49c1-8aae-8cbac32b3a07",
+    "name": "dried marjoram",
+    "fdcId": "170928",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "7dbb7d44-b02f-488b-b871-314cd1685c11",
+        "name": "marjoram"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2730af87-ef3a-4c35-8ae3-e2dc89377306",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 0.6,
+        "fdcId": "170928"
+      },
+      {
+        "id": "21978b76-cdbe-41c4-b837-c9e37201ec47",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 1.7,
+        "fdcId": "170928"
+      }
+    ]
+  },
+  {
+    "id": "f91ab30c-07e4-47d7-b05a-cc76a20cc7f6",
+    "name": "dried parsley",
+    "fdcId": "170930",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "afe1a18f-790b-41d2-bc0f-f820c1d95aa5",
+        "name": "parsley flakes"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "dac0c1eb-ea37-496b-9341-f3d8717a8afe",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 0.5,
+        "fdcId": "170930"
+      },
+      {
+        "id": "97af3832-2e60-4722-9e6b-6010b744ba2e",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 1.6,
+        "fdcId": "170930"
+      }
+    ]
+  },
+  {
+    "id": "f137d327-50e4-4a8b-a9c7-83df5cb45832",
+    "name": "cayenne pepper",
+    "fdcId": "170932",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "d6f14b8d-efcd-4f83-8a94-823bb32f3798",
+        "name": "cayenne"
+      },
+      {
+        "id": "f220f932-69a1-4ac6-9ac8-96fc831ab058",
+        "name": "ground cayenne"
+      },
+      {
+        "id": "bb90ee94-1b34-4a59-b5d0-4612600d54a9",
+        "name": "red pepper"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "731a31e9-dfa0-4b92-aacb-f73af649c8d7",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.8,
+        "fdcId": "170932"
+      },
+      {
+        "id": "315417ab-b949-4d70-b176-4a37a5368475",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5.3,
+        "fdcId": "170932"
+      }
+    ]
+  },
+  {
+    "id": "c22b7eb6-29d8-48f2-b89a-1ec101fa3628",
+    "name": "saffron",
+    "fdcId": "170934",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "a53c7fd9-6115-4b6c-a4fd-3576d6b0e502",
+        "name": "saffron threads"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "a9b784b4-0987-4128-81bb-09b1a1b677a8",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 0.7,
+        "fdcId": "170934"
+      },
+      {
+        "id": "d25288d0-96b2-4541-b0c9-a4abae234c0a",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 2.1,
+        "fdcId": "170934"
+      }
+    ]
+  },
+  {
+    "id": "1b90d480-f478-474a-9089-8775e6d48895",
+    "name": "dried sage",
+    "fdcId": "170935",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "bd004c4c-96bd-44aa-99d9-06d94aae2c5f",
+        "name": "ground sage"
+      },
+      {
+        "id": "57de2d02-086f-4d63-a985-ab90a544aeae",
+        "name": "rubbed sage"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "ea254f08-6ce2-494f-8148-f209c5177dd7",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 0.7,
+        "fdcId": "170935"
+      },
+      {
+        "id": "ad9f1059-15a3-4d1b-a694-e1219065ebe0",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 2.0,
+        "fdcId": "170935"
+      }
+    ]
+  },
+  {
+    "id": "c6f91e7e-69a9-4a1e-a40a-607be53075f2",
+    "name": "dried tarragon",
+    "fdcId": "170937",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "d174fe54-91c3-42ab-a6ec-d4e81db736f0",
+        "name": "tarragon"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "ec292402-0906-49a5-affc-c582ff4da56d",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 0.6,
+        "fdcId": "170937"
+      },
+      {
+        "id": "9cd6b18f-e61d-416e-b366-f2ded50858ff",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 1.8,
+        "fdcId": "170937"
+      }
+    ]
+  },
+  {
+    "id": "59197d1e-b8e8-46a2-94a7-7b0ce498a606",
+    "name": "dried thyme",
+    "fdcId": "170938",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "5aec3da8-0669-4f50-a9bd-46ba90e2c987",
+        "name": "thyme leaves"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "64ddd759-c835-474a-90fe-b7e8a9f9f3da",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.0,
+        "fdcId": "170938"
+      },
+      {
+        "id": "7c2a7984-5f4c-498f-b68e-8f0d94876204",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 2.7,
+        "fdcId": "170938"
+      }
+    ]
+  },
+  {
+    "id": "374b8b53-ee21-4dd9-9aa1-69b66c9f7274",
+    "name": "ground allspice",
+    "fdcId": "171315",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "a827d51c-8fc9-4e7f-abfc-aeb3f2df5169",
+        "name": "allspice"
+      },
+      {
+        "id": "7744ebfa-85ad-4067-b778-664b32957d13",
+        "name": "pimento"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2ca78dbc-8c50-4b73-961f-873851beed53",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.9,
+        "fdcId": "171315"
+      },
+      {
+        "id": "03aa26e7-1e42-45c8-9df4-791323bfbd1f",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.0,
+        "fdcId": "171315"
+      }
+    ]
+  },
+  {
+    "id": "46cb3821-b83f-41dd-afe4-78a5f9209597",
+    "name": "anise seed",
+    "fdcId": "171316",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "8e837372-512f-41b3-b383-7d3028d1e07e",
+        "name": "aniseed"
+      },
+      {
+        "id": "6a8b81f9-ec51-4104-a08e-09eb0c3cd074",
+        "name": "anise seeds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "07a47a9c-00d7-4369-889c-a2690153e93c",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.1,
+        "fdcId": "171316"
+      },
+      {
+        "id": "9f7f8d49-bacb-4717-b053-baf1c9d7b047",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.7,
+        "fdcId": "171316"
+      }
+    ]
+  },
+  {
+    "id": "026d530a-fd99-4f19-98de-71700f9c7197",
+    "name": "dried basil",
+    "fdcId": "171317",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "47417c4d-3c30-40a8-b217-a8930a98910b",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 0.7,
+        "fdcId": "171317"
+      },
+      {
+        "id": "50024137-fee8-496f-8f1a-13109d641322",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 2.1,
+        "fdcId": "171317"
+      }
+    ]
+  },
+  {
+    "id": "fd7331f4-3b04-41ce-83f9-232bd09fdaf0",
+    "name": "chili powder",
+    "fdcId": "171319",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "7f4bd01e-e931-4ad3-9e5e-6b90bad3b952",
+        "name": "chilli powder"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "0ed83f4f-f58f-41d5-b673-e08d3b644428",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.7,
+        "fdcId": "171319"
+      },
+      {
+        "id": "37551899-dd86-46ae-93f1-f04081dbc317",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 8.0,
+        "fdcId": "171319"
+      }
+    ]
+  },
+  {
+    "id": "2fb789be-d9d0-47d9-a7c4-beb7cb0e8474",
+    "name": "ground cloves",
+    "fdcId": "171321",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "a00686d1-7021-480a-a2d1-56968d83a35d",
+        "name": "clove powder"
+      },
+      {
+        "id": "f00b43ca-1f3b-4ad9-a40a-9d1144b80cb2",
+        "name": "cloves"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "9dd430c8-85d5-4bb3-85ac-e95a17323020",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.1,
+        "fdcId": "171321"
+      },
+      {
+        "id": "21740b1f-d86d-4a5c-8723-6abf605fe998",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.5,
+        "fdcId": "171321"
+      }
+    ]
+  },
+  {
+    "id": "ba4e9d26-01df-487b-9767-b1177354e685",
+    "name": "dried dill",
+    "fdcId": "171322",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "5e57f79c-bd95-4146-b614-c19175394af5",
+        "name": "dill weed"
+      },
+      {
+        "id": "6626b6e4-976e-4b74-b651-29a3737fb9e7",
+        "name": "dried dill weed"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "beb45d7e-8bc0-47ba-b1ba-6302bfd3cc7b",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.0,
+        "fdcId": "171322"
+      },
+      {
+        "id": "32943921-16c6-4ff3-ad31-f73d272c3177",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 3.1,
+        "fdcId": "171322"
+      }
+    ]
+  },
+  {
+    "id": "49624e2a-9866-4043-82d1-4e109b5f9cc6",
+    "name": "fennel seed",
+    "fdcId": "171323",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "3a71ec3e-6420-426a-a789-334d470a96b9",
+        "name": "fennel seeds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "b413b363-2bbf-47de-984e-a38e973ebd2a",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.0,
+        "fdcId": "171323"
+      },
+      {
+        "id": "2e4c43a1-0599-4d66-99eb-f32ebecd5936",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5.8,
+        "fdcId": "171323"
+      }
+    ]
+  },
+  {
+    "id": "57097de6-f57c-4fab-9c3a-31e5ca6fc604",
+    "name": "fenugreek seed",
+    "fdcId": "171324",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "564195c6-6f9e-4e15-9f10-b3d6982556f4",
+        "name": "fenugreek"
+      },
+      {
+        "id": "3132b3e7-4580-4571-a3bd-4da6533b6dec",
+        "name": "fenugreek seeds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "a3445b0c-f768-4492-bd4d-bf863cf9848f",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 3.7,
+        "fdcId": "171324"
+      },
+      {
+        "id": "1ce86c77-21d9-4cac-aa4c-5b988f185663",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 11.1,
+        "fdcId": "171324"
+      }
+    ]
+  },
+  {
+    "id": "78fb7946-404b-4ea4-9afe-fe7ed6ecc2ab",
+    "name": "garlic powder",
+    "fdcId": "171325",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "94ab0d76-f8aa-4395-93b6-54297cee1657",
+        "name": "granulated garlic"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "87694773-1ed5-4bb2-a4b5-e38bdf909a56",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 3.1,
+        "fdcId": "171325"
+      },
+      {
+        "id": "427cd7b7-c96a-4070-b790-703dbad2f2e6",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 9.7,
+        "fdcId": "171325"
+      }
+    ]
+  },
+  {
+    "id": "4d2ed90c-58bd-4040-b66d-15551b4c2cbe",
+    "name": "onion powder",
+    "fdcId": "171327",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "14072f47-c0f9-4248-a457-cc70fcf415ae",
+        "name": "granulated onion"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "89aa7f42-1182-4b36-b2bc-f414ad46d5b7",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.4,
+        "fdcId": "171327"
+      },
+      {
+        "id": "39576095-d5d2-4394-940d-fd0e3073d786",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.9,
+        "fdcId": "171327"
+      }
+    ]
+  },
+  {
+    "id": "850ec425-f35b-4824-8610-a3dec8b01887",
+    "name": "dried oregano",
+    "fdcId": "171328",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "4ab138e3-9a5d-44bc-ae33-e35da0b94657",
+        "name": "oregano"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "607d00e2-5192-41e4-9f57-9cc4554957a7",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.0,
+        "fdcId": "171328"
+      }
+    ]
+  },
+  {
+    "id": "693e6a5c-2266-48d6-87c0-8f01ba1efc48",
+    "name": "poppy seed",
+    "fdcId": "171330",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "ab477bd3-af4d-4fa8-855e-3f758dc54ab2",
+        "name": "poppy seeds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "44dff0a3-2326-419c-9383-a35377893387",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.8,
+        "fdcId": "171330"
+      },
+      {
+        "id": "24c0c1db-1e1d-431d-81b0-2c14c579eeb1",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 8.8,
+        "fdcId": "171330"
+      }
+    ]
+  },
+  {
+    "id": "8b5006fc-7658-4106-ab56-a71f508e09e5",
+    "name": "poultry seasoning",
+    "fdcId": "171331",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "b5505ce5-320e-4308-a50a-0d4802c5cb62",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.5,
+        "fdcId": "171331"
+      },
+      {
+        "id": "4fe65a97-9c22-4f19-8b31-e45d16a8883d",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 4.4,
+        "fdcId": "171331"
+      }
+    ]
+  },
+  {
+    "id": "5181fd67-1f70-4e15-8908-87f4a77fb83e",
+    "name": "pumpkin pie spice",
+    "fdcId": "171332",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "e967644e-c1c8-49c9-b9cb-ae0a63dff027",
+        "name": "pumpkin spice"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "7ba5d847-a865-49ad-8d8a-ea8e720b72e7",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.7,
+        "fdcId": "171332"
+      },
+      {
+        "id": "0a952cc4-e273-432a-923c-d2007789a1ce",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5.6,
+        "fdcId": "171332"
+      }
+    ]
+  },
+  {
+    "id": "a7b262dd-47ac-441b-bdf1-e7844d088e54",
+    "name": "dried rosemary",
+    "fdcId": "171333",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "e9e7ecd8-1086-49fe-a6f4-f8116fd9c581",
+        "name": "rosemary leaves"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "8bb87a61-d22d-48f1-a62b-16fb04b8395c",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 1.2,
+        "fdcId": "171333"
+      },
+      {
+        "id": "2a6925a9-f3ba-44cf-82fc-be8d3c052289",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 3.3,
+        "fdcId": "171333"
+      }
+    ]
+  },
+  {
+    "id": "f1aa3ddf-fbb5-4423-a40d-0632127c5c4b",
+    "name": "ground turmeric",
+    "fdcId": "172231",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "7560e101-c046-492a-88c0-24feb0c5efd5",
+        "name": "turmeric"
+      },
+      {
+        "id": "690344d9-7a8e-42d6-9d7e-f3a2c53028f0",
+        "name": "turmeric powder"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "34aa7a96-4517-4c18-8526-b87520674da0",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 3.0,
+        "fdcId": "172231"
+      },
+      {
+        "id": "4329e325-ce2d-4022-b7a8-5cf543a77a07",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 9.4,
+        "fdcId": "172231"
+      }
+    ]
+  },
+  {
+    "id": "4940ac49-9bb4-4f20-bcc1-87d7dfc09812",
+    "name": "mustard seed",
+    "fdcId": "170929",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "d5e6c387-9032-4969-9146-8e613451647c",
+        "name": "mustard seeds"
+      },
+      {
+        "id": "ec75d892-5575-41c9-a262-e619ca10537b",
+        "name": "ground mustard"
+      },
+      {
+        "id": "63474f54-fd16-42b9-b38d-2b8e9cdfe478",
+        "name": "mustard powder"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "429c5f10-f7a2-4e79-9fe9-db40d4668b42",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 2.0,
+        "fdcId": "170929"
+      },
+      {
+        "id": "3775f7f9-02ff-4247-8a37-5ab285e2e5ec",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 6.3,
+        "fdcId": "170929"
+      }
+    ]
+  },
+  {
+    "id": "9081483d-405f-47dc-9404-2924261c917e",
+    "name": "dried mint",
+    "fdcId": "172239",
+    "preferredKind": "mass",
+    "shoppingCategory": "Spices",
+    "aliases": [
+      {
+        "id": "71b632b6-0fb0-4e24-9bdd-ec3e779c8a3b",
+        "name": "dried spearmint"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "3f316ec1-40f5-46ac-b5ca-94f226ab1998",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 0.5,
+        "fdcId": "172239"
+      },
+      {
+        "id": "297686a1-9af6-48d1-b57c-5eb0272ba2bf",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 1.6,
+        "fdcId": "172239"
+      }
+    ]
   }
 ]

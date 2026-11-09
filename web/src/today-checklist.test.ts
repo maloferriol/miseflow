@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   FRIDAY,
   keys,
@@ -14,6 +14,8 @@ import {
   boxChecked,
   dayFromLink,
   linkWithDay,
+  type PlanDay,
+  putShownDayInLink,
   shownDay,
   tickKey,
   tickSave,
@@ -44,6 +46,36 @@ describe("the link's day", () => {
     expect(linkWithDay("?view=today&day=2026-10-29&service=s-saturday", SATURDAY)).toBe(
       "?view=today&day=2026-10-31&service=s-saturday",
     );
+  });
+});
+
+describe("putting the shown day in the link", () => {
+  const friday = walkthroughPlan().days.find((d) => d.date === FRIDAY);
+  // The links `putShownDayInLink` replaces the current one with.
+  const written = (search: string, day: PlanDay | undefined) => {
+    const replace = vi.fn<(link: string) => void>();
+    putShownDayInLink(search, day, replace);
+    return replace.mock.calls.map(([link]) => link);
+  };
+
+  it("names the shown day when the link's day is one the Plan doesn't have, keeping other params", () => {
+    expect(written("?view=today&day=2026-12-25&service=s-saturday", friday)).toEqual([
+      "?view=today&day=2026-10-30&service=s-saturday",
+    ]);
+  });
+
+  it("names the shown day when the link has no day", () => {
+    expect(written("?view=today&service=s-saturday", friday)).toEqual([
+      "?view=today&service=s-saturday&day=2026-10-30",
+    ]);
+  });
+
+  it("leaves a link that already names the shown day", () => {
+    expect(written("?view=today&service=s-saturday&day=2026-10-30", friday)).toEqual([]);
+  });
+
+  it("leaves the link when no day is shown: the Plan hasn't loaded or has no days", () => {
+    expect(written("?view=today&service=s-saturday&day=2026-12-25", undefined)).toEqual([]);
   });
 });
 

@@ -86,6 +86,8 @@ describe("Today checklist hook", () => {
     const { result } = renderChecklist();
     await waitFor(() => expect(result.current.day?.date).toBe(SATURDAY));
 
+    // The first checklist put its day in the link; the second opens on a link without one.
+    window.history.replaceState(null, "", `/?view=today&service=${SERVICE_ID}`);
     vi.mocked(fetchPlan).mockResolvedValue(walkthroughPlan({ timeZone: "America/New_York" }));
     const other = renderChecklist();
     await waitFor(() => expect(other.result.current.day?.date).toBe(FRIDAY));
@@ -95,6 +97,27 @@ describe("Today checklist hook", () => {
     window.history.replaceState(null, "", `/?view=today&service=${SERVICE_ID}&day=${THURSDAY}`);
     const { result } = renderChecklist();
     await waitFor(() => expect(result.current.day?.date).toBe(THURSDAY));
+  });
+
+  it("puts the shown day in place of a link's day the Plan doesn't have, without a history entry", async () => {
+    window.history.replaceState(null, "", `/?view=today&day=2026-12-25&service=${SERVICE_ID}`);
+    const entries = window.history.length;
+    const { result } = renderChecklist();
+    await waitFor(() => expect(result.current.day?.date).toBe(FRIDAY));
+    await waitFor(() =>
+      expect(window.location.search).toBe(`?view=today&day=${FRIDAY}&service=${SERVICE_ID}`),
+    );
+    expect(window.history.length).toBe(entries);
+  });
+
+  it("leaves a link's day the Plan has as it is", async () => {
+    const link = `?view=today&day=${THURSDAY}&service=${SERVICE_ID}`;
+    window.history.replaceState(null, "", `/${link}`);
+    const replace = vi.spyOn(window.history, "replaceState");
+    const { result } = renderChecklist();
+    await waitFor(() => expect(result.current.day?.date).toBe(THURSDAY));
+    expect(window.location.search).toBe(link);
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it("opens the chosen day and puts it in the link, keeping the link's other params", async () => {

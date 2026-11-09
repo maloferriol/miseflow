@@ -2,18 +2,18 @@ import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import {
   buildWalkthrough,
-  SERVICE_DATE,
   SERVICE_TIME,
   setWalkthroughAvailability,
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 import { apiUrl } from "../scripts/e2e-ports.ts";
+import { heading, week } from "./walkthrough-week.ts";
 
 // The walkthrough with its stock (ADR 0004), its Service and Availability, built through POST /mutate.
-// Sets this spec's own user's Availability. The tick below is stored at the server's real time, so
-// once the real date is past the Plan's Thursday it may move what follows; nothing here asserts
-// placements after the tick.
+// Sets this spec's own user's Availability. The tick below is stored at the server's real time, two
+// weeks or more before the Plan's Thursday (walkthrough-week.ts); nothing here asserts placements
+// after the tick.
 const s = String(Date.now());
 const serviceId = crypto.randomUUID();
 let w: Walkthrough;
@@ -41,11 +41,11 @@ test.beforeAll(async ({ request }) => {
     expect(res.status(), await res.text()).toBe(200);
   };
   w = await buildWalkthrough(run, s, { stock: true });
-  await setWalkthroughAvailability(run);
+  await setWalkthroughAvailability(run, undefined, week.friday);
   await run("createService", {
     serviceId,
     menuId: w.menuId,
-    date: SERVICE_DATE,
+    date: week.saturday,
     time: SERVICE_TIME,
   });
   const res = await request.get(apiUrl(`/services/${serviceId}/plan`), {
@@ -60,13 +60,6 @@ test.afterAll(async () => {
   if (user) await deleteTestUser(user);
 });
 
-// "Thursday 29 October", as the web app heads a kitchen-zone date.
-const heading = (date: string) => {
-  const at = new Date(`${date}T00:00:00Z`);
-  const part = (options: Intl.DateTimeFormatOptions) =>
-    at.toLocaleDateString("en-GB", { timeZone: "UTC", ...options });
-  return `${part({ weekday: "long" })} ${part({ day: "numeric" })} ${part({ month: "long" })}`;
-};
 const shortDay = (date: string) =>
   new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", weekday: "short" });
 // "18:20–18:40 · Chicken stock ×1.5 · for: … · Roast the bones", as the Plan screen's line.
@@ -88,11 +81,11 @@ test.describe.configure({ mode: "serial" });
 test("AC4: a tab per day with Tasks, Tasks in Plan time order", async ({ page }) => {
   await signIn(page);
   await page.goto(`/?view=today&service=${serviceId}`);
-  await page.getByRole("tab", { name: "Thursday 29 October" }).click();
+  await page.getByRole("tab", { name: heading(week.thursday) }).click();
   const tabs = page.getByRole("tablist", { name: "Prep days" }).getByRole("tab");
   await expect(tabs).toHaveText(days.map((d) => heading(d.date)));
 
-  const saturday = days.find((d) => d.date === SERVICE_DATE)!;
+  const saturday = days.find((d) => d.date === week.saturday)!;
   await page.getByRole("tab", { name: heading(saturday.date) }).click();
   const items = page
     .getByRole("tabpanel")
@@ -105,11 +98,11 @@ test("AC4: a tab per day with Tasks, Tasks in Plan time order", async ({ page })
 });
 
 test("AC6: a tick on Thursday's tab is still there after a reload", async ({ page }) => {
-  const thursday = days.find((d) => d.date === "2026-10-29")!;
+  const thursday = days.find((d) => d.date === week.thursday)!;
   const stepText = thursday.tasks[0]!.steps[0]!.text;
   await signIn(page);
   await page.goto(`/?view=today&service=${serviceId}`);
-  await page.getByRole("tab", { name: "Thursday 29 October" }).click();
+  await page.getByRole("tab", { name: heading(week.thursday) }).click();
   const box = page.getByRole("checkbox", { name: stepText });
   await expect(box).not.toBeChecked();
   const applied = page.waitForResponse(
@@ -120,7 +113,7 @@ test("AC6: a tick on Thursday's tab is still there after a reload", async ({ pag
 
   await page.reload();
   await expect(
-    page.getByRole("tab", { name: "Thursday 29 October", selected: true }),
+    page.getByRole("tab", { name: heading(week.thursday), selected: true }),
   ).toBeVisible();
   await expect(page.getByRole("checkbox", { name: stepText })).toBeChecked();
 });

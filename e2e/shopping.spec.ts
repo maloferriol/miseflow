@@ -1,14 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
 import postgres from "postgres";
-import {
-  buildWalkthrough,
-  SERVICE_DATE,
-  SERVICE_TIME,
-  type Walkthrough,
-} from "../shared/test/walkthrough.ts";
+import { buildWalkthrough, SERVICE_TIME, type Walkthrough } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
 import { apiUrl } from "../scripts/e2e-ports.ts";
+import { week } from "./walkthrough-week.ts";
 
 // The walkthrough with its Ingredient lines and Pastry (#91), and its Service, built through
 // POST /mutate with the seed's Ingredients.
@@ -44,7 +40,7 @@ test.beforeAll(async ({ request }) => {
   await run("createService", {
     serviceId,
     menuId: w.menuId,
-    date: SERVICE_DATE,
+    date: week.saturday,
     time: SERVICE_TIME,
   });
 });

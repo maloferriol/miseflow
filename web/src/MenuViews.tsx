@@ -9,6 +9,7 @@ import {
   type Dish,
   type DishScale,
   dishScale,
+  menuHref,
   newMenuInput,
   openingScaleKind,
   type ScaleKind,
@@ -157,9 +158,7 @@ export function CourseView({
   addDish,
   renderDishScale,
 }: Readonly<CourseViewProps>) {
-  // A full load: App reads the view from the URL. ?menu= stays for the way back.
-  const recipeHref = (recipeId: string) =>
-    `?${new URLSearchParams({ menu: menuId, view: "recipe", recipe: recipeId })}`;
+  const recipeHref = (recipe: string) => menuHref({ menu: menuId, view: "recipe", recipe });
   return (
     <article>
       <h3>{course.name}</h3>
@@ -293,14 +292,10 @@ export function ServiceFormView({
         {service ? "Save Service" : "Add Service"}
       </button>
       {service && (
-        <a href={`?${new URLSearchParams({ menu: menuId, view: "plan", service: service.id })}`}>
-          Open Plan
-        </a>
+        <a href={menuHref({ menu: menuId, view: "plan", service: service.id })}>Open Plan</a>
       )}
       {service && (
-        <a
-          href={`?${new URLSearchParams({ menu: menuId, view: "shopping", service: service.id })}`}
-        >
+        <a href={menuHref({ menu: menuId, view: "shopping", service: service.id })}>
           Open Shopping list
         </a>
       )}

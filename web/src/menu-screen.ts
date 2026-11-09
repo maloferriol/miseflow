@@ -10,6 +10,19 @@ export type Course = Menu["courses"][number];
 /** One Dish of a Course: its Recipe, scale and quick fixes. */
 export type Dish = Course["dishes"][number];
 
+/** A screen opened from a Menu: a Recipe, or the Plan or Shopping list of its Service. */
+export type MenuLink =
+  | { menu: string; view: "recipe"; recipe: string }
+  | { menu: string; view: "plan" | "shopping"; service: string };
+
+/**
+ * The URL of a screen opened from a Menu. A full load: App reads the view from the URL, and
+ * ?menu= stays for the way back.
+ */
+export function menuHref(link: MenuLink) {
+  return `?${new URLSearchParams(link)}`;
+}
+
 // HTML's valid floating-point number, what <input type=number> lets through: "2.0", "1e1".
 const NUMBER_FIELD = /^-?(?:\d+|\d*\.\d+)(?:[eE][-+]?\d+)?$/;
 

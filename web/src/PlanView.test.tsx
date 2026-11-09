@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   SERVICE_ID,
@@ -6,7 +6,6 @@ import {
   troubledPlan,
   walkthroughPlan,
 } from "../test/walkthrough-plan.ts";
-import { renderView } from "../test/render-view.tsx";
 import type { Plan } from "./api.ts";
 import { ganttCourses } from "./plan-screen.ts";
 import { PlanView, type PlanViewProps } from "./PlanView.tsx";
@@ -21,7 +20,7 @@ const loaded = (data: Plan) => ({ status: "success" as const, data });
 function renderPlan(props: Partial<PlanViewProps> = {}) {
   const onFix = vi.fn();
   const onPin = vi.fn();
-  renderView(
+  render(
     <PlanView
       serviceId={SERVICE_ID}
       plan={loaded(troubledPlan)}

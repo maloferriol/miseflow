@@ -136,11 +136,15 @@ describe("Today checklist hook", () => {
     act(() => result.current.onTick(pastry, "P1", true));
     expect(result.current.ticking).toEqual({ key: tickKey(pastry, "P1"), done: true });
     await waitFor(() =>
-      expect(mutate).toHaveBeenCalledWith(anId, "tickStep", {
-        eventId: anId,
-        serviceId: SERVICE_ID,
-        owner: pastry.owner,
-        stepId: "P1",
+      expect(mutate).toHaveBeenCalledWith({
+        id: anId,
+        name: "tickStep",
+        args: {
+          eventId: anId,
+          serviceId: SERVICE_ID,
+          owner: pastry.owner,
+          stepId: "P1",
+        },
       }),
     );
 
@@ -154,11 +158,15 @@ describe("Today checklist hook", () => {
     await waitFor(() => expect(result.current.plan.status).toBe("success"));
     act(() => result.current.onTick(brine, "D1", false));
     await waitFor(() => expect(fetchPlan).toHaveBeenCalledTimes(2));
-    expect(mutate).toHaveBeenCalledWith(anId, "untickStep", {
-      eventId: anId,
-      serviceId: SERVICE_ID,
-      owner: brine.owner,
-      stepId: "D1",
+    expect(mutate).toHaveBeenCalledWith({
+      id: anId,
+      name: "untickStep",
+      args: {
+        eventId: anId,
+        serviceId: SERVICE_ID,
+        owner: brine.owner,
+        stepId: "D1",
+      },
     });
   });
 
@@ -180,7 +188,7 @@ describe("Today checklist hook", () => {
     const { result } = renderChecklist();
     await waitFor(() => expect(result.current.plan.status).toBe("success"));
     const ids = (call: number) => {
-      const [id, , args] = vi.mocked(mutate).mock.calls[call];
+      const [{ id, args }] = vi.mocked(mutate).mock.calls[call];
       return [id, args.eventId];
     };
 
@@ -238,11 +246,15 @@ describe("Today checklist", () => {
     expect(box.checked).toBe(true);
     expect(screen.getAllByRole<HTMLInputElement>("checkbox").every((b) => b.disabled)).toBe(true);
     await waitFor(() =>
-      expect(mutate).toHaveBeenCalledWith(anId, "tickStep", {
-        eventId: anId,
-        serviceId: SERVICE_ID,
-        owner: pastry.owner,
-        stepId: "P1",
+      expect(mutate).toHaveBeenCalledWith({
+        id: anId,
+        name: "tickStep",
+        args: {
+          eventId: anId,
+          serviceId: SERVICE_ID,
+          owner: pastry.owner,
+          stepId: "P1",
+        },
       }),
     );
 

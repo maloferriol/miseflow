@@ -1,6 +1,6 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { renderView } from "../test/render-view.tsx";
+import { action } from "../test/action.ts";
 import type { Menu } from "./api.ts";
 import {
   CourseView,
@@ -15,7 +15,7 @@ import {
   ServiceFormView,
   type ServiceFormViewProps,
 } from "./MenuViews.tsx";
-import { serviceInput } from "./menu-screen.ts";
+import { type Course, type Dish, serviceInput } from "./menu-screen.ts";
 import { minuteOfDay } from "./time-of-day.ts";
 
 const button = (name: string) => screen.getByRole("button", { name });
@@ -24,12 +24,12 @@ const type = (label: string, value: string) =>
 
 describe("Menu list", () => {
   it("shows Loading… while the Menus load", () => {
-    renderView(<MenuListView menus={{ status: "pending" }} />);
+    render(<MenuListView menus={{ status: "pending" }} />);
     expect(screen.getByText("Loading…")).toBeTruthy();
   });
 
   it("shows a failed load as an alert with its message", () => {
-    renderView(
+    render(
       <MenuListView
         menus={{ status: "error", error: new Error("Could not load the Menus (500)") }}
       />,
@@ -38,13 +38,13 @@ describe("Menu list", () => {
   });
 
   it("shows no list while there are no Menus", () => {
-    renderView(<MenuListView menus={{ status: "success", data: [] }} />);
+    render(<MenuListView menus={{ status: "success", data: [] }} />);
     expect(screen.queryByRole("navigation", { name: "Your Menus" })).toBeNull();
     expect(screen.queryByText("Loading…")).toBeNull();
   });
 
   it("links each Menu to its page", () => {
-    renderView(
+    render(
       <MenuListView
         menus={{ status: "success", data: [{ id: "m-1", name: "Saturday dinner" }] }}
       />,
@@ -58,13 +58,11 @@ describe("Menu list", () => {
 
 describe("New Menu", () => {
   const newMenu = (props: Partial<NewMenuViewProps> = {}) =>
-    renderView(
-      <NewMenuView createPending={false} createError={null} onCreate={() => {}} {...props} />,
-    );
+    render(<NewMenuView create={action()} {...props} />);
 
   it("creates a Menu from its name and Guests", () => {
     const onCreate = vi.fn();
-    newMenu({ onCreate });
+    newMenu({ create: action({ run: onCreate }) });
     type("Menu name", "Saturday dinner");
     type("Guests", "6");
     fireEvent.click(button("Create Menu"));
@@ -73,7 +71,7 @@ describe("New Menu", () => {
 
   it("keeps the typed name and creates nothing when Guests holds no whole number", () => {
     const onCreate = vi.fn();
-    newMenu({ onCreate });
+    newMenu({ create: action({ run: onCreate }) });
     type("Menu name", "Saturday dinner");
     type("Guests", "2.5");
     // Submitted past the field's own step check, so the view's check is the one under test.
@@ -86,12 +84,12 @@ describe("New Menu", () => {
   });
 
   it("disables Create Menu while a create is pending", () => {
-    newMenu({ createPending: true });
+    newMenu({ create: action({ pending: true }) });
     expect(button("Create Menu").hasAttribute("disabled")).toBe(true);
   });
 
   it("shows a failed create as an alert with its message", () => {
-    newMenu({ createError: new Error("Could not create the Menu (500)") });
+    newMenu({ create: action({ error: new Error("Could not create the Menu (500)") }) });
     expect(screen.getByRole("alert").textContent).toBe("Could not create the Menu (500)");
   });
 });
@@ -108,12 +106,10 @@ const saturdayDinner: Menu = {
 
 describe("Menu", () => {
   const menuView = (props: Partial<MenuViewProps> = {}) =>
-    renderView(
+    render(
       <MenuView
         menu={{ status: "success", data: saturdayDinner }}
-        addCoursePending={false}
-        addCourseError={null}
-        onAddCourse={() => {}}
+        addCourse={action()}
         renderServiceForm={() => <p>Service form</p>}
         renderCourse={(course) => <p>Course {course.name}</p>}
         {...props}
@@ -140,25 +136,22 @@ describe("Menu", () => {
 
   it("adds a Course by its name", () => {
     const onAddCourse = vi.fn();
-    menuView({ onAddCourse });
+    menuView({ addCourse: action({ run: onAddCourse }) });
     type("Course name", "Velouté");
     fireEvent.click(button("Add Course"));
     expect(onAddCourse).toHaveBeenCalledWith("Velouté");
   });
 
   it("disables Add Course while an add is pending", () => {
-    menuView({ addCoursePending: true });
+    menuView({ addCourse: action({ pending: true }) });
     expect(button("Add Course").hasAttribute("disabled")).toBe(true);
   });
 
   it("shows a failed add as an alert with its message", () => {
-    menuView({ addCourseError: new Error("Could not add the Course (500)") });
+    menuView({ addCourse: action({ error: new Error("Could not add the Course (500)") }) });
     expect(screen.getByRole("alert").textContent).toBe("Could not add the Course (500)");
   });
 });
-
-type Course = Menu["courses"][number];
-type Dish = Course["dishes"][number];
 
 // A Dish before the Menu has a scale for it: the server's assumed factor of 1.
 const velouté: Dish = {
@@ -172,13 +165,11 @@ const starter: Course = { id: "c-starter", name: "Starter", position: "a0", dish
 
 describe("Course", () => {
   const courseView = (props: Partial<CourseViewProps> = {}) =>
-    renderView(
+    render(
       <CourseView
         menuId="m-dinner"
         course={starter}
-        addDishPending={false}
-        addDishError={null}
-        onAddDish={() => {}}
+        addDish={action()}
         renderDishScale={(dish) => <p>Scale for {dish.recipe.name}</p>}
         {...props}
       />,
@@ -194,38 +185,30 @@ describe("Course", () => {
 
   it("adds a Dish by its Recipe's name", () => {
     const onAddDish = vi.fn();
-    courseView({ onAddDish });
+    courseView({ addDish: action({ run: onAddDish }) });
     type("Recipe name", "Duck breast");
     fireEvent.click(button("Add Dish"));
     expect(onAddDish).toHaveBeenCalledWith("Duck breast");
   });
 
   it("disables Add Dish while an add is pending", () => {
-    courseView({ addDishPending: true });
+    courseView({ addDish: action({ pending: true }) });
     expect(button("Add Dish").hasAttribute("disabled")).toBe(true);
   });
 
   it("shows a failed add as an alert with its message", () => {
-    courseView({ addDishError: new Error("Could not add the Dish (500)") });
+    courseView({ addDish: action({ error: new Error("Could not add the Dish (500)") }) });
     expect(screen.getByRole("alert").textContent).toBe("Could not add the Dish (500)");
   });
 });
 
 describe("Dish scale", () => {
   const dishScale = (props: Partial<DishScaleViewProps> = {}) =>
-    renderView(
-      <DishScaleView
-        dish={velouté}
-        savePending={false}
-        saveError={null}
-        onSave={() => {}}
-        {...props}
-      />,
-    );
+    render(<DishScaleView dish={velouté} save={action()} {...props} />);
 
   it("saves a portion count", () => {
     const onSave = vi.fn();
-    dishScale({ onSave });
+    dishScale({ save: action({ run: onSave }) });
     fireEvent.change(screen.getByRole("combobox", { name: "Scale for Velouté" }), {
       target: { value: "portions" },
     });
@@ -240,12 +223,12 @@ describe("Dish scale", () => {
   });
 
   it("disables Save scale while a save is pending", () => {
-    dishScale({ savePending: true });
+    dishScale({ save: action({ pending: true }) });
     expect(button("Save scale").hasAttribute("disabled")).toBe(true);
   });
 
   it("shows a failed save as an alert with its message", () => {
-    dishScale({ saveError: new Error("Could not save the scale (500)") });
+    dishScale({ save: action({ error: new Error("Could not save the scale (500)") }) });
     expect(screen.getByRole("alert").textContent).toBe("Could not save the scale (500)");
   });
 });
@@ -254,21 +237,19 @@ describe("Service form", () => {
   // ADR 0004's Service: Saturday at 19:30.
   const saturday = { id: "s-saturday", date: "2026-10-31", time: minuteOfDay("19:30") };
   const serviceForm = (props: Partial<ServiceFormViewProps> = {}) =>
-    renderView(
+    render(
       <ServiceFormView
         menuId="m-dinner"
         service={null}
         availability={undefined}
-        savePending={false}
-        saveError={null}
-        onSave={() => {}}
+        save={action()}
         {...props}
       />,
     );
 
   it("adds the Service from its date and time", () => {
     const onSave = vi.fn();
-    serviceForm({ onSave });
+    serviceForm({ save: action({ run: onSave }) });
     type("Service date", "2026-10-31");
     type("Service time (optional)", "19:30");
     fireEvent.click(button("Add Service"));
@@ -285,12 +266,12 @@ describe("Service form", () => {
   });
 
   it("disables the save while one is pending", () => {
-    serviceForm({ service: saturday, savePending: true });
+    serviceForm({ service: saturday, save: action({ pending: true }) });
     expect(button("Save Service").hasAttribute("disabled")).toBe(true);
   });
 
   it("shows a failed save as an alert with its message", () => {
-    serviceForm({ saveError: new Error("Could not save the Service (500)") });
+    serviceForm({ save: action({ error: new Error("Could not save the Service (500)") }) });
     expect(screen.getByRole("alert").textContent).toBe("Could not save the Service (500)");
   });
 });

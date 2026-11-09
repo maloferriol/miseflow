@@ -10,10 +10,10 @@ export function useRecipesScreen(onOpen: (recipeId: string) => void) {
   const createRecipe = useMutation({
     mutationFn: async (name: string) => {
       const recipeId = crypto.randomUUID();
-      await mutate(crypto.randomUUID(), "createRecipe", {
-        recipeId,
-        revisionId: crypto.randomUUID(),
-        name,
+      await mutate({
+        id: crypto.randomUUID(),
+        name: "createRecipe",
+        args: { recipeId, revisionId: crypto.randomUUID(), name },
       });
       return recipeId;
     },

@@ -1,6 +1,6 @@
 // The Step editor's decisions (ADR 0011): pure functions the hook and the view pass through.
 import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
-import { UNITS_BY_KIND } from "@miseflow/shared/src/catalog/units.ts";
+import { type Kind, UNITS_BY_KIND } from "@miseflow/shared/src/catalog/units.ts";
 import { parseQuantity } from "@miseflow/shared/src/recipe/quantity.ts";
 import {
   formatStepText,
@@ -148,7 +148,7 @@ export function chipText(line: ChipLine) {
  * Decision 7: a new Ingredient's kind of measure comes from the ref's braced amount ("200%g");
  * an Ingredient unit or a bare number counts, and a vague or unknown unit falls back to mass.
  */
-export function newIngredientKind(amount: string) {
+export function newIngredientKind(amount: string): Kind {
   const q = parseQuantity(amount);
   if (q.tier === "ingredient") return "count";
   if (q.tier === "fixed")

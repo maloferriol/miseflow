@@ -31,10 +31,7 @@ export function useTodayChecklist(serviceId: string) {
   // A tick shows at once, until the re-read Plan (or a failed save) settles it.
   const [ticking, setTicking] = useState<Ticking | null>(null);
   const tick = useMutation({
-    mutationFn: (ticked: Tick) => {
-      const { id, name, args } = tickSave(serviceId, ticked, intent);
-      return mutate(id, name, args);
-    },
+    mutationFn: (ticked: Tick) => mutate(tickSave(serviceId, ticked, intent)),
     onSuccess: async () => {
       intent.reset();
       await queryClient.invalidateQueries({ queryKey: ["plan", serviceId] });

@@ -56,7 +56,8 @@ beforeEach(() => {
 });
 
 // The args of the mutation sent with this name.
-const sent = (name: string) => vi.mocked(mutate).mock.calls.find((call) => call[1] === name)?.[2];
+const sent = (name: string) =>
+  vi.mocked(mutate).mock.calls.find((call) => call[0].name === name)?.[0].args;
 
 // A save that stays pending until the test fails it.
 function failLater() {
@@ -97,7 +98,7 @@ describe("Add alias hook", () => {
     act(() => result.current.onAddAlias("oignon", onAdded));
     await waitFor(() => expect(onAdded).toHaveBeenCalledOnce());
     expect(sent("addAlias")).toEqual({ aliasId: anId, ingredientId: "i-onion", name: "oignon" });
-    expect(vi.mocked(mutate).mock.calls[0][0]).toEqual(anId);
+    expect(vi.mocked(mutate).mock.calls[0][0].id).toEqual(anId);
     expect(client.getQueryState(["ingredients", "oni"])?.isInvalidated).toBe(true);
     expect(client.getQueryState(["recipes"])?.isInvalidated).toBe(false);
   });
@@ -141,7 +142,7 @@ describe("New Ingredient hook", () => {
     act(() => result.current.onCreate(input, onSaved));
     await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
     expect(sent("createIngredient")).toEqual({ ingredientId: anId, ...input });
-    expect(vi.mocked(mutate).mock.calls[0][0]).toEqual(anId);
+    expect(vi.mocked(mutate).mock.calls[0][0].id).toEqual(anId);
     expect(onCreated).toHaveBeenCalledExactlyOnceWith("chicken wings");
     expect(onCreated).toHaveReturned();
   });

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toAction } from "./action.ts";
 import { fetchIngredients, fetchRecipes, mutate, type RecipeStep } from "./api.ts";
 import { IngredientPicker } from "./IngredientPicker.tsx";
 import { useIntent } from "./intent.ts";
@@ -110,8 +111,7 @@ export function useStepForm(recipeId: string, step: RecipeStep | undefined, onDo
     text,
     pickerAt,
     unmatched: blockingSave(unlinked, links, text),
-    savePending: save.isPending,
-    saveError: save.error,
+    save: toAction(save),
     onEdit: (next: string, caret: number) => {
       setPickerAt((open) => pickerOpensAt(text, next, caret) ?? open);
       setText(next);
@@ -121,7 +121,6 @@ export function useStepForm(recipeId: string, step: RecipeStep | undefined, onDo
       setPickerAt(null);
       setLinks((prev) => withLink(prev, inserted.link));
     },
-    onSave: () => save.mutate(),
     onCancel: onDone,
     link: (wording: string, target: Target) =>
       setLinks((prev) => withLink(prev, { wording, target })),

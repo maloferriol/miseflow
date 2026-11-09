@@ -257,7 +257,7 @@ describe("stepSaveArgs", () => {
 function server() {
   const sent: { id: string; name: string; args: Record<string, unknown> }[] = [];
   let lose = false;
-  const send: Send = (id, name, args) => {
+  const send: Send = ({ id, name, args }) => {
     sent.push({ id, name, args });
     if (lose) {
       lose = false;
@@ -372,6 +372,23 @@ describe("catalogLookup", () => {
 });
 
 describe("linkChoices", () => {
+  it("creates an Ingredient only with a kind of measure the catalog knows", async () => {
+    const { send, sent } = server();
+    const choices = linkChoices("zest", send);
+    await choices.createIngredient({
+      name: "zest",
+      preferredKind: "mass",
+      shoppingCategoryId: "c",
+    });
+    await choices.createIngredient({
+      name: "zest",
+      // @ts-expect-error -- "weight" is not a Kind ("mass" | "volume" | "count").
+      preferredKind: "weight",
+      shoppingCategoryId: "c",
+    });
+    expect(sent.map((s) => s.args.preferredKind)).toEqual(["mass", "weight"]);
+  });
+
   it("links an exact match offered beside a Recipe without teaching an alias", async () => {
     const { send, sent } = server();
 
@@ -384,7 +401,7 @@ describe("linkChoices", () => {
   it("gives each action its own retry intent: one going through keeps another's ids", async () => {
     const { send, sent, loseNext } = server();
     const choices = linkChoices("zest", send);
-    const create = { name: "zest", preferredKind: "mass", shoppingCategoryId: "other-id" };
+    const create = { name: "zest", preferredKind: "mass" as const, shoppingCategoryId: "other-id" };
 
     loseNext();
     await expect(choices.createIngredient(create)).rejects.toThrow();

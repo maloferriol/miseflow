@@ -19,10 +19,7 @@ export function useIntentSave<V>(
   refetch?: () => Promise<unknown>,
 ) {
   return useMutation({
-    mutationFn: (variables: V) => {
-      const call = toCall(variables, intent);
-      return mutate(call.id, call.name, call.args);
-    },
+    mutationFn: (variables: V) => mutate(toCall(variables, intent)),
     onSuccess: async () => {
       intent.reset();
       await refetch?.();

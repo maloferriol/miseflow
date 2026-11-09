@@ -1,7 +1,27 @@
 // The Menu screen's decisions (ADR 0011): pure functions the hooks and the views pass through.
+import type { Menu } from "./api.ts";
 import type { Intent } from "./intent.ts";
 import type { MutationCall } from "./mutation-call.ts";
 import { minuteOfDay, timeValue } from "./time-of-day.ts";
+
+/** One Course of an open Menu, with its Dishes. */
+export type Course = Menu["courses"][number];
+
+/** One Dish of a Course: its Recipe, scale and quick fixes. */
+export type Dish = Course["dishes"][number];
+
+/** A screen opened from a Menu: a Recipe, or the Plan or Shopping list of its Service. */
+export type MenuLink =
+  | { menu: string; view: "recipe"; recipe: string }
+  | { menu: string; view: "plan" | "shopping"; service: string };
+
+/**
+ * The URL of a screen opened from a Menu. A full load: App reads the view from the URL, and
+ * ?menu= stays for the way back.
+ */
+export function menuHref(link: MenuLink) {
+  return `?${new URLSearchParams(link)}`;
+}
 
 // HTML's valid floating-point number, what <input type=number> lets through: "2.0", "1e1".
 const NUMBER_FIELD = /^-?(?:\d+|\d*\.\d+)(?:[eE][-+]?\d+)?$/;
@@ -40,6 +60,21 @@ export function serviceInput(date: string, time: string): ServiceInput | null {
 
 /** How a Dish is scaled: by the guest count, to a portion count, or by a factor (units spec §5). */
 export type ScaleKind = "guests" | "portions" | "factor";
+
+/** The number field a scale kind asks for: its label, and the range and step it accepts. */
+export type ScaleInput = {
+  label: (recipeName: string) => string;
+  min: number;
+  max: number;
+  step: number | "any";
+};
+
+/** The number field for each scale kind; scaling by the guest count asks for none. */
+export const scaleInputs: Record<ScaleKind, ScaleInput | null> = {
+  guests: null,
+  portions: { label: (recipe) => `Portions of ${recipe}`, min: 1, max: 10_000, step: 1 },
+  factor: { label: (recipe) => `Factor for ${recipe}`, min: 0.01, max: 1000, step: "any" },
+};
 
 export type DishScale =
   { kind: "guests" } | { kind: "portions"; portions: number } | { kind: "factor"; factor: number };

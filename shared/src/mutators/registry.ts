@@ -28,8 +28,9 @@ import { createSubRecipe, extractToSubRecipe, setYield } from "./subrecipes.ts";
 export type { AnyMutator, Mutator, MutatorContext, Tx } from "./define.ts";
 export { ConflictError, defineMutator, InvalidArgsError, NotFoundError } from "./define.ts";
 
-// Every named mutation the server accepts on POST /mutate (ADR 0007).
-export const mutators: Record<string, AnyMutator> = {
+// Every named mutation the server accepts on POST /mutate (ADR 0007). `satisfies` keeps the
+// literal keys, so `MutationName` lists them.
+export const mutators = {
   createMenu,
   addCourse,
   createRecipe,
@@ -66,7 +67,10 @@ export const mutators: Record<string, AnyMutator> = {
   untickStep,
   pinTask,
   unpinTask,
-};
+} satisfies Record<string, AnyMutator>;
+
+/** The name of a mutation the server accepts. The web imports it with `import type` only. */
+export type MutationName = keyof typeof mutators;
 
 export function getMutator(
   name: string,

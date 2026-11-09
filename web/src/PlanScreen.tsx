@@ -27,8 +27,7 @@ function usePinTask(serviceId: string) {
     mutationKey,
     scope: { id: serviceId },
     mutationFn: ({ task, start }: { task: PlanTask; start: number }) => {
-      const { name, args } = pinTask(serviceId, task, start);
-      return mutate(crypto.randomUUID(), name, args);
+      return mutate({ id: crypto.randomUUID(), ...pinTask(serviceId, task, start) });
     },
     onMutate: async ({ task, start }) => {
       await queryClient.cancelQueries({ queryKey });
@@ -52,7 +51,7 @@ function usePinTask(serviceId: string) {
 function usePlanFix(serviceId: string, menuId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, args }: PlanMutation) => mutate(crypto.randomUUID(), name, args),
+    mutationFn: (mutation: PlanMutation) => mutate({ id: crypto.randomUUID(), ...mutation }),
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ["plan", serviceId] }),

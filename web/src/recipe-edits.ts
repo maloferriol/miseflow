@@ -8,15 +8,27 @@ import type { Send } from "./step-links.ts";
 export function recipeEdits(recipeId: string, send: Send) {
   return {
     editRecipe: retryable(createIntent(), (args: { name: string; servings: number | null }, id) =>
-      send(id("mutation"), "editRecipe", { recipeId, revisionId: id("revision"), ...args }),
+      send({
+        id: id("mutation"),
+        name: "editRecipe",
+        args: { recipeId, revisionId: id("revision"), ...args },
+      }),
     ),
     moveStep: retryable(
       createIntent(),
       (args: { stepId: string; afterStepId: string | null }, id) =>
-        send(id("mutation"), "moveStep", { revisionId: id("revision"), ...args }),
+        send({
+          id: id("mutation"),
+          name: "moveStep",
+          args: { revisionId: id("revision"), ...args },
+        }),
     ),
     removeStep: retryable(createIntent(), (stepId: string, id) =>
-      send(id("mutation"), "removeStep", { stepId, revisionId: id("revision") }),
+      send({
+        id: id("mutation"),
+        name: "removeStep",
+        args: { stepId, revisionId: id("revision") },
+      }),
     ),
   };
 }

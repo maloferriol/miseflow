@@ -1,6 +1,5 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { renderView } from "../test/render-view.tsx";
 import { type Screen, screenFor } from "./app-shell.ts";
 import { AppView, type AppViewProps } from "./AppView.tsx";
 
@@ -16,13 +15,13 @@ const signedInProps = (overrides: Partial<AppViewProps> = {}): AppViewProps => (
 
 describe("the app shell's view", () => {
   it("shows the screen it is given under the header", () => {
-    renderView(<AppView {...signedInProps()} />);
+    render(<AppView {...signedInProps()} />);
     expect(screen.getByRole("heading", { name: "MiseFlow" })).toBeTruthy();
     expect(screen.getByText("Screen: menu")).toBeTruthy();
   });
 
   it("shows no nav and no Sign out when signed out", () => {
-    renderView(
+    render(
       <AppView
         {...signedInProps({
           signedIn: false,
@@ -36,7 +35,7 @@ describe("the app shell's view", () => {
   });
 
   it("presses Recipes while a Recipe is open", () => {
-    renderView(<AppView {...signedInProps({ view: "recipe" })} />);
+    render(<AppView {...signedInProps({ view: "recipe" })} />);
     const pressed = screen
       .getAllByRole("button", { pressed: true })
       .map((button) => button.textContent);
@@ -50,7 +49,7 @@ describe("the app shell's view", () => {
     ["Availability", "availability"],
   ])("opens the %s from the nav", (label, view) => {
     const props = signedInProps({ view: "today" });
-    renderView(<AppView {...props} />);
+    render(<AppView {...props} />);
     expect(screen.getByRole("button", { name: label, pressed: false })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: label }));
     expect(props.onOpen).toHaveBeenCalledWith(view);
@@ -58,7 +57,7 @@ describe("the app shell's view", () => {
 
   it("signs out from the header", () => {
     const props = signedInProps();
-    renderView(<AppView {...props} />);
+    render(<AppView {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(props.onSignOut).toHaveBeenCalledOnce();
   });

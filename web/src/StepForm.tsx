@@ -2,6 +2,7 @@
 import { normaliseName } from "@miseflow/shared/src/catalog/match.ts";
 import { Fragment, type ReactNode, useRef } from "react";
 import { flushSync } from "react-dom";
+import type { Action } from "./action.ts";
 import type { CatalogIngredient, RecipeListItem } from "./api.ts";
 import { type Inserted, insertPick, type PickerChoice } from "./step-editor.ts";
 import type { Unlinked } from "./step-links.ts";
@@ -16,13 +17,11 @@ export type StepFormViewProps = {
   pickerAt: number | null;
   /** The names that still block Save (`blockingSave`). */
   unmatched: Unmatched[];
-  savePending: boolean;
-  saveError: Error | null;
+  save: Action<void>;
   /** The textarea's new text and its caret. */
   onEdit: (text: string, caret: number) => void;
   /** A pick, or the picker closed: the new text and the link it makes (`insertPick`). */
   onInsert: (inserted: Inserted) => void;
-  onSave: () => void;
   onCancel: () => void;
   /** The `@` picker, handed what to call on a pick or a close. */
   renderPicker: (choose: (pick: PickerChoice) => void) => ReactNode;
@@ -35,11 +34,9 @@ export function StepFormView({
   text,
   pickerAt,
   unmatched,
-  savePending,
-  saveError,
+  save,
   onEdit,
   onInsert,
-  onSave,
   onCancel,
   renderPicker,
   renderLinkChoice,
@@ -59,7 +56,7 @@ export function StepFormView({
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        onSave();
+        save.run();
       }}
     >
       <label>
@@ -79,23 +76,23 @@ export function StepFormView({
           fixes a quantity.
         </small>
       </p>
-      {pickerAt !== null && <Slot render={renderPicker} with={(pick) => insert(pickerAt, pick)} />}
+      {pickerAt !== null && <Slot render={renderPicker} value={(pick) => insert(pickerAt, pick)} />}
       {unmatched.map((u) => (
         <Fragment key={normaliseName(u.name)}>{renderLinkChoice(u)}</Fragment>
       ))}
-      <button type="submit" disabled={savePending || unmatched.length > 0}>
+      <button type="submit" disabled={save.pending || unmatched.length > 0}>
         Save
       </button>
       <button type="button" onClick={onCancel}>
         Cancel
       </button>
-      {saveError && <p role="alert">{saveError.message}</p>}
+      {save.error && <p role="alert">{save.error.message}</p>}
     </form>
   );
 }
 
 // Renders a slot as its own component, so `insert` (which moves the caret through the textarea's
 // ref) is handed over as a prop for the picker to call later, not called during this render.
-function Slot<T>({ render, with: value }: { render: (value: T) => ReactNode; with: T }) {
+function Slot<T>({ render, value }: { render: (value: T) => ReactNode; value: T }) {
   return render(value);
 }

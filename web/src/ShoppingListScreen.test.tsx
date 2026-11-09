@@ -39,7 +39,7 @@ afterEach(() => vi.restoreAllMocks());
 // Any id: the hook makes them.
 const anId: unknown = expect.any(String);
 const box = (name: string) => screen.getByRole<HTMLInputElement>("checkbox", { name });
-const sent = () => vi.mocked(mutate).mock.calls.map(([, name, args]) => ({ name, args }));
+const sent = () => vi.mocked(mutate).mock.calls.map(([{ name, args }]) => ({ name, args }));
 
 // A save that stays in flight until the test rejects it.
 function holdMutate() {
@@ -188,6 +188,6 @@ describe("Shopping row hook", () => {
     act(() => hook.result.current.onTick(true));
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(2));
     const [first, second] = vi.mocked(mutate).mock.calls;
-    expect(second[0]).not.toBe(first[0]);
+    expect(second[0].id).not.toBe(first[0].id);
   });
 });

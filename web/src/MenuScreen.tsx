@@ -1,9 +1,17 @@
 // The Menu screen (ADR 0011): each part's hook, and the part that renders its view with it.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toAction } from "./action.ts";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
-import { type DishScale, dishScaleSave, type ServiceInput, serviceSave } from "./menu-screen.ts";
+import {
+  type Course,
+  type Dish,
+  type DishScale,
+  dishScaleSave,
+  type ServiceInput,
+  serviceSave,
+} from "./menu-screen.ts";
 import {
   CourseView,
   DishScaleView,
@@ -42,19 +50,17 @@ function MenuList() {
 /** Creates a Menu and opens it. Only a mutation hook: no branches. */
 export function useNewMenu(onCreated: (menuId: string) => void) {
   const createMenu = useMutation({
-    mutationFn: async (args: { menuId: string; name: string; guestCount: number }) =>
-      mutate(crypto.randomUUID(), "createMenu", args),
-    onSuccess: (_, { menuId }) => {
+    mutationFn: async (menu: { name: string; guestCount: number }) => {
+      const menuId = crypto.randomUUID();
+      await mutate({ id: crypto.randomUUID(), name: "createMenu", args: { menuId, ...menu } });
+      return menuId;
+    },
+    onSuccess: (menuId) => {
       window.history.replaceState(null, "", `?menu=${menuId}`);
       onCreated(menuId);
     },
   });
-  return {
-    createPending: createMenu.isPending,
-    createError: createMenu.error,
-    onCreate: (menu: { name: string; guestCount: number }) =>
-      createMenu.mutate({ menuId: crypto.randomUUID(), ...menu }),
-  };
+  return { create: toAction(createMenu) };
 }
 
 function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
@@ -68,14 +74,16 @@ export function useMenu(menuId: string) {
   const onChanged = () => queryClient.invalidateQueries({ queryKey: ["menu", menuId] });
   const addCourse = useMutation({
     mutationFn: async (name: string) =>
-      mutate(crypto.randomUUID(), "addCourse", { courseId: crypto.randomUUID(), menuId, name }),
+      mutate({
+        id: crypto.randomUUID(),
+        name: "addCourse",
+        args: { courseId: crypto.randomUUID(), menuId, name },
+      }),
     onSuccess: onChanged,
   });
   return {
     menu,
-    addCoursePending: addCourse.isPending,
-    addCourseError: addCourse.error,
-    onAddCourse: (name: string) => addCourse.mutate(name),
+    addCourse: toAction(addCourse),
     onChanged,
   };
 }
@@ -86,44 +94,42 @@ function OpenMenu({ menuId }: Readonly<{ menuId: string }>) {
     <MenuView
       {...menu}
       renderServiceForm={(service) => <ServiceForm menuId={menuId} service={service} />}
-      renderCourse={(course) => <Course menuId={menuId} course={course} onChanged={onChanged} />}
+      renderCourse={(course) => (
+        <OpenCourse menuId={menuId} course={course} onChanged={onChanged} />
+      )}
     />
   );
 }
 
 /** Adds a Dish: a new Recipe placed in this Course. Only a mutation hook: no branches. */
-export function useCourse(course: Menu["courses"][number], onChanged: () => Promise<void>) {
+export function useCourse(course: Course, onChanged: () => Promise<void>) {
   // Two mutations, each with its own id.
   const addDish = useMutation({
     mutationFn: async (name: string) => {
       const recipeId = crypto.randomUUID();
-      await mutate(crypto.randomUUID(), "createRecipe", {
-        recipeId,
-        revisionId: crypto.randomUUID(),
-        name,
+      await mutate({
+        id: crypto.randomUUID(),
+        name: "createRecipe",
+        args: { recipeId, revisionId: crypto.randomUUID(), name },
       });
-      await mutate(crypto.randomUUID(), "addDish", {
-        dishId: crypto.randomUUID(),
-        courseId: course.id,
-        recipeId,
+      await mutate({
+        id: crypto.randomUUID(),
+        name: "addDish",
+        args: { dishId: crypto.randomUUID(), courseId: course.id, recipeId },
       });
     },
     onSuccess: onChanged,
   });
-  return {
-    addDishPending: addDish.isPending,
-    addDishError: addDish.error,
-    onAddDish: (name: string) => addDish.mutate(name),
-  };
+  return { addDish: toAction(addDish) };
 }
 
-function Course({
+function OpenCourse({
   menuId,
   course,
   onChanged,
 }: Readonly<{
   menuId: string;
-  course: Menu["courses"][number];
+  course: Course;
   onChanged: () => Promise<void>;
 }>) {
   return (
@@ -145,18 +151,14 @@ export function useDishScale(dishId: string, onChanged: () => Promise<void>) {
     (scale: DishScale, i) => dishScaleSave(dishId, scale, i),
     () => Promise.all([onChanged(), queryClient.invalidateQueries({ queryKey: ["plan"] })]),
   );
-  return {
-    savePending: save.isPending,
-    saveError: save.error,
-    onSave: (scale: DishScale) => save.mutate(scale),
-  };
+  return { save: toAction(save) };
 }
 
 function DishScaleForm({
   dish,
   onChanged,
 }: Readonly<{
-  dish: Menu["courses"][number]["dishes"][number];
+  dish: Dish;
   onChanged: () => Promise<void>;
 }>) {
   return <DishScaleView {...useDishScale(dish.id, onChanged)} dish={dish} />;
@@ -178,9 +180,7 @@ export function useServiceForm(menuId: string, service: Menu["service"]) {
   );
   return {
     availability: availability.data,
-    savePending: save.isPending,
-    saveError: save.error,
-    onSave: (input: ServiceInput) => save.mutate(input),
+    save: toAction(save),
   };
 }
 

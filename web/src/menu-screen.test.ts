@@ -3,9 +3,11 @@ import { createIntent } from "./intent.ts";
 import {
   dishScale,
   dishScaleSave,
+  menuHref,
   newMenuInput,
   openingScaleKind,
   parseGuests,
+  scaleInputs,
   serviceInput,
   serviceSave,
 } from "./menu-screen.ts";
@@ -128,5 +130,40 @@ describe("serviceSave", () => {
     const later = serviceSave("m-dinner", null, { date: "2026-10-31", time: null }, intent);
     expect(later.id).not.toBe(first.id);
     expect(later.args.serviceId).not.toBe(first.args.serviceId);
+  });
+});
+
+describe("menuHref", () => {
+  it("opens a Recipe from the Menu, keeping the Menu for the way back", () => {
+    expect(menuHref({ menu: "m-dinner", view: "recipe", recipe: "r-velouté" })).toBe(
+      "?menu=m-dinner&view=recipe&recipe=r-velout%C3%A9",
+    );
+  });
+
+  it("opens the Plan or the Shopping list of the Menu's Service", () => {
+    expect(menuHref({ menu: "m-dinner", view: "plan", service: "s-saturday" })).toBe(
+      "?menu=m-dinner&view=plan&service=s-saturday",
+    );
+    expect(menuHref({ menu: "m-dinner", view: "shopping", service: "s-saturday" })).toBe(
+      "?menu=m-dinner&view=shopping&service=s-saturday",
+    );
+  });
+});
+
+describe("scaleInputs", () => {
+  it("asks for no number when the Dish scales by the guest count", () => {
+    expect(scaleInputs.guests).toBeNull();
+  });
+
+  it("asks for a whole number of portions, from 1 to 10 000", () => {
+    const portions = scaleInputs.portions!;
+    expect(portions.label("Velouté")).toBe("Portions of Velouté");
+    expect(portions).toMatchObject({ min: 1, max: 10_000, step: 1 });
+  });
+
+  it("asks for any factor from 0.01 to 1000", () => {
+    const factor = scaleInputs.factor!;
+    expect(factor.label("Velouté")).toBe("Factor for Velouté");
+    expect(factor).toMatchObject({ min: 0.01, max: 1000, step: "any" });
   });
 });

@@ -1,6 +1,5 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { renderView } from "../test/render-view.tsx";
 import type { ShoppingList, ShoppingRow } from "./api.ts";
 import { needText } from "./need.ts";
 import { missingText } from "./shopping-list.ts";
@@ -39,13 +38,13 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("Shopping list", () => {
   it("shows Loading… while the list loads", () => {
-    renderView(<ShoppingListView list={{ status: "pending" }} renderRow={() => null} />);
+    render(<ShoppingListView list={{ status: "pending" }} renderRow={() => null} />);
     expect(screen.getByText("Loading…")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Shopping list" })).toBeNull();
   });
 
   it("shows a failed load as an alert with its message", () => {
-    renderView(
+    render(
       <ShoppingListView
         list={{ status: "error", error: new Error("Could not load the Shopping list (500)") }}
         renderRow={() => null}
@@ -55,7 +54,7 @@ describe("Shopping list", () => {
   });
 
   it("says there is nothing to buy when no category has rows", () => {
-    renderView(
+    render(
       <ShoppingListView list={loaded({ ...walkthrough, categories: [] })} renderRow={() => null} />,
     );
     expect(screen.getByRole("heading", { name: "Shopping list" })).toBeTruthy();
@@ -64,16 +63,14 @@ describe("Shopping list", () => {
   });
 
   it("links back to the Service's Menu", () => {
-    renderView(<ShoppingListView list={loaded(walkthrough)} renderRow={() => null} />);
+    render(<ShoppingListView list={loaded(walkthrough)} renderRow={() => null} />);
     expect(screen.getByRole("link", { name: "Back to the Menu" }).getAttribute("href")).toBe(
       "?menu=m-1",
     );
   });
 
   it("groups the rows under each category in the list's order", () => {
-    renderView(
-      <ShoppingListView list={loaded(walkthrough)} renderRow={(r) => <li>{r.name}</li>} />,
-    );
+    render(<ShoppingListView list={loaded(walkthrough)} renderRow={(r) => <li>{r.name}</li>} />);
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
       "Produce",
       "Dairy & eggs",
@@ -90,7 +87,7 @@ describe("Shopping list", () => {
 
   it("prints the page", () => {
     const print = vi.spyOn(window, "print").mockImplementation(() => {});
-    renderView(<ShoppingListView list={loaded(walkthrough)} renderRow={() => null} />);
+    render(<ShoppingListView list={loaded(walkthrough)} renderRow={() => null} />);
     fireEvent.click(screen.getByRole("button", { name: "Print" }));
     expect(print).toHaveBeenCalledOnce();
   });
@@ -100,9 +97,7 @@ describe("Shopping list", () => {
       { lineId: "l-1", recipeName: "Velouté", wording: "chicken stock" },
       { lineId: "l-2", recipeName: "Tarte tatin", wording: null },
     ];
-    renderView(
-      <ShoppingListView list={loaded({ ...walkthrough, missing })} renderRow={() => null} />,
-    );
+    render(<ShoppingListView list={loaded({ ...walkthrough, missing })} renderRow={() => null} />);
     const items = within(screen.getByRole("list", { name: "Missing sub-recipes" })).getAllByRole(
       "listitem",
     );
@@ -110,14 +105,14 @@ describe("Shopping list", () => {
   });
 
   it("shows no Missing sub-recipes list when there are none", () => {
-    renderView(<ShoppingListView list={loaded(walkthrough)} renderRow={() => null} />);
+    render(<ShoppingListView list={loaded(walkthrough)} renderRow={() => null} />);
     expect(screen.queryByRole("list", { name: "Missing sub-recipes" })).toBeNull();
   });
 });
 
 describe("Shopping row", () => {
   const rowView = (props: Partial<Parameters<typeof ShoppingRowView>[0]> = {}) =>
-    renderView(
+    render(
       <ul>
         <ShoppingRowView
           row={butter}

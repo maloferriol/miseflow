@@ -1,6 +1,5 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { renderView } from "../test/render-view.tsx";
 import type { Availability } from "./api.ts";
 import { AvailabilityView, type AvailabilityViewProps } from "./AvailabilityView.tsx";
 import { minuteOfDay } from "./time-of-day.ts";
@@ -51,26 +50,26 @@ const overrideField = (label: string) => screen.getAllByLabelText(label).at(-1) 
 
 describe("Availability view", () => {
   it("shows Loading… while the Availability loads", () => {
-    renderView(<AvailabilityView {...props({ availability: { status: "pending" } })} />);
+    render(<AvailabilityView {...props({ availability: { status: "pending" } })} />);
     expect(screen.getByText("Loading…")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Availability" })).toBeNull();
   });
 
   it("shows a failed load as an alert with its message", () => {
     const error = new Error("Could not load the Availability (500)");
-    renderView(<AvailabilityView {...props({ availability: { status: "error", error } })} />);
+    render(<AvailabilityView {...props({ availability: { status: "error", error } })} />);
     expect(screen.getByRole("alert").textContent).toBe("Could not load the Availability (500)");
     expect(screen.queryByRole("button", { name: "Save week" })).toBeNull();
   });
 
   it("says the times are in the kitchen's time zone, and shows the default Service time", () => {
-    renderView(<AvailabilityView {...props()} />);
+    render(<AvailabilityView {...props()} />);
     expect(screen.getByText("Times are in the kitchen's time zone, Europe/Paris.")).toBeTruthy();
     expect(field(screen.getByLabelText("Default Service time")).value).toBe("19:00");
   });
 
   it("shows each weekday's saved hours, and a day off unticked with no times", () => {
-    renderView(<AvailabilityView {...props()} />);
+    render(<AvailabilityView {...props()} />);
     const thursday = day("Thursday");
     expect(field(thursday.getByLabelText("Available")).checked).toBe(true);
     expect(field(thursday.getByLabelText("From")).value).toBe("18:00");
@@ -83,7 +82,7 @@ describe("Availability view", () => {
   });
 
   it("lists each date override with its hours, or as not available", () => {
-    renderView(<AvailabilityView {...props()} />);
+    render(<AvailabilityView {...props()} />);
     const items = within(screen.getByRole("list", { name: "Date overrides" })).getAllByRole(
       "listitem",
     );
@@ -95,7 +94,7 @@ describe("Availability view", () => {
 
   it("removes a date's override with its Remove button", () => {
     const onRemoveOverride = vi.fn();
-    renderView(<AvailabilityView {...props({ onRemoveOverride })} />);
+    render(<AvailabilityView {...props({ onRemoveOverride })} />);
     const sunday = screen.getByText(/2026-11-01/);
     fireEvent.click(within(sunday).getByRole("button", { name: "Remove" }));
     expect(onRemoveOverride).toHaveBeenCalledExactlyOnceWith("2026-11-01");
@@ -103,7 +102,7 @@ describe("Availability view", () => {
 
   it("saves the default Service time typed", () => {
     const onSaveDefault = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveDefault })} />);
+    render(<AvailabilityView {...props({ onSaveDefault })} />);
     type(screen.getByLabelText("Default Service time"), "19:30");
     fireEvent.submit(button("Save default"));
     expect(onSaveDefault).toHaveBeenCalledExactlyOnceWith(at("19:30"));
@@ -111,7 +110,7 @@ describe("Availability view", () => {
 
   it("saves no default Service time when the field is empty", () => {
     const onSaveDefault = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveDefault })} />);
+    render(<AvailabilityView {...props({ onSaveDefault })} />);
     type(screen.getByLabelText("Default Service time"), "");
     fireEvent.submit(button("Save default"));
     expect(onSaveDefault).not.toHaveBeenCalled();
@@ -119,7 +118,7 @@ describe("Availability view", () => {
 
   it("saves the week as shown when nothing is changed", () => {
     const onSaveWeek = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveWeek })} />);
+    render(<AvailabilityView {...props({ onSaveWeek })} />);
     fireEvent.submit(button("Save week"));
     expect(onSaveWeek).toHaveBeenCalledExactlyOnceWith([
       { weekday: 4, start: at("18:00"), end: at("22:00") },
@@ -130,7 +129,7 @@ describe("Availability view", () => {
 
   it("saves the week as changed: a day unticked, a day added, a day until midnight", () => {
     const onSaveWeek = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveWeek })} />);
+    render(<AvailabilityView {...props({ onSaveWeek })} />);
     fireEvent.click(day("Thursday").getByLabelText("Available"));
     fireEvent.click(day("Monday").getByLabelText("Available"));
     type(day("Monday").getByLabelText("From"), "10:00");
@@ -146,7 +145,7 @@ describe("Availability view", () => {
 
   it("leaves out of the week a day ticked Available without both times", () => {
     const onSaveWeek = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveWeek })} />);
+    render(<AvailabilityView {...props({ onSaveWeek })} />);
     fireEvent.click(day("Monday").getByLabelText("Available"));
     type(day("Monday").getByLabelText("From"), "10:00");
     type(day("Saturday").getByLabelText("From"), "");
@@ -158,14 +157,14 @@ describe("Availability view", () => {
   });
 
   it("keeps the week as edited while the saved hours stay the same", () => {
-    const { rerender } = renderView(<AvailabilityView {...props()} />);
+    const { rerender } = render(<AvailabilityView {...props()} />);
     type(day("Thursday").getByLabelText("To"), "23:00");
     rerender(<AvailabilityView {...props({ weekPending: true })} />);
     expect(field(day("Thursday").getByLabelText("To")).value).toBe("23:00");
   });
 
   it("shows the newly saved hours once the week changes", () => {
-    const { rerender } = renderView(<AvailabilityView {...props()} />);
+    const { rerender } = render(<AvailabilityView {...props()} />);
     type(day("Thursday").getByLabelText("To"), "23:00");
     const saved = {
       ...walkthrough,
@@ -179,7 +178,7 @@ describe("Availability view", () => {
 
   it("saves a date override's hours", () => {
     const onSaveOverride = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveOverride })} />);
+    render(<AvailabilityView {...props({ onSaveOverride })} />);
     type(screen.getByLabelText("Date"), "2026-10-29");
     type(overrideField("From"), "19:00");
     type(overrideField("To"), "00:00");
@@ -192,7 +191,7 @@ describe("Availability view", () => {
 
   it("saves a date as not available, whatever hours are typed", () => {
     const onSaveOverride = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveOverride })} />);
+    render(<AvailabilityView {...props({ onSaveOverride })} />);
     type(screen.getByLabelText("Date"), "2026-10-29");
     type(overrideField("From"), "19:00");
     fireEvent.click(screen.getByLabelText("Not available"));
@@ -205,7 +204,7 @@ describe("Availability view", () => {
 
   it("saves no override for hours missing a To, or without a date", () => {
     const onSaveOverride = vi.fn();
-    renderView(<AvailabilityView {...props({ onSaveOverride })} />);
+    render(<AvailabilityView {...props({ onSaveOverride })} />);
     type(screen.getByLabelText("Date"), "2026-10-29");
     type(overrideField("From"), "19:00");
     fireEvent.submit(button("Save override"));
@@ -216,7 +215,7 @@ describe("Availability view", () => {
   });
 
   it("disables each save button while its own save is pending", () => {
-    const { rerender } = renderView(<AvailabilityView {...props({ defaultPending: true })} />);
+    const { rerender } = render(<AvailabilityView {...props({ defaultPending: true })} />);
     const disabled = () =>
       ["Save default", "Save week", "Save override"].filter(
         (name) => (button(name) as HTMLButtonElement).disabled,
@@ -243,12 +242,12 @@ describe("Availability view", () => {
 
   it("shows a failed save as an alert with its message", () => {
     const error = new Error("setWeeklyAvailability failed (500)");
-    renderView(<AvailabilityView {...props({ error })} />);
+    render(<AvailabilityView {...props({ error })} />);
     expect(screen.getByRole("alert").textContent).toBe("setWeeklyAvailability failed (500)");
   });
 
   it("shows no alert while no save has failed", () => {
-    renderView(<AvailabilityView {...props()} />);
+    render(<AvailabilityView {...props()} />);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });

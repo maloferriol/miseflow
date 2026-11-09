@@ -80,7 +80,8 @@ beforeEach(() => {
 });
 
 // The args of the mutation sent with this name.
-const sent = (name: string) => vi.mocked(mutate).mock.calls.find((call) => call[1] === name)?.[2];
+const sent = (name: string) =>
+  vi.mocked(mutate).mock.calls.find((call) => call[0].name === name)?.[0].args;
 
 function renderStepForm(opened?: RecipeStep) {
   const onDone = vi.fn();
@@ -98,15 +99,14 @@ describe("Step form hook", () => {
       text: "Sweat @shallots{2%clove}(diced) gently",
       pickerAt: null,
       unmatched: [],
-      savePending: false,
-      saveError: null,
+      save: { pending: false, error: null },
     });
   });
 
   it("saves an opened Step as editStep, keeping its line, then refetches the Recipe and closes", async () => {
     const { result, client, onDone } = renderStepForm(step);
 
-    act(() => result.current.onSave());
+    act(() => result.current.save.run());
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
     expect(sent("editStep")).toEqual({
       stepId: "s-1",
@@ -135,7 +135,7 @@ describe("Step form hook", () => {
     expect(result.current.text).toBe("");
 
     act(() => result.current.onEdit("Sweat the shallots", 18));
-    act(() => result.current.onSave());
+    act(() => result.current.save.run());
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
     expect(sent("addStep")).toEqual({
       recipeId: "r-1",
@@ -151,7 +151,7 @@ describe("Step form hook", () => {
     const { result, onDone } = renderStepForm();
 
     act(() => result.current.onEdit("Dice @onion{1}", 14));
-    act(() => result.current.onSave());
+    act(() => result.current.save.run());
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
     expect(fetchIngredients).toHaveBeenCalledWith("onion");
     expect(fetchRecipes).toHaveBeenCalled();
@@ -171,19 +171,19 @@ describe("Step form hook", () => {
     const { result, onDone } = renderStepForm();
 
     act(() => result.current.onEdit("Dice @shalot{2}", 15));
-    act(() => result.current.onSave());
+    act(() => result.current.save.run());
     await waitFor(() =>
       expect(result.current.unmatched).toEqual([
         { name: "shalot", amount: "2", near: [shallots], nearRecipes: [] },
       ]),
     );
-    await waitFor(() => expect(result.current.savePending).toBe(false));
+    await waitFor(() => expect(result.current.save.pending).toBe(false));
     expect(mutate).not.toHaveBeenCalled();
     expect(onDone).not.toHaveBeenCalled();
 
     act(() => result.current.link("shalot", { ingredientId: "i-shallot" }));
     expect(result.current.unmatched).toEqual([]);
-    act(() => result.current.onSave());
+    act(() => result.current.save.run());
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
     expect(sent("addStep")?.lines).toMatchObject([
       { ingredientId: "i-shallot", wording: "shalot" },
@@ -200,7 +200,7 @@ describe("Step form hook", () => {
     act(() => result.current.onInsert(insertPick("Dice @", 5, { ingredient: onion })));
     expect(result.current).toMatchObject({ text: "Dice @onion{}", pickerAt: null });
 
-    act(() => result.current.onSave());
+    act(() => result.current.save.run());
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
     expect(fetchIngredients).not.toHaveBeenCalled();
     expect(sent("addStep")?.lines).toMatchObject([{ ingredientId: "i-onion", wording: "onion" }]);
@@ -211,13 +211,13 @@ describe("Step form hook", () => {
     vi.mocked(mutate).mockReturnValue(new Promise((_, reject) => (fail = reject)));
     const { result, client, onDone } = renderStepForm(step);
 
-    act(() => result.current.onSave());
-    await waitFor(() => expect(result.current.savePending).toBe(true));
+    act(() => result.current.save.run());
+    await waitFor(() => expect(result.current.save.pending).toBe(true));
     act(() => fail(new Error("Could not save the Step (500)")));
     await waitFor(() =>
-      expect(result.current.saveError).toEqual(new Error("Could not save the Step (500)")),
+      expect(result.current.save.error).toEqual(new Error("Could not save the Step (500)")),
     );
-    expect(result.current.savePending).toBe(false);
+    expect(result.current.save.pending).toBe(false);
     expect(client.getQueryState(["recipe", "r-1"])?.isInvalidated).toBe(true);
     expect(onDone).not.toHaveBeenCalled();
   });

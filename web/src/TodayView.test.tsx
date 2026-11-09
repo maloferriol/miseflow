@@ -1,6 +1,5 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { renderView } from "../test/render-view.tsx";
 import {
   dayOf,
   FRIDAY,
@@ -51,26 +50,26 @@ const box = (name: string) => screen.getByRole<HTMLInputElement>("checkbox", { n
 
 describe("Today checklist view", () => {
   it("shows Loading… while the Plan loads", () => {
-    renderView(<TodayView {...props(walkthroughPlan(), null)} plan={{ status: "pending" }} />);
+    render(<TodayView {...props(walkthroughPlan(), null)} plan={{ status: "pending" }} />);
     expect(screen.getByText("Loading…")).toBeTruthy();
     expect(screen.queryByRole("tablist")).toBeNull();
   });
 
   it("shows a failed load as an alert with its message", () => {
     const error = new Error("Could not load the Plan (500)");
-    renderView(<TodayView {...props(walkthroughPlan(), null)} plan={{ status: "error", error }} />);
+    render(<TodayView {...props(walkthroughPlan(), null)} plan={{ status: "error", error }} />);
     expect(screen.getByRole("alert").textContent).toBe("Could not load the Plan (500)");
   });
 
   it("links back to this Service's Plan", () => {
-    renderView(<TodayView {...props(walkthroughPlan(), null)} />);
+    render(<TodayView {...props(walkthroughPlan(), null)} />);
     expect(screen.getByRole("link", { name: "Back to the Plan" }).getAttribute("href")).toBe(
       `?view=plan&service=${SERVICE_ID}`,
     );
   });
 
   it("shows a tab per prep day, the shown day's selected", () => {
-    renderView(<TodayView {...props(walkthroughPlan(), FRIDAY)} />);
+    render(<TodayView {...props(walkthroughPlan(), FRIDAY)} />);
     const tablist = screen.getByRole("tablist", { name: "Prep days" });
     const tabs = within(tablist).getAllByRole("tab");
     expect(tabs.map((t) => t.textContent)).toEqual([THURSDAY, FRIDAY, SATURDAY].map(dayHeading));
@@ -81,14 +80,14 @@ describe("Today checklist view", () => {
 
   it("chooses the day of the tab the cook clicks", () => {
     const p = props(walkthroughPlan(), FRIDAY);
-    renderView(<TodayView {...p} />);
+    render(<TodayView {...p} />);
     fireEvent.click(screen.getByRole("tab", { name: dayHeading(SATURDAY) }));
     expect(p.onChoose).toHaveBeenCalledWith(SATURDAY);
   });
 
   it("lists the shown day's Tasks in Plan time order, with their times, owner and Steps", () => {
     const plan = walkthroughPlan();
-    renderView(<TodayView {...props(plan, SATURDAY)} />);
+    render(<TodayView {...props(plan, SATURDAY)} />);
     expect(within(panel()).getByRole("list", { name: dayHeading(SATURDAY) })).toBeTruthy();
     const lines = tasksOn(plan, SATURDAY).map((t) => lineOf(t, SATURDAY));
     expect(lines).toHaveLength(5);
@@ -97,14 +96,14 @@ describe("Today checklist view", () => {
 
   it("shows no Task panel when the Plan has no days", () => {
     const plan = walkthroughPlan({ days: [] });
-    renderView(<TodayView {...props(plan, null)} />);
+    render(<TodayView {...props(plan, null)} />);
     expect(screen.queryAllByRole("tab")).toEqual([]);
     expect(screen.queryByRole("tabpanel")).toBeNull();
   });
 
   it("shows a behind Task as behind, when it was due and what it holds up", () => {
     const plan = pastryBehindPlan();
-    renderView(<TodayView {...props(plan, null)} />);
+    render(<TodayView {...props(plan, null)} />);
     const [pastry] = items();
     const { behind } = taskIn(plan, keys.pastry);
     expect(pastry.textContent).toContain(`· behind · was due ${wasDue(behind!, FRIDAY)}`);
@@ -122,7 +121,7 @@ describe("Today checklist view", () => {
     saturday.tasks = saturday.tasks.map((t) =>
       t.key === keys.duck ? { ...t, behind: { ...behind!, holdsUp: [] } } : t,
     );
-    renderView(<TodayView {...props(plan, SATURDAY)} />);
+    render(<TodayView {...props(plan, SATURDAY)} />);
     const position = (key: string) => saturday.tasks.findIndex((t) => t.key === key);
     const late = items()[position(keys.duck)];
     const veloute = items()[position(keys.veloute)];
@@ -134,7 +133,7 @@ describe("Today checklist view", () => {
 
   it("shows each conflict's sentence under its Task", () => {
     const [conflict] = troubledPlan.conflicts;
-    const { unmount } = renderView(
+    const { unmount } = render(
       <TodayView {...props(troubledPlan, dayOf(troubledPlan, conflict.key))} />,
     );
     const [stock] = items();
@@ -142,19 +141,19 @@ describe("Today checklist view", () => {
     expect(within(stock).getByText(conflict.sentence)).toBeTruthy();
     unmount();
 
-    renderView(<TodayView {...props(troubledPlan, SATURDAY)} />);
+    render(<TodayView {...props(troubledPlan, SATURDAY)} />);
     expect(within(panel()).queryByText(conflict.sentence)).toBeNull();
   });
 
   it("shows a tick box per Step, ticked when the Step is done", () => {
-    const { unmount } = renderView(<TodayView {...props(walkthroughPlan(), THURSDAY)} />);
+    const { unmount } = render(<TodayView {...props(walkthroughPlan(), THURSDAY)} />);
     expect([box("Dry-brine the duck").checked, box("Dry-brine the duck").disabled]).toEqual([
       true,
       false,
     ]);
     unmount();
 
-    renderView(<TodayView {...props(walkthroughPlan(), FRIDAY)} />);
+    render(<TodayView {...props(walkthroughPlan(), FRIDAY)} />);
     expect([box("Make the pastry").checked, box("Make the pastry").disabled]).toEqual([
       false,
       false,
@@ -164,7 +163,7 @@ describe("Today checklist view", () => {
   it("ticks a Step for its Task", () => {
     const plan = walkthroughPlan();
     const p = props(plan, SATURDAY);
-    renderView(<TodayView {...p} />);
+    render(<TodayView {...p} />);
     fireEvent.click(box("Score and season"));
     expect(p.onTick).toHaveBeenCalledWith(taskIn(plan, keys.duck), "D2", true);
   });
@@ -172,7 +171,7 @@ describe("Today checklist view", () => {
   it("unticks a done Step for its Task", () => {
     const plan = walkthroughPlan();
     const p = props(plan, THURSDAY);
-    renderView(<TodayView {...p} />);
+    render(<TodayView {...p} />);
     fireEvent.click(box("Dry-brine the duck"));
     expect(p.onTick).toHaveBeenCalledWith(taskIn(plan, keys.brine), "D1", false);
   });
@@ -181,7 +180,7 @@ describe("Today checklist view", () => {
     const plan = walkthroughPlan();
     const stock = taskIn(plan, keys.stock);
     const ticking = { key: tickKey(stock, "S2"), done: true };
-    renderView(<TodayView {...props(plan, SATURDAY, { ticking })} />);
+    render(<TodayView {...props(plan, SATURDAY, { ticking })} />);
     const boxes = screen.getAllByRole<HTMLInputElement>("checkbox");
     const expected = tasksOn(plan, SATURDAY).flatMap((t) =>
       t.steps.map((s) => [s.text, t === stock && s.id === "S2", true]),
@@ -194,19 +193,19 @@ describe("Today checklist view", () => {
 
   it("shows a failed tick as an alert with its message", () => {
     const tickError = new Error("Could not save (500)");
-    renderView(<TodayView {...props(walkthroughPlan(), THURSDAY, { tickError })} />);
+    render(<TodayView {...props(walkthroughPlan(), THURSDAY, { tickError })} />);
     expect(screen.getByRole("alert").textContent).toBe("Could not save (500)");
   });
 
   it("says every Task is planned when none is Unplaced", () => {
-    renderView(<TodayView {...props(walkthroughPlan(), null)} />);
+    render(<TodayView {...props(walkthroughPlan(), null)} />);
     expect(screen.getByText("Every Task is planned")).toBeTruthy();
     expect(screen.queryByRole("list", { name: "Unplaced Tasks" })).toBeNull();
   });
 
   it("lists each Unplaced Task with its owner, Steps and reason", () => {
     const [pastry] = troubledPlan.unplaced;
-    renderView(<TodayView {...props(troubledPlan, null)} />);
+    render(<TodayView {...props(troubledPlan, null)} />);
     const list = screen.getByRole("list", { name: "Unplaced Tasks" });
     expect(within(list).getByRole("listitem").textContent).toBe(
       `Pastry ×1 · for: Tarte tatin · Make the pastry: ${pastry.sentence}`,
@@ -216,13 +215,13 @@ describe("Today checklist view", () => {
 
   it("prints the Plan when the cook asks", () => {
     const p = props(walkthroughPlan(), null);
-    renderView(<TodayView {...p} />);
+    render(<TodayView {...p} />);
     fireEvent.click(screen.getByRole("button", { name: "Print the Plan" }));
     expect(p.onPrint).toHaveBeenCalledOnce();
   });
 
   it("holds the printed Plan", () => {
-    renderView(<TodayView {...props(walkthroughPlan(), null)} />);
+    render(<TodayView {...props(walkthroughPlan(), null)} />);
     expect(screen.getByRole("region", { name: "Printed Plan" })).toBeTruthy();
   });
 });

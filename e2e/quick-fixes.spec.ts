@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   buildWalkthrough,
   SERVICE_TIME,
@@ -7,6 +7,7 @@ import {
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+import { starts } from "./gantt-helpers.ts";
 import { apiUrl } from "../scripts/e2e-ports.ts";
 import { week } from "./walkthrough-week.ts";
 
@@ -48,22 +49,6 @@ const mutated = (page: Page) =>
   page.waitForResponse(
     (r) => r.url().endsWith("/api/mutate") && r.request().method() === "POST" && r.ok(),
   );
-
-// Every bar's start by Task key (copies of one Task must agree).
-async function starts(gantt: Locator) {
-  const bars = await gantt
-    .locator("[data-key]")
-    .evaluateAll((els) =>
-      els.map((el) => [el.getAttribute("data-key")!, el.getAttribute("data-start")!]),
-    );
-  const out: Record<string, string> = {};
-  for (const [key, start] of bars) {
-    if (key in out && out[key] !== start)
-      throw new Error(`Copies of ${key} disagree: ${out[key]} and ${start}`);
-    out[key] = start!;
-  }
-  return out;
-}
 
 test("AC6: Friday shortened leaves the pastry Unplaced with Plan trouble 1; Give the Cook more time brings it back and moves nothing else", async ({
   page,

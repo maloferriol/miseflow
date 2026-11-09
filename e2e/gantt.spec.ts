@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { zonedMinute } from "../shared/src/plan/time.ts";
 import {
   buildWalkthrough,
@@ -8,6 +8,7 @@ import {
   type Walkthrough,
 } from "../shared/test/walkthrough.ts";
 import { createTestUser, deleteTestUser, type TestUser } from "./test-user.ts";
+import { dragTo, starts } from "./gantt-helpers.ts";
 import { apiUrl } from "../scripts/e2e-ports.ts";
 import { week } from "./walkthrough-week.ts";
 
@@ -60,48 +61,6 @@ async function openPlan(page: Page) {
   const gantt = page.getByRole("region", { name: "Gantt chart" });
   await expect(gantt).toBeVisible();
   return gantt;
-}
-
-// Drags `bar` so it starts at `target` (a Minute): the date band holding `target` gives its x, and
-// the bar is grabbed 2 px in from its left edge, where its start is.
-async function dragTo(page: Page, gantt: Locator, bar: Locator, target: number) {
-  await bar.scrollIntoViewIfNeeded();
-  const bands = await gantt.locator("[data-band]").evaluateAll((els) =>
-    els.map((el) => {
-      const box = el.getBoundingClientRect();
-      return {
-        from: Number(el.getAttribute("data-from")),
-        to: Number(el.getAttribute("data-to")),
-        x: box.x,
-        width: box.width,
-      };
-    }),
-  );
-  const band = bands.find((b) => b.from <= target && target <= b.to);
-  if (!band) throw new Error(`No date band holds ${target}`);
-  const x = band.x + ((target - band.from) / (band.to - band.from)) * band.width;
-  const box = (await bar.boundingBox())!;
-  const y = box.y + box.height / 2;
-  await page.mouse.move(box.x + 2, y);
-  await page.mouse.down();
-  await page.mouse.move(x + 2, y, { steps: 12 });
-  await page.mouse.up();
-}
-
-// Every bar's start by Task key (copies of one Task must agree).
-async function starts(gantt: Locator) {
-  const bars = await gantt
-    .locator("[data-key]")
-    .evaluateAll((els) =>
-      els.map((el) => [el.getAttribute("data-key")!, el.getAttribute("data-start")!]),
-    );
-  const out: Record<string, string> = {};
-  for (const [key, start] of bars) {
-    if (key in out && out[key] !== start)
-      throw new Error(`Copies of ${key} disagree: ${out[key]} and ${start}`);
-    out[key] = start!;
-  }
-  return out;
 }
 
 // Holds every POST /api/mutate until `release` is called.

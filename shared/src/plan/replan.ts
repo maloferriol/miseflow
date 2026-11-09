@@ -97,7 +97,8 @@ export function replanRegistry(tx: Tx, ctx: CallerContext) {
   async function finish(): Promise<string[]> {
     for (const { scope, options } of pending)
       register(await servicesInScope(tx, ctx.ownerId, scope), options);
-    const ids = [...merged.keys()].sort();
+    // Code-point order, as Postgres orders uuids, so the re-plans run in the lock order (D6).
+    const ids = [...merged.keys()].sort((a, b) => Number(a > b) - Number(a < b));
     await lockServices(
       tx,
       ids.filter((id) => !locked.has(id)),

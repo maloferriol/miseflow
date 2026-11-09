@@ -2,7 +2,7 @@
   {
     "id": "fe76b305-052a-4092-9fed-561151c0fa95",
     "name": "white wine",
-    "fdcId": null,
+    "fdcId": "174837",
     "preferredKind": "volume",
     "shoppingCategory": "Drinks",
     "aliases": [
@@ -11,12 +11,20 @@
         "name": "dry white wine"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "bd984c9b-4db5-4408-84d3-94e1e2192ea1",
+        "fromUnit": "fl oz",
+        "toUnit": "g",
+        "factor": 29.4,
+        "fdcId": "174837"
+      }
+    ]
   },
   {
     "id": "2e0f6b54-7ac7-4857-a091-23460dedb285",
     "name": "red wine",
-    "fdcId": null,
+    "fdcId": "173190",
     "preferredKind": "volume",
     "shoppingCategory": "Drinks",
     "aliases": [
@@ -25,6 +33,174 @@
         "name": "dry red wine"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "ac72b806-e23e-4be0-a025-1507e4ce4448",
+        "fromUnit": "fl oz",
+        "toUnit": "g",
+        "factor": 29.4,
+        "fdcId": "173190"
+      }
+    ]
+  },
+  {
+    "id": "0943a269-6775-4810-bc53-527c78561e3f",
+    "name": "cooking wine",
+    "fdcId": "169070",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [
+      {
+        "id": "746e945f-7ed4-4053-bf43-05e08cb0e1c8",
+        "name": "wine for cooking"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "a1a932a1-4b22-453f-85ad-e15d09a21e96",
+        "fromUnit": "tsp",
+        "toUnit": "g",
+        "factor": 4.9,
+        "fdcId": "169070"
+      },
+      {
+        "id": "5d85935c-9ca0-4471-b795-5eda27ceec7e",
+        "fromUnit": "fl oz",
+        "toUnit": "g",
+        "factor": 29,
+        "fdcId": "169070"
+      }
+    ]
+  },
+  {
+    "id": "7f8ce023-7e24-445b-b696-801a485b0035",
+    "name": "orange juice",
+    "fdcId": "169098",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [
+      {
+        "id": "95ee387b-9826-4afe-aca0-3547af91d0a9",
+        "name": "oj"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "514d4319-ef9a-4bbe-a4ac-998cf7007217",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 248,
+        "fdcId": "169098"
+      }
+    ]
+  },
+  {
+    "id": "501ff831-ec84-4520-a888-75f6cdf54ef3",
+    "name": "lemon juice",
+    "fdcId": "167747",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "71b23f95-652b-4a89-9250-483d5747b2df",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 244,
+        "fdcId": "167747"
+      }
+    ]
+  },
+  {
+    "id": "b5c5f24d-04b5-4bd1-9c75-fbb3da0352a0",
+    "name": "lime juice",
+    "fdcId": "168156",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "cdd7f543-3699-4849-8ebb-78ed83860cdb",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 242,
+        "fdcId": "168156"
+      }
+    ]
+  },
+  {
+    "id": "0257be00-fdee-476c-b09d-331a3074bfca",
+    "name": "apple juice",
+    "fdcId": "167771",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "4baa7fd3-b251-4dac-a7be-36630b3e8a0d",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 248,
+        "fdcId": "167771"
+      }
+    ]
+  },
+  {
+    "id": "37ba00d1-46d4-4f6f-b632-0d46f852f470",
+    "name": "tomato juice",
+    "fdcId": "170545",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "cbb34ac1-7eec-4228-a422-bf82e2e103bd",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 243,
+        "fdcId": "170545"
+      }
+    ]
+  },
+  {
+    "id": "f5b13df6-b912-4445-a910-b8d07bd982b2",
+    "name": "cranberry juice",
+    "fdcId": "168117",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "41bc7be4-ce9a-4e81-9fc4-a2221666b76c",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 253,
+        "fdcId": "168117"
+      }
+    ]
+  },
+  {
+    "id": "c9e24d50-e080-4b3e-9e65-2ce57b5c7769",
+    "name": "coconut water",
+    "fdcId": "170174",
+    "preferredKind": "volume",
+    "shoppingCategory": "Drinks",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "fb2e741d-5d26-4699-8cf2-256e97c84bfa",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 240,
+        "fdcId": "170174"
+      },
+      {
+        "id": "b1e1a4d1-222a-4838-90f2-7adc363e0847",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 15,
+        "fdcId": "170174"
+      }
+    ]
   }
 ]

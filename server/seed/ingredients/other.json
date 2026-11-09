@@ -2,7 +2,7 @@
   {
     "id": "cf186b06-77d0-43a7-b886-5875231523f2",
     "name": "water",
-    "fdcId": null,
+    "fdcId": "173647",
     "preferredKind": "volume",
     "shoppingCategory": "Other",
     "aliases": [
@@ -15,6 +15,214 @@
         "name": "tap water"
       }
     ],
+    "conversions": [
+      {
+        "id": "b464ffbf-6789-4927-8346-61e48f0d0755",
+        "fromUnit": "fl oz",
+        "toUnit": "g",
+        "factor": 29.6,
+        "fdcId": "173647"
+      }
+    ]
+  },
+  {
+    "id": "51908908-c1f1-47c7-b576-c5ff0a2c799d",
+    "name": "gelatine",
+    "fdcId": "169599",
+    "preferredKind": "mass",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "595f8675-6c19-463c-b72a-d049faaec15a",
+        "name": "gelatin"
+      },
+      {
+        "id": "1c795e94-3a87-47d5-a0a2-148d3a88020c",
+        "name": "powdered gelatine"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "1ab4a4f8-2cae-44b8-a4d4-8a366380d599",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 7,
+        "fdcId": "169599"
+      }
+    ]
+  },
+  {
+    "id": "704a89ed-2e3d-4543-8049-df8432018812",
+    "name": "agar agar",
+    "fdcId": "169280",
+    "preferredKind": "mass",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "cdcf6ebc-6e00-4a9a-a366-996a8c293e20",
+        "name": "agar"
+      },
+      {
+        "id": "6aa3ea72-7bcb-478c-b869-e010479e4c6c",
+        "name": "agar-agar"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2ff4ccb3-1763-4854-bdad-ee0f0ed8ae68",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 5,
+        "fdcId": "169280"
+      }
+    ]
+  },
+  {
+    "id": "2c2e26f7-2e6e-49c5-b771-c5946faf74b2",
+    "name": "nori",
+    "fdcId": "168458",
+    "preferredKind": "count",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "e89ff73b-f657-457a-b0b2-3655e3858397",
+        "name": "nori sheet"
+      },
+      {
+        "id": "84524011-50e6-4e5c-b350-d7e70bbd0523",
+        "name": "laver"
+      },
+      {
+        "id": "9735fd84-f60f-4899-9b3c-1bddea75ecfc",
+        "name": "dried seaweed sheet"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "dae3bb3a-b376-4e65-b767-9ae1a2812420",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 2.6,
+        "fdcId": "168458"
+      }
+    ]
+  },
+  {
+    "id": "366fe4a6-b20c-4aaf-a26c-541264749457",
+    "name": "tofu",
+    "fdcId": "172475",
+    "preferredKind": "mass",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "a221133e-13f5-47c7-9cd2-23fa6fc45d7f",
+        "name": "firm tofu"
+      },
+      {
+        "id": "49f719d7-de34-43ab-bc20-d1f43508d397",
+        "name": "bean curd"
+      }
+    ],
     "conversions": []
+  },
+  {
+    "id": "1984d4ba-1256-42d1-af90-cda3c50d153a",
+    "name": "miso paste",
+    "fdcId": "172442",
+    "preferredKind": "mass",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "d21a765d-5285-4135-930a-f875411326bf",
+        "name": "miso"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "95cd843d-ef17-4d82-92f7-8ad06fb1da5e",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 17,
+        "fdcId": "172442"
+      }
+    ]
+  },
+  {
+    "id": "83b93a96-c4d1-47a0-95c1-e6054ac240f9",
+    "name": "capers",
+    "fdcId": "172238",
+    "preferredKind": "mass",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "f42d5a34-ced4-4b5d-ba27-cbbd9400bcb7",
+        "name": "caper"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "7f8fdcd7-8ba3-4e4e-a687-472bd8fbf8b2",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 8.6,
+        "fdcId": "172238"
+      }
+    ]
+  },
+  {
+    "id": "ff6e387f-fef2-44bb-8214-2093c1b6a5a7",
+    "name": "black olives",
+    "fdcId": "169094",
+    "preferredKind": "mass",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "1bcecac1-af49-4368-b3e5-4e1f5e49efba",
+        "name": "ripe olives"
+      },
+      {
+        "id": "6b24a68f-e457-4104-99b1-dda5a170e21c",
+        "name": "olive"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "9e313522-20e9-4f5f-94d1-8fe31ea889fc",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 8.4,
+        "fdcId": "169094"
+      }
+    ]
+  },
+  {
+    "id": "3745bcbd-3e5a-4dc0-be59-a68a71919a61",
+    "name": "dill pickle",
+    "fdcId": "168558",
+    "preferredKind": "mass",
+    "shoppingCategory": "Other",
+    "aliases": [
+      {
+        "id": "28633a5a-e7a6-4818-9f7a-40af5067c1c9",
+        "name": "dill pickles"
+      },
+      {
+        "id": "42584e03-cd08-48d0-b966-7fdd7345c9b6",
+        "name": "gherkin"
+      },
+      {
+        "id": "c1c4dd62-b272-44da-87b5-acc431eb6a5d",
+        "name": "kosher dill pickle"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "20e82504-a491-4423-aab1-49376b16b57d",
+        "fromUnit": "slice",
+        "toUnit": "g",
+        "factor": 7,
+        "fdcId": "168558"
+      }
+    ]
   }
 ]

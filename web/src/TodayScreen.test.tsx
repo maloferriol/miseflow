@@ -107,7 +107,7 @@ describe("Today checklist hook", () => {
     await waitFor(() =>
       expect(window.location.search).toBe(`?view=today&day=${FRIDAY}&service=${SERVICE_ID}`),
     );
-    expect(window.history.length).toBe(entries);
+    expect(window.history).toHaveLength(entries);
   });
 
   it("leaves a link's day the Plan has as it is", async () => {

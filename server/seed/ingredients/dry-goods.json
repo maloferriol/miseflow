@@ -19,7 +19,15 @@
         "name": "plain flour"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "6a73aa3e-2e99-447b-a802-a150e3324bca",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 125,
+        "fdcId": "168894"
+      }
+    ]
   },
   {
     "id": "e687f066-25e6-43ac-9dbc-ffd5c734d7bb",
@@ -37,7 +45,15 @@
         "name": "white sugar"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "e9108503-cb9c-48ad-ae83-ec3f369b319f",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 200,
+        "fdcId": "169655"
+      }
+    ]
   },
   {
     "id": "d912af93-dce8-4fb1-a289-e73e399f51bd",
@@ -51,16 +67,31 @@
   {
     "id": "56e1cc10-8707-4c75-a61f-b09b07a43f1e",
     "name": "olive oil",
-    "fdcId": null,
+    "fdcId": "171413",
     "preferredKind": "volume",
     "shoppingCategory": "Dry goods",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "1db318a0-9a00-444e-b514-eb933d18d457",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 216,
+        "fdcId": "171413"
+      },
+      {
+        "id": "f84af851-9c9c-4448-9c73-fe6002e053b2",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 13.5,
+        "fdcId": "171413"
+      }
+    ]
   },
   {
     "id": "e54233b2-d73f-49b4-94b6-981e606366af",
     "name": "vegetable oil",
-    "fdcId": null,
+    "fdcId": "171411",
     "preferredKind": "volume",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -69,12 +100,20 @@
         "name": "neutral oil"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "8b31dced-c4c1-405d-b90f-d0c3f3750eb7",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 218,
+        "fdcId": "171411"
+      }
+    ]
   },
   {
     "id": "4e956b14-c40e-4709-aeb0-99053c75bccf",
     "name": "canola oil",
-    "fdcId": null,
+    "fdcId": "172336",
     "preferredKind": "volume",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -83,7 +122,15 @@
         "name": "rapeseed oil"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "c20103bb-5655-4c98-b482-4b4b50b2749f",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 218,
+        "fdcId": "172336"
+      }
+    ]
   },
   {
     "id": "faf4a762-c58a-4f32-ba3d-c19b5f9057fe",
@@ -105,12 +152,20 @@
         "name": "long-grain rice"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "7c4641cd-3e7a-48ca-a335-804ed07f79ae",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 185,
+        "fdcId": "168877"
+      }
+    ]
   },
   {
     "id": "6c958c13-371a-4b60-8166-6f4f3310bba9",
     "name": "pasta",
-    "fdcId": null,
+    "fdcId": "169736",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -133,12 +188,20 @@
         "name": "soft brown sugar"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "09825ebf-fbf9-4eb5-9995-65d447b52422",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 220,
+        "fdcId": "168833"
+      }
+    ]
   },
   {
     "id": "9ced25a7-a484-401b-b9f2-444d58b4ff2e",
     "name": "powdered sugar",
-    "fdcId": null,
+    "fdcId": "169656",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -151,16 +214,32 @@
         "name": "confectioners' sugar"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "88f4f8c3-af4c-4bbb-af63-456ce30324e7",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 120,
+        "fdcId": "169656"
+      }
+    ]
   },
   {
     "id": "d5243186-c232-4e9b-b083-e6c102c28bd1",
     "name": "honey",
-    "fdcId": null,
+    "fdcId": "169640",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "adde345d-01c8-498a-833e-060c934ce76b",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 339,
+        "fdcId": "169640"
+      }
+    ]
   },
   {
     "id": "4e26fc93-5baf-4059-8b7a-60af64b5d5c8",
@@ -174,12 +253,20 @@
         "name": "corn starch"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "4954f7bd-edf8-4b48-ac77-609789e1a16c",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 128,
+        "fdcId": "169698"
+      }
+    ]
   },
   {
     "id": "ac073343-727d-47d2-aeab-40e7752b4f57",
     "name": "baking powder",
-    "fdcId": null,
+    "fdcId": "172804",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [],
@@ -188,7 +275,7 @@
   {
     "id": "9dd7e0eb-fa4c-48f2-8354-d5f9b5abc54b",
     "name": "baking soda",
-    "fdcId": null,
+    "fdcId": "175040",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -206,7 +293,7 @@
   {
     "id": "d95016d7-e285-4393-985b-1953fb48b321",
     "name": "cocoa powder",
-    "fdcId": null,
+    "fdcId": "169593",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -219,12 +306,20 @@
         "name": "unsweetened cocoa"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "11a41cf5-600e-4201-bdae-8c0fb2872b90",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 86,
+        "fdcId": "169593"
+      }
+    ]
   },
   {
     "id": "6567ad51-538c-453c-a0da-33e204abfd8c",
     "name": "rolled oats",
-    "fdcId": null,
+    "fdcId": "173904",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -237,12 +332,20 @@
         "name": "porridge oats"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "178321cb-92b5-459b-bf83-b6b8396e65bb",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 81,
+        "fdcId": "173904"
+      }
+    ]
   },
   {
     "id": "5b6eab46-55a6-4d6c-81ca-9130f586af0c",
     "name": "chickpeas",
-    "fdcId": null,
+    "fdcId": "173756",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -251,21 +354,44 @@
         "name": "garbanzo beans"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "75aca680-ab3f-4990-b8ce-748f730fdc51",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 200,
+        "fdcId": "173756"
+      }
+    ]
   },
   {
     "id": "c42e1fb1-8b3f-43e6-ba8d-5450913dd2cf",
     "name": "lentils",
-    "fdcId": null,
+    "fdcId": "172420",
     "preferredKind": "mass",
     "shoppingCategory": "Dry goods",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "3fef5b87-5800-4f84-8cca-7d73c9ccee43",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 192,
+        "fdcId": "172420"
+      },
+      {
+        "id": "e018145c-d1e4-4119-8d8a-b88d064f3d5c",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 12,
+        "fdcId": "172420"
+      }
+    ]
   },
   {
     "id": "d79fffb2-c1f0-44d6-9ce7-0e0a27a4d9e0",
     "name": "soy sauce",
-    "fdcId": null,
+    "fdcId": "174277",
     "preferredKind": "volume",
     "shoppingCategory": "Dry goods",
     "aliases": [
@@ -274,7 +400,15 @@
         "name": "soya sauce"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "4aaf4732-ea6f-4bd3-8183-59023021e7c7",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 255,
+        "fdcId": "174277"
+      }
+    ]
   },
   {
     "id": "239ef7de-bd24-44dd-9c48-faf8cf6915f0",
@@ -288,13 +422,890 @@
   {
     "id": "6a973138-4969-49fd-a72d-55dd671b4cda",
     "name": "vanilla extract",
-    "fdcId": null,
+    "fdcId": "173471",
     "preferredKind": "volume",
     "shoppingCategory": "Dry goods",
     "aliases": [
       {
         "id": "99196ce9-085d-42a2-a444-a8b2b98fbacd",
         "name": "vanilla"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "8b14ff1e-eab4-4f7c-aaac-d38b317f3c2a",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 208,
+        "fdcId": "173471"
+      }
+    ]
+  },
+  {
+    "id": "26aeb3dd-2c58-40c2-a054-0c3364ddff0d",
+    "name": "whole wheat flour",
+    "fdcId": "168893",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "b8f5f0f9-850f-4f09-8cb7-25636eb70cac",
+        "name": "wholemeal flour"
+      },
+      {
+        "id": "774c58c5-cd9a-4b6c-922d-4dc5021ec9c5",
+        "name": "whole-grain flour"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "9ff0cdad-a535-498f-8e7f-bdc2c8682824",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 120,
+        "fdcId": "168893"
+      }
+    ]
+  },
+  {
+    "id": "8f92dbdb-fc3d-4056-be4c-466907583aa7",
+    "name": "bread flour",
+    "fdcId": "168896",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "5e8cac53-b803-4076-91bb-d79a3d48dad3",
+        "name": "strong flour"
+      },
+      {
+        "id": "1e34d586-fd8e-4d47-9c57-60f55b72a501",
+        "name": "strong white flour"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "71235875-cf4d-4c5a-b0ed-b7bded2fbf2c",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 137,
+        "fdcId": "168896"
+      }
+    ]
+  },
+  {
+    "id": "ac02bb7e-ce4c-4520-afb6-aa798afe8f7f",
+    "name": "semolina",
+    "fdcId": "169715",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "56f95930-5c85-4ba3-af3e-4245b5feb193",
+        "name": "semolina flour"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2252668d-1fe7-4d86-a5ed-5c1b3e752dff",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 167,
+        "fdcId": "169715"
+      }
+    ]
+  },
+  {
+    "id": "4e54f889-2e38-423b-90e1-e50234929115",
+    "name": "cornmeal",
+    "fdcId": "169697",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "2ee15293-296a-46ad-9a8e-6a848928343c",
+        "name": "corn meal"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "3cc89fd6-22f3-4b53-9898-636fad34a052",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 122,
+        "fdcId": "169697"
+      }
+    ]
+  },
+  {
+    "id": "b1208467-6ce2-4840-a1bf-3f5a529bc76d",
+    "name": "brown rice",
+    "fdcId": "169703",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "c077cc0b-8cb7-4b97-8099-abb975f27396",
+        "name": "whole-grain rice"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "5110f378-3fd5-42d5-8931-bbdabbd93951",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 185,
+        "fdcId": "169703"
+      }
+    ]
+  },
+  {
+    "id": "2cfaf9fe-eabb-4174-8846-d0a7fb05e291",
+    "name": "arborio rice",
+    "fdcId": "168881",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "5df45358-aafb-405f-b527-d68b57d14ecb",
+        "name": "risotto rice"
+      },
+      {
+        "id": "c1172adb-67e4-4e63-b6b0-7988047ee457",
+        "name": "short-grain rice"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2edd522a-d01c-422f-8c01-df95fb12457a",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 200,
+        "fdcId": "168881"
+      }
+    ]
+  },
+  {
+    "id": "7c28d7b7-dd71-494a-8ba3-d950322afbcf",
+    "name": "wild rice",
+    "fdcId": "169726",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "55d51872-8a66-450c-8003-482cc88822ed",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 160,
+        "fdcId": "169726"
+      }
+    ]
+  },
+  {
+    "id": "c903d52b-3fa4-49cf-a376-47cdf43db9db",
+    "name": "couscous",
+    "fdcId": "169699",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "627351c9-fcdc-4ad6-a2ee-d39907d1bffe",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 173,
+        "fdcId": "169699"
+      }
+    ]
+  },
+  {
+    "id": "f0285fdd-cd25-41b5-807a-c8d331bb417a",
+    "name": "quinoa",
+    "fdcId": "168874",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "51af8a5b-e642-4cb4-8edb-21aed21c09ec",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 170,
+        "fdcId": "168874"
+      }
+    ]
+  },
+  {
+    "id": "d7485b15-fff9-4473-92f5-843c6c0344d9",
+    "name": "bulgur",
+    "fdcId": "170688",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "916df8b9-a276-4a00-868c-553572904f51",
+        "name": "bulgur wheat"
+      },
+      {
+        "id": "fad0624b-964f-443a-a2d5-16c7348ecb87",
+        "name": "cracked wheat"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "80dd4b63-ef68-4c9a-93a3-3d7f16fdcdf1",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 140,
+        "fdcId": "170688"
+      }
+    ]
+  },
+  {
+    "id": "ef9d13e6-639d-4944-8c8d-b1d32f116959",
+    "name": "pearl barley",
+    "fdcId": "170284",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "2ba995f4-1d83-4583-903e-de3804e4d756",
+        "name": "pearled barley"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "eddaca31-3221-4237-8b90-4100a33918fc",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 200,
+        "fdcId": "170284"
+      }
+    ]
+  },
+  {
+    "id": "aaa7debf-8daa-435f-9938-6c818e6821a0",
+    "name": "black beans",
+    "fdcId": "173734",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "be9c0c03-3d8f-4393-bcf8-574623d236f8",
+        "name": "dried black beans"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "4645ce8f-3bec-4f20-b140-19247040dbf4",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 194,
+        "fdcId": "173734"
+      }
+    ]
+  },
+  {
+    "id": "1ed9bfda-d75c-459f-9abd-9e49a17cb9f6",
+    "name": "kidney beans",
+    "fdcId": "175193",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "fa4a54a0-13ed-4c29-a330-8d2a10b506d7",
+        "name": "red kidney beans"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "0b7d3132-8956-4429-b5b8-85931e82c337",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 184,
+        "fdcId": "175193"
+      }
+    ]
+  },
+  {
+    "id": "6003e6d0-9b9f-416b-a753-aeecf333d46a",
+    "name": "white beans",
+    "fdcId": "175202",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "42b74486-73ea-4be8-bb26-d5a2498eab1c",
+        "name": "dried white beans"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "00f0e952-6b16-4a2c-a577-8a816059aa75",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 202,
+        "fdcId": "175202"
+      }
+    ]
+  },
+  {
+    "id": "37dc9d79-2d0a-40e8-b27a-79cc3ac26f53",
+    "name": "pinto beans",
+    "fdcId": "175199",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "2718787d-bfe7-48a1-9f9c-883cc405b501",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 193,
+        "fdcId": "175199"
+      }
+    ]
+  },
+  {
+    "id": "084e24de-9de2-4083-b8f3-31b52e502f15",
+    "name": "red lentils",
+    "fdcId": "174284",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "2dcbc390-c882-403c-a8f8-ed98e50dbaee",
+        "name": "pink lentils"
+      },
+      {
+        "id": "559e7a15-45cd-4df5-a7ab-6a6d07e403e6",
+        "name": "split red lentils"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "ca67375e-d42a-48af-a938-7528565bc4e9",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 192,
+        "fdcId": "174284"
+      }
+    ]
+  },
+  {
+    "id": "86e40202-3ff9-4c66-8c1e-b113f0a26d10",
+    "name": "almonds",
+    "fdcId": "170567",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "847b396f-b88b-4761-973c-39abaaec54cc",
+        "name": "whole almonds"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "88c50bc5-c2ef-4112-a664-3d9749e8c0a9",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 143,
+        "fdcId": "170567"
+      }
+    ]
+  },
+  {
+    "id": "e880b2db-4b49-4a7c-839a-a6662dc6a81b",
+    "name": "walnuts",
+    "fdcId": "170187",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "299ea7e2-f5cc-4fa7-975b-00340cc36a00",
+        "name": "english walnuts"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "b3449b89-fd26-466d-a398-5f7121b7c1a3",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 117,
+        "fdcId": "170187"
+      }
+    ]
+  },
+  {
+    "id": "049c98c3-2355-4845-80bf-25496f68754e",
+    "name": "pecans",
+    "fdcId": "170182",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "70ca1ce0-d19b-429e-a087-f4d57c7caf75",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 109,
+        "fdcId": "170182"
+      }
+    ]
+  },
+  {
+    "id": "9f717fa7-9301-44f5-8159-a242f9345580",
+    "name": "cashews",
+    "fdcId": "170162",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "8ab9f4ed-fa52-4318-b6ff-1c3969dee1f8",
+        "name": "cashew nuts"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "73b2cbe4-cd11-40bf-83c4-21bf3f783dc1",
+    "name": "peanuts",
+    "fdcId": "172430",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "c55325ac-e565-4fb3-8923-cc0456626688",
+        "name": "raw peanuts"
+      },
+      {
+        "id": "2b229bbe-3106-4597-8536-184e9b2e9ee9",
+        "name": "groundnuts"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "57334194-c1e3-4ed9-97d4-4c7e73180ef6",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 146,
+        "fdcId": "172430"
+      }
+    ]
+  },
+  {
+    "id": "7990d859-190c-4be3-ab76-f466cb27210f",
+    "name": "sesame seeds",
+    "fdcId": "170150",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "6eeeb03d-01cc-41a9-8c11-9a03835a0063",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 144,
+        "fdcId": "170150"
+      }
+    ]
+  },
+  {
+    "id": "f31888e6-123c-429e-858f-551b06530693",
+    "name": "sunflower seeds",
+    "fdcId": "170562",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "b4684a6f-646d-489d-a919-4f694cb9ce80",
+        "name": "sunflower kernels"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "5ec0d30c-5170-49db-a4a8-f1585d79e2da",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 140,
+        "fdcId": "170562"
+      }
+    ]
+  },
+  {
+    "id": "1704e9f7-6cb0-451c-ba09-f4934df7d431",
+    "name": "chia seeds",
+    "fdcId": "170554",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "0b2186ff-5327-4f0c-bead-4ed4001589bd",
+        "name": "chia"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "74790338-a9e2-4d11-a518-2a6cb12627d8",
+    "name": "peanut butter",
+    "fdcId": "174266",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "7f7ec212-ef93-4a01-8bf2-c2175055d5ad",
+        "name": "smooth peanut butter"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "a598624a-c377-45db-bf23-8d3a5dc9a304",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 258,
+        "fdcId": "174266"
+      }
+    ]
+  },
+  {
+    "id": "0d3cef4c-778c-4b0c-bdc6-9d2139c7eaa9",
+    "name": "maple syrup",
+    "fdcId": "169661",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "1782fc9e-e935-4f95-953e-8340185408e9",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 315,
+        "fdcId": "169661"
+      }
+    ]
+  },
+  {
+    "id": "9edcfadf-5eb3-4c81-941d-d0e66cf75e05",
+    "name": "molasses",
+    "fdcId": "168820",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "a5756d94-1be6-4f7f-9c14-eb22fae8165b",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 337,
+        "fdcId": "168820"
+      }
+    ]
+  },
+  {
+    "id": "cf2d8f08-0981-468b-b896-cedfd18afb5e",
+    "name": "sesame oil",
+    "fdcId": "171016",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "70c0f57b-5f21-41fd-8137-1760cb0f5d20",
+        "name": "toasted sesame oil"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2fc99418-fc8a-402a-8644-dbe6e26464fa",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 218,
+        "fdcId": "171016"
+      },
+      {
+        "id": "b5cf662b-25ae-49e5-99a7-259ef9f5dbfa",
+        "fromUnit": "tbsp",
+        "toUnit": "g",
+        "factor": 13.6,
+        "fdcId": "171016"
+      }
+    ]
+  },
+  {
+    "id": "5b72e3d4-d563-470c-9095-f203f4e3db51",
+    "name": "coconut oil",
+    "fdcId": "171412",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "68d15557-cce9-435b-8aa2-8f6fbc2d7bda",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 218,
+        "fdcId": "171412"
+      }
+    ]
+  },
+  {
+    "id": "456d4866-34de-4e54-ab4f-39aeaf4f25d9",
+    "name": "sunflower oil",
+    "fdcId": "171025",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "08309205-761f-4685-ab8d-c3948250fa4b",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 218,
+        "fdcId": "171025"
+      }
+    ]
+  },
+  {
+    "id": "9fabf84d-072d-4eb5-b14c-1c0b4dc038f4",
+    "name": "apple cider vinegar",
+    "fdcId": "173469",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "86e2b56c-7968-4711-a7ed-ce50f4a35da9",
+        "name": "cider vinegar"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "cc360511-bd5d-4650-b8ee-777c45c6e449",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 239,
+        "fdcId": "173469"
+      }
+    ]
+  },
+  {
+    "id": "6fdc9c64-1a55-4db3-a4ea-9942650e8bcd",
+    "name": "balsamic vinegar",
+    "fdcId": "172241",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "dd7c5583-c0df-4b16-ba0b-2bc917ad32af",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 255,
+        "fdcId": "172241"
+      }
+    ]
+  },
+  {
+    "id": "53ecf7af-206e-430f-a92b-fe14fba05add",
+    "name": "red wine vinegar",
+    "fdcId": "172240",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "362e3a8e-6da9-4b38-9c07-3709c6f09989",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 239,
+        "fdcId": "172240"
+      }
+    ]
+  },
+  {
+    "id": "76834c19-c829-4ddf-a5fd-a06a3d210170",
+    "name": "white vinegar",
+    "fdcId": "172237",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "bdcfa164-961b-46ca-a37f-1d17d6dac267",
+        "name": "distilled vinegar"
+      },
+      {
+        "id": "b041c88e-e21f-4fd3-abe1-5897e7f9926e",
+        "name": "distilled white vinegar"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "cc9d13af-beb7-4412-b246-6caede903d24",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 238,
+        "fdcId": "172237"
+      }
+    ]
+  },
+  {
+    "id": "72bf4062-c42a-44f5-939e-b358df1a5ff9",
+    "name": "worcestershire sauce",
+    "fdcId": "171610",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "750e0c87-97d3-4f6e-8835-d8838c2b855f",
+        "name": "worcester sauce"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "0deaa85d-01c3-47af-9409-58db688d7550",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 275,
+        "fdcId": "171610"
+      }
+    ]
+  },
+  {
+    "id": "d8595c02-c4cc-4589-a898-f82d4263a19c",
+    "name": "ketchup",
+    "fdcId": "168556",
+    "preferredKind": "volume",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "4b78fee5-ed6e-40b4-8301-02d0978666f6",
+        "name": "catsup"
+      },
+      {
+        "id": "f6fa4469-3a8b-407e-8304-485dc17dccfd",
+        "name": "tomato ketchup"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "fd3c225a-6a0a-4ad9-998a-734bfe316cb5",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 240,
+        "fdcId": "168556"
+      }
+    ]
+  },
+  {
+    "id": "0414318e-bc8a-44e5-b709-f2ffd804be7f",
+    "name": "mayonnaise",
+    "fdcId": "171009",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "c32a7512-56e0-4ac7-9033-6023864564e0",
+        "name": "mayo"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "f19f336c-fcfd-4a6f-b702-893662dfccf4",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 220,
+        "fdcId": "171009"
+      }
+    ]
+  },
+  {
+    "id": "5ecc2f22-ca19-40ba-834b-a78371e94eeb",
+    "name": "tomato paste",
+    "fdcId": "170459",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "996d2885-6e92-4327-ac7b-6aa8e024cbc0",
+        "name": "concentrated tomato paste"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "49aa6f9b-fe15-4680-9b35-ece144e9fff8",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 262,
+        "fdcId": "170459"
+      }
+    ]
+  },
+  {
+    "id": "12052d14-9094-4393-8049-2f685223eda8",
+    "name": "raisins",
+    "fdcId": "168165",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "00e9cdd2-6403-474a-b251-06405ee46fcb",
+        "name": "dark raisins"
+      },
+      {
+        "id": "c23e7f23-35fa-46f2-a297-0cc4e854f271",
+        "name": "sultanas"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "4a5cfd4f-ada0-4b43-bc03-b63a9a51f386",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 145,
+        "fdcId": "168165"
+      }
+    ]
+  },
+  {
+    "id": "2c3d275a-c2c7-448a-92a2-18bb9fafcaf0",
+    "name": "chocolate chips",
+    "fdcId": "167976",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "0035cf52-8630-4da4-b4f4-0ab51cd4b446",
+        "name": "semisweet chocolate chips"
+      },
+      {
+        "id": "3d61de8d-6b47-4237-8bac-86b3118d44ea",
+        "name": "chocolate morsels"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "d228449c-9570-4e1a-8daa-c3d4f43bd0ab",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 168,
+        "fdcId": "167976"
+      }
+    ]
+  },
+  {
+    "id": "5587fedd-36a9-4ffc-9ddf-d24e50971bd8",
+    "name": "active dry yeast",
+    "fdcId": "175043",
+    "preferredKind": "mass",
+    "shoppingCategory": "Dry goods",
+    "aliases": [
+      {
+        "id": "f643c3e0-70b7-4037-af8a-eab7915dec11",
+        "name": "dry yeast"
+      },
+      {
+        "id": "c0e6277d-df2b-4923-89bb-ebe35076c1fb",
+        "name": "baker's yeast"
       }
     ],
     "conversions": []

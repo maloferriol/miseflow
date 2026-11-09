@@ -1,0 +1,128 @@
+[
+  {
+    "id": "2c6f88ba-d92e-4d3e-98f9-6e1497c2810b",
+    "name": "butter",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "7cb9562e-0365-450c-83c8-ad4b89fb03d1",
+        "name": "unsalted butter"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "0d011981-ba08-4659-aea4-f6089e0dc634",
+    "name": "heavy cream",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "e153182f-786b-4c32-a5aa-7ea70ff83d4a",
+        "name": "cream"
+      },
+      {
+        "id": "e1b9e1cd-eb31-441e-892b-759394599c59",
+        "name": "heavy whipping cream"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "b76b1d11-67b2-4d4c-b997-988f97f91df6",
+    "name": "milk",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "48e27fe2-fc74-4ae4-b8b2-e475da3a06ae",
+        "name": "whole milk"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "e9e23e01-b9bf-4c62-ad1f-be8f9a69ed7f",
+    "name": "egg",
+    "fdcId": null,
+    "preferredKind": "count",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "e70bcd1b-0aaa-4afc-8e96-687e294b9fdb",
+        "name": "large egg"
+      },
+      {
+        "id": "d84a7eec-d1f0-422c-b521-2496e8108357",
+        "name": "whole egg"
+      },
+      {
+        "id": "03403174-a298-4d58-b930-200edd58b5e6",
+        "name": "hen's egg"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2d984def-290f-4bd0-88ef-ffc0f417980c",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 50,
+        "fdcId": null
+      }
+    ]
+  },
+  {
+    "id": "24273e2a-10a5-48c6-baaf-5827e62ffe79",
+    "name": "double cream",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "9655149d-3a9d-4a7c-b573-0f42558bde9a",
+    "name": "crème fraîche",
+    "fdcId": null,
+    "preferredKind": "volume",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "dc1eeff3-08d7-4322-9ee3-df7c3640b834",
+    "name": "plain yogurt",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "f068baab-fd36-43dc-af8c-454c47451804",
+        "name": "yogurt"
+      },
+      {
+        "id": "abe2fc06-7476-40c3-ae9a-cd3c67c68884",
+        "name": "natural yogurt"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "70770181-3a88-4269-923e-073b66494341",
+    "name": "parmesan",
+    "fdcId": null,
+    "preferredKind": "mass",
+    "shoppingCategory": "Dairy & eggs",
+    "aliases": [
+      {
+        "id": "cee769a4-66bd-4883-b64a-7fb789ab15d4",
+        "name": "parmigiano reggiano"
+      }
+    ],
+    "conversions": []
+  }
+]

@@ -1,4 +1,4 @@
-// Loads the shared Ingredient seed (server/seed/ingredient-seed.json) into the database.
+// Loads the shared Ingredient seed (server/seed: seed.json and one file per Shopping category) into the database.
 // Idempotent: a second run writes nothing. Run with `npm run seed -w server`.
 import "../../scripts/load-env.ts";
 import { createDb } from "../src/db.ts";

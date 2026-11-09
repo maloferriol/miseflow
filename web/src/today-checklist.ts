@@ -22,6 +22,20 @@ export function linkWithDay(search: string, date: string) {
 }
 
 /**
+ * Puts the shown `day` in the link with `replace`, its other params kept, unless the link already
+ * names it or no day is shown (the Plan hasn't loaded or has no days). A link whose day the Plan
+ * doesn't have, or that names none, would otherwise reload or share as a day the screen isn't
+ * showing.
+ */
+export function putShownDayInLink(
+  search: string,
+  day: PlanDay | undefined,
+  replace: (link: string) => void,
+) {
+  if (day && dayFromLink(search) !== day.date) replace(linkWithDay(search, day.date));
+}
+
+/**
  * The day the checklist shows: the chosen day, else the earliest day with a behind Task, else
  * today in the kitchen's zone if it has Tasks, else the first. Undefined until the Plan has loaded,
  * or when it has no days.

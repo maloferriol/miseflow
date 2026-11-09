@@ -1,11 +1,12 @@
 // The Today checklist (ADR 0011): its hook, and the screen that renders its view with it.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchPlan, mutate, type PlanTask } from "./api.ts";
 import { useIntent } from "./intent.ts";
 import {
   dayFromLink,
   linkWithDay,
+  putShownDayInLink,
   shownDay,
   type Tick,
   type Ticking,
@@ -41,15 +42,20 @@ export function useTodayChecklist(serviceId: string) {
     onSettled: () => setTicking(null),
   });
 
+  const day = shownDay(plan.data, chosen, new Date());
+  // Once a day is shown, the link names it: a day the Plan doesn't have, or none, would reload or
+  // share as another day.
+  useEffect(() => putShownDayInLink(window.location.search, day, replaceLink), [day]);
+
   return {
     serviceId,
     plan,
-    day: shownDay(plan.data, chosen, new Date()),
+    day,
     ticking,
     tickError: tick.error,
     onChoose: (date: string) => {
       setChosen(date);
-      window.history.replaceState(null, "", linkWithDay(window.location.search, date));
+      replaceLink(linkWithDay(window.location.search, date));
     },
     onTick: (task: PlanTask, stepId: string, done: boolean) => {
       setTicking({ key: tickKey(task, stepId), done });
@@ -58,6 +64,9 @@ export function useTodayChecklist(serviceId: string) {
     onPrint: () => window.print(),
   };
 }
+
+/** Puts `link` in the address bar without adding a history entry. */
+const replaceLink = (link: string) => window.history.replaceState(null, "", link);
 
 export function TodayScreen({ serviceId }: Readonly<{ serviceId: string }>) {
   return <TodayView {...useTodayChecklist(serviceId)} />;

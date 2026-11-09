@@ -13,7 +13,7 @@ import { behindTasks } from "./behind.ts";
 import { type TaskInfo, toPlanningModel } from "./model.ts";
 import { stepKey } from "./progress.ts";
 import { describeConflict, describeUnplaced } from "./reasons.ts";
-import { findLiveService, loadPlanRows, type LoadedRows } from "./replan.ts";
+import { findLiveService, loadPlanRows, type LoadedRows } from "./rows.ts";
 import { formatInstant, formatMinuteOfDay, type LocalDate, localParts } from "./time.ts";
 
 // The Plan read: the stored Plan, laid out for the browser. `planReadOf` is pure over the loaded

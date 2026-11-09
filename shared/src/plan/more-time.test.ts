@@ -14,7 +14,7 @@ import { taskKey, type PreviousPlacement } from "../scheduler/types.ts";
 import { services } from "../schema.ts";
 import { type PlanRows, toPlanningModel } from "./model.ts";
 import { MAX_TRIALS, smallestOverride, type OverrideProposal } from "./more-time.ts";
-import { loadPlanRows } from "./replan.ts";
+import { loadPlanRows } from "./rows.ts";
 import { zonedMinute } from "./time.ts";
 
 // "Give the Cook more time" (#90): the smallest one-date Availability override that places an

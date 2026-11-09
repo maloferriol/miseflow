@@ -3,7 +3,7 @@ import type { RecipeSnapshot } from "../recipe/snapshot.ts";
 import type { PreviousPlacement } from "../scheduler/types.ts";
 import type { PlanRows } from "./model.ts";
 import { planReadOf } from "./read.ts";
-import type { LoadedRows } from "./replan.ts";
+import type { LoadedRows } from "./rows.ts";
 
 // Pure: no Tx, no Postgres. Rows are built in memory, as `loadPlanRows` would return them.
 

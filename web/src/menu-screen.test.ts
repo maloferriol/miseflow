@@ -7,6 +7,7 @@ import {
   newMenuInput,
   openingScaleKind,
   parseGuests,
+  scaleInputs,
   serviceInput,
   serviceSave,
 } from "./menu-screen.ts";
@@ -146,5 +147,23 @@ describe("menuHref", () => {
     expect(menuHref({ menu: "m-dinner", view: "shopping", service: "s-saturday" })).toBe(
       "?menu=m-dinner&view=shopping&service=s-saturday",
     );
+  });
+});
+
+describe("scaleInputs", () => {
+  it("asks for no number when the Dish scales by the guest count", () => {
+    expect(scaleInputs.guests).toBeNull();
+  });
+
+  it("asks for a whole number of portions, from 1 to 10 000", () => {
+    const portions = scaleInputs.portions!;
+    expect(portions.label("Velouté")).toBe("Portions of Velouté");
+    expect(portions).toMatchObject({ min: 1, max: 10_000, step: 1 });
+  });
+
+  it("asks for any factor from 0.01 to 1000", () => {
+    const factor = scaleInputs.factor!;
+    expect(factor.label("Velouté")).toBe("Factor for Velouté");
+    expect(factor).toMatchObject({ min: 0.01, max: 1000, step: "any" });
   });
 });

@@ -13,6 +13,7 @@ import {
   newMenuInput,
   openingScaleKind,
   type ScaleKind,
+  scaleInputs,
   type ServiceInput,
   serviceInput,
 } from "./menu-screen.ts";
@@ -205,6 +206,7 @@ export type DishScaleViewProps = {
 export function DishScaleView({ dish, save }: Readonly<DishScaleViewProps>) {
   // What the cook picked, opening on the Dish's saved scale.
   const [kind, setKind] = useState(() => openingScaleKind(dish.scale));
+  const input = scaleInputs[kind];
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -222,18 +224,14 @@ export function DishScaleView({ dish, save }: Readonly<DishScaleViewProps>) {
         <option value="portions">Portions</option>
         <option value="factor">Factor</option>
       </select>
-      {kind !== "guests" && (
+      {input && (
         <input
           name="value"
           type="number"
-          aria-label={
-            kind === "portions"
-              ? `Portions of ${dish.recipe.name}`
-              : `Factor for ${dish.recipe.name}`
-          }
-          min={kind === "portions" ? 1 : 0.01}
-          max={kind === "portions" ? 10_000 : 1000}
-          step={kind === "portions" ? 1 : "any"}
+          aria-label={input.label(dish.recipe.name)}
+          min={input.min}
+          max={input.max}
+          step={input.step}
           defaultValue={kind === "factor" ? dish.scale.factor : undefined}
           required
         />

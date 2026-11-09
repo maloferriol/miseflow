@@ -61,6 +61,21 @@ export function serviceInput(date: string, time: string): ServiceInput | null {
 /** How a Dish is scaled: by the guest count, to a portion count, or by a factor (units spec §5). */
 export type ScaleKind = "guests" | "portions" | "factor";
 
+/** The number field a scale kind asks for: its label, and the range and step it accepts. */
+export type ScaleInput = {
+  label: (recipeName: string) => string;
+  min: number;
+  max: number;
+  step: number | "any";
+};
+
+/** The number field for each scale kind; scaling by the guest count asks for none. */
+export const scaleInputs: Record<ScaleKind, ScaleInput | null> = {
+  guests: null,
+  portions: { label: (recipe) => `Portions of ${recipe}`, min: 1, max: 10_000, step: 1 },
+  factor: { label: (recipe) => `Factor for ${recipe}`, min: 0.01, max: 1000, step: "any" },
+};
+
 export type DishScale =
   { kind: "guests" } | { kind: "portions"; portions: number } | { kind: "factor"; factor: number };
 

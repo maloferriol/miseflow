@@ -28,16 +28,24 @@
   {
     "id": "355342c6-2f79-487f-9955-36d361603ea8",
     "name": "carrot",
-    "fdcId": null,
+    "fdcId": "170393",
     "preferredKind": "count",
     "shoppingCategory": "Produce",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "5e7997dd-c1e0-4162-933e-36a7c315ebdb",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 61,
+        "fdcId": "170393"
+      }
+    ]
   },
   {
     "id": "aa679fb2-9c00-449e-9649-ca6f3c059451",
     "name": "leek",
-    "fdcId": null,
+    "fdcId": "169246",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [],
@@ -46,7 +54,7 @@
   {
     "id": "9a34e907-4f60-40bf-8e21-761b592d0131",
     "name": "celery",
-    "fdcId": null,
+    "fdcId": "169988",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -64,7 +72,7 @@
   {
     "id": "b4f3b304-269b-423c-b9de-e6d1ffa849ad",
     "name": "garlic",
-    "fdcId": null,
+    "fdcId": "169230",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -79,14 +87,14 @@
         "fromUnit": "clove",
         "toUnit": "g",
         "factor": 3,
-        "fdcId": null
+        "fdcId": "169230"
       }
     ]
   },
   {
     "id": "539d46e5-636e-46e4-88f3-8c0ff7bf493e",
     "name": "thyme",
-    "fdcId": null,
+    "fdcId": "173470",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -100,7 +108,7 @@
   {
     "id": "5da594fc-c422-4b4c-9cfc-28c844335163",
     "name": "parsley",
-    "fdcId": null,
+    "fdcId": "170416",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -118,7 +126,7 @@
   {
     "id": "7c3cb9ae-eefc-4355-9969-af484dad4478",
     "name": "shallot",
-    "fdcId": null,
+    "fdcId": "170499",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -136,34 +144,58 @@
   {
     "id": "ce346a18-9476-4363-9574-a800c3842954",
     "name": "apple",
-    "fdcId": "168204",
+    "fdcId": "171688",
     "preferredKind": "count",
     "shoppingCategory": "Produce",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "e941a34b-a662-435e-af0b-9b4dfe83247d",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 182,
+        "fdcId": "171688"
+      }
+    ]
   },
   {
     "id": "ea4c0c9d-507e-4821-bb8f-c6c81c77a2fc",
     "name": "lemon",
-    "fdcId": null,
+    "fdcId": "167746",
     "preferredKind": "count",
     "shoppingCategory": "Produce",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "e6f60ceb-16f0-4776-8610-2cf1905180a2",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 58,
+        "fdcId": "167746"
+      }
+    ]
   },
   {
     "id": "ccae79db-2f0a-4346-883d-24739550fc44",
     "name": "lime",
-    "fdcId": null,
+    "fdcId": "168155",
     "preferredKind": "count",
     "shoppingCategory": "Produce",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "00134968-62c6-422d-abb0-5c69ad63abd4",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 67,
+        "fdcId": "168155"
+      }
+    ]
   },
   {
     "id": "110633de-df2b-48bf-8479-d21fde7d527b",
     "name": "potato",
-    "fdcId": null,
+    "fdcId": "170026",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [],
@@ -172,7 +204,7 @@
   {
     "id": "58bbb754-228e-4c26-aec5-ae7c7a754f4c",
     "name": "tomato",
-    "fdcId": null,
+    "fdcId": "170457",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [],
@@ -181,7 +213,7 @@
   {
     "id": "980a6fa4-a76e-473c-8927-13959354690c",
     "name": "red onion",
-    "fdcId": null,
+    "fdcId": "170000",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [],
@@ -208,7 +240,7 @@
   {
     "id": "bf55bbf2-8e5b-4c40-be99-4fe24ae80608",
     "name": "ginger",
-    "fdcId": null,
+    "fdcId": "169231",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -226,7 +258,7 @@
   {
     "id": "8414ed64-6a97-43dc-a1fc-97811bd57515",
     "name": "bell pepper",
-    "fdcId": null,
+    "fdcId": "170427",
     "preferredKind": "count",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -239,21 +271,37 @@
         "name": "capsicum"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "dead840e-4b76-4790-a0f8-f3ed2b3bf563",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 119,
+        "fdcId": "170427"
+      }
+    ]
   },
   {
     "id": "8ca0ebd2-c20e-42a5-8e28-915ed8e04688",
     "name": "cucumber",
-    "fdcId": null,
+    "fdcId": "168409",
     "preferredKind": "count",
     "shoppingCategory": "Produce",
     "aliases": [],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "3498559c-7f37-420d-9e09-fab84635aee8",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 301,
+        "fdcId": "168409"
+      }
+    ]
   },
   {
     "id": "139b2733-2577-4bbf-aed0-83ea21039996",
     "name": "zucchini",
-    "fdcId": null,
+    "fdcId": "169291",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -267,7 +315,7 @@
   {
     "id": "f053c743-0934-4c96-8bd9-bb29c01ba047",
     "name": "eggplant",
-    "fdcId": null,
+    "fdcId": "169228",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -281,7 +329,7 @@
   {
     "id": "30708cf5-a894-461f-981a-e1f807249666",
     "name": "mushroom",
-    "fdcId": null,
+    "fdcId": "169251",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -295,7 +343,7 @@
   {
     "id": "e83dd59c-c386-4bd7-8771-6609a55830f6",
     "name": "spinach",
-    "fdcId": null,
+    "fdcId": "168462",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -309,7 +357,7 @@
   {
     "id": "ced812a5-8da6-4476-b58f-c74368e80e60",
     "name": "basil",
-    "fdcId": null,
+    "fdcId": "172232",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
@@ -323,7 +371,7 @@
   {
     "id": "06f2376a-6a23-40bd-bdcd-b5841a541052",
     "name": "chives",
-    "fdcId": null,
+    "fdcId": "169994",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [],
@@ -332,13 +380,864 @@
   {
     "id": "7f78b3f0-ede6-49f1-8854-c42bf3d89eb4",
     "name": "rosemary",
-    "fdcId": null,
+    "fdcId": "173473",
     "preferredKind": "mass",
     "shoppingCategory": "Produce",
     "aliases": [
       {
         "id": "3bd2d23f-a2dc-41ef-8c18-162e752f43c2",
         "name": "fresh rosemary"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "381d95d3-82e9-4c45-8370-2692ea392076",
+    "name": "avocado",
+    "fdcId": "171705",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "002569ca-b608-4512-81b9-e45cb2cea0ce",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 201,
+        "fdcId": "171705"
+      }
+    ]
+  },
+  {
+    "id": "1329eb45-166f-44e0-b382-bef1fd8f40c6",
+    "name": "banana",
+    "fdcId": "173944",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "fa55ed3c-c09e-47c6-b625-191a81c9c41f",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 118,
+        "fdcId": "173944"
+      }
+    ]
+  },
+  {
+    "id": "b2ac2a4e-cc10-49fd-856f-7976532a9f79",
+    "name": "orange",
+    "fdcId": "169097",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "26d8c610-f740-4ae1-8375-bbe97c2748ef",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 131,
+        "fdcId": "169097"
+      }
+    ]
+  },
+  {
+    "id": "341e5fa8-4006-4333-b1ec-7c83d0cfac32",
+    "name": "pear",
+    "fdcId": "169118",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "04ba5954-ec49-44c7-bb5c-fda0e5d867b7",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 178,
+        "fdcId": "169118"
+      }
+    ]
+  },
+  {
+    "id": "9bac93d5-0ff6-42c2-b77b-33e1c33d3f32",
+    "name": "peach",
+    "fdcId": "169928",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "a0bbf0aa-4313-4708-b35b-1b0da8f6d00c",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 150,
+        "fdcId": "169928"
+      }
+    ]
+  },
+  {
+    "id": "8198a22a-52b7-4c49-b29c-599e59cd8894",
+    "name": "plum",
+    "fdcId": "169949",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "fd6f6263-032a-46a8-8716-4e3837219799",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 66,
+        "fdcId": "169949"
+      }
+    ]
+  },
+  {
+    "id": "6c364e5f-ebf5-43da-8f74-da9f2d360465",
+    "name": "kiwi",
+    "fdcId": "168153",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "cd14e0f0-7ef9-47f6-8323-46b4afadde2b",
+        "name": "kiwifruit"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "082c1b79-cac7-4b4c-a88d-65e106cc9e47",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 69,
+        "fdcId": "168153"
+      }
+    ]
+  },
+  {
+    "id": "b1f01013-d35c-4860-813f-e6730c048fb4",
+    "name": "mango",
+    "fdcId": "169910",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "23c6f87b-a91f-44a9-92ca-61aed04b2a5b",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 336,
+        "fdcId": "169910"
+      }
+    ]
+  },
+  {
+    "id": "7378fa8d-977d-4174-ada4-5421220aca09",
+    "name": "tangerine",
+    "fdcId": "169105",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "dc13cb4d-7b44-403c-8643-c87857625375",
+        "name": "mandarin"
+      },
+      {
+        "id": "95807ca6-4fa6-4999-81d4-7f8243031443",
+        "name": "mandarin orange"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2aac5174-59d1-4858-8c24-46b1d2da7d85",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 88,
+        "fdcId": "169105"
+      }
+    ]
+  },
+  {
+    "id": "e5275016-9251-40af-b2dc-33b7c5382abd",
+    "name": "pineapple",
+    "fdcId": "169124",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "d2c152dd-b475-4946-9091-4572c1f7378d",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 905,
+        "fdcId": "169124"
+      }
+    ]
+  },
+  {
+    "id": "1cc15826-905a-4fef-a191-370ee1c7d9e4",
+    "name": "strawberry",
+    "fdcId": "167762",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "df2841cc-4118-464c-a9b0-ea0984d9e1ca",
+    "name": "blueberry",
+    "fdcId": "171711",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "1c4ed8b4-d916-4ca8-8b26-2e8ebc08ac9b",
+    "name": "raspberry",
+    "fdcId": "167755",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "27312263-532d-4cda-873f-2e13561ab041",
+    "name": "blackberry",
+    "fdcId": "173946",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "bbedb220-bb8a-4525-8507-1cb2078f8033",
+    "name": "cherry",
+    "fdcId": "171719",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "9e0d86db-1fdb-4811-bdee-fefcfd7ea06f",
+        "name": "sweet cherry"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "1ff9fb4c-3ad2-4b45-bf3c-a05afbe97505",
+    "name": "grape",
+    "fdcId": "174683",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "e757d672-ce53-47c5-98aa-43667dafcdd1",
+    "name": "watermelon",
+    "fdcId": "167765",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "b27e0d39-0a79-4433-a7e4-464a82d628df",
+    "name": "cantaloupe",
+    "fdcId": "169092",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "94daeeff-7451-4f65-ad38-735611f98931",
+        "name": "rockmelon"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "33826799-f486-48ba-9627-ca5c32e6fc26",
+    "name": "broccoli",
+    "fdcId": "170379",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "fb6f6ba1-34cb-490f-8bc3-d7d42888e1ff",
+    "name": "cauliflower",
+    "fdcId": "169986",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "7c84cb57-95f1-48d2-852a-0112b6b13f8b",
+    "name": "cabbage",
+    "fdcId": "169975",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "422e3f23-8db1-49f5-9dd6-955e0d55d77e",
+        "name": "white cabbage"
+      },
+      {
+        "id": "ca7d31e2-d399-4349-804a-e7a6883fd3f0",
+        "name": "green cabbage"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "b3e23608-0737-4493-b1f9-00451c6d61a5",
+    "name": "red cabbage",
+    "fdcId": "169977",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "73b0e893-04a6-4249-baed-5b24d4d98eee",
+        "name": "purple cabbage"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "132ecbdc-712f-41c5-be63-31321aae3908",
+    "name": "napa cabbage",
+    "fdcId": "169979",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "f8c37b34-505d-4393-a8d0-6ef0152d6ab0",
+        "name": "chinese cabbage"
+      },
+      {
+        "id": "eb104435-2c87-43fd-a1ad-68a639f05be0",
+        "name": "chinese leaf"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "bd4e6800-31b1-4c96-8854-1633ae37a054",
+    "name": "brussels sprout",
+    "fdcId": "170383",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "8477206b-19e8-4f3d-9fe0-927de00b2497",
+        "name": "brussels sprouts"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "0a0fe08d-af9f-43cc-a345-8fa92171d5f1",
+    "name": "kale",
+    "fdcId": "168421",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "a2dd7782-1db7-452a-9e6a-537afe778e4a",
+    "name": "romaine lettuce",
+    "fdcId": "169247",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "7e5f1e36-4a10-4db3-ad72-4119a8daa8c9",
+        "name": "cos lettuce"
+      },
+      {
+        "id": "72336164-1e55-45ef-9474-71926229fa2b",
+        "name": "romaine"
+      },
+      {
+        "id": "54d32e31-839b-4d64-8340-26559d3aaed3",
+        "name": "cos"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "b3dd92aa-cf65-479f-b3da-58773754110d",
+    "name": "iceberg lettuce",
+    "fdcId": "169248",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "ef053e3f-bef1-478a-a28c-fffe6d30eec5",
+        "name": "iceberg"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "125d38c3-31b3-4bb6-8a17-e2197bec78a6",
+    "name": "arugula",
+    "fdcId": "169387",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "3be0e548-749e-4999-9f76-8db862b2413a",
+        "name": "rocket"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "c24a5608-6a31-4bd8-9039-9dd65ab5d7b1",
+    "name": "asparagus",
+    "fdcId": "168389",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "9ab7a4f7-9120-4fdb-a357-026990cad33a",
+    "name": "green bean",
+    "fdcId": "169961",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "630b01fb-e1e1-4a3a-8c11-ea2ccb074099",
+        "name": "french bean"
+      },
+      {
+        "id": "5ad84339-5e51-425e-9238-280d63bef321",
+        "name": "string bean"
+      },
+      {
+        "id": "b131234a-21e9-465b-aa60-d407ff29c4dd",
+        "name": "snap bean"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "9dd44f4d-f538-4c96-adb7-6e574bfe9404",
+    "name": "sweet potato",
+    "fdcId": "168482",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "c2f52b67-4223-48f5-8c03-165d50864393",
+        "name": "yam"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "52d7e309-208d-4301-8e53-8fd48eaa214b",
+    "name": "beetroot",
+    "fdcId": "169145",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "74dcccaa-b2d8-42b5-b2d4-8d561d9ec867",
+        "name": "beet"
+      },
+      {
+        "id": "1a0360b7-dab2-4b05-b065-17136adb776f",
+        "name": "red beet"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "dbff5e2a-cb96-450c-bfb1-ed8eff61c0f5",
+    "name": "radish",
+    "fdcId": "169276",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "89214703-0a56-4296-acb2-0b136a64b01e",
+    "name": "turnip",
+    "fdcId": "170465",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "16d46625-b207-47df-91ae-1e407297b34b",
+    "name": "parsnip",
+    "fdcId": "170417",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "6bbb68db-6f6b-4c84-861b-e343887027dc",
+    "name": "fennel",
+    "fdcId": "169385",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "785f5d48-6e00-4d2a-b379-d5e5aa92c1e0",
+        "name": "fennel bulb"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "03b4c37d-548c-4558-a2c8-1385160e6261",
+    "name": "butternut squash",
+    "fdcId": "169295",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "24338bfa-3656-4ea5-87d7-922b9c5bcc14",
+        "name": "butternut"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "0be2abd3-966b-4c3e-b53b-b10e6c1ad1f6",
+    "name": "pumpkin",
+    "fdcId": "168448",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "fef673d9-cb59-46b6-b520-7adb009d39ef",
+    "name": "okra",
+    "fdcId": "169260",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "4e8b2213-996b-4490-b49b-a863876dc59e",
+        "name": "lady's finger"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "13f3bcf9-ab1e-47fc-9b05-9b76e187897f",
+    "name": "sweet corn",
+    "fdcId": "169998",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "4916f5e6-c689-4056-8cb6-4513b2dcedc7",
+        "name": "corn on the cob"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "8d6cd256-a092-4162-8710-9a353a41a95c",
+    "name": "jalapeno",
+    "fdcId": "168576",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "0f4d3b7f-6fc2-4f1f-bfe5-bc4394d11f8c",
+        "name": "jalapeno pepper"
+      },
+      {
+        "id": "a33a8ba6-818e-4fcc-a946-f088df1bf2b5",
+        "name": "jalapeño"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "7ba7dd76-9f4a-4257-9833-48a10013a854",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 14,
+        "fdcId": "168576"
+      }
+    ]
+  },
+  {
+    "id": "4fae8767-8b11-43cb-84b0-56df2a5a734c",
+    "name": "chili pepper",
+    "fdcId": "170106",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "b7a6e378-c710-4a31-9999-5d914c225a68",
+        "name": "chilli"
+      },
+      {
+        "id": "dbbc085f-fd43-4644-8b2a-95883739e218",
+        "name": "red chilli"
+      },
+      {
+        "id": "668c3d90-255c-4898-a244-acabe3628f90",
+        "name": "hot pepper"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "704da200-e316-4ca8-814c-f0aabf2ccff8",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 45,
+        "fdcId": "170106"
+      }
+    ]
+  },
+  {
+    "id": "880e593c-aeab-4d11-9689-219b7d7aeab9",
+    "name": "red bell pepper",
+    "fdcId": "170108",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "d03c0033-b3ce-4f54-a847-ac870d4897cc",
+        "name": "red pepper"
+      },
+      {
+        "id": "e1473779-3a05-4721-bd52-23a898bb2c50",
+        "name": "red capsicum"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "37f30199-996b-42ae-a1c2-6f8b66aeb996",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 119,
+        "fdcId": "170108"
+      }
+    ]
+  },
+  {
+    "id": "77a4e63d-ce35-4700-bb89-069fd047623c",
+    "name": "yellow bell pepper",
+    "fdcId": "169383",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "402fadd8-f561-497b-8e82-3be75845a063",
+        "name": "yellow pepper"
+      },
+      {
+        "id": "2e4091df-a931-4160-9938-fcb89b2a6bce",
+        "name": "yellow capsicum"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "b0177532-e9be-46f8-bfb0-3497ec6a037a",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 186,
+        "fdcId": "169383"
+      }
+    ]
+  },
+  {
+    "id": "cc0d4a1c-cf98-4464-8186-37b00c82079d",
+    "name": "celeriac",
+    "fdcId": "170400",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "b6e61073-c6e0-4fa2-975d-ea6a989511c8",
+        "name": "celery root"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "6a2dc05a-11bd-4ee8-939e-be061c439758",
+    "name": "artichoke",
+    "fdcId": "169205",
+    "preferredKind": "count",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "50af2377-b879-427c-925c-02cf2b1bb878",
+        "name": "globe artichoke"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "2b7dcd20-5fbd-4763-87ab-a400de09090e",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 128,
+        "fdcId": "169205"
+      }
+    ]
+  },
+  {
+    "id": "23983aba-e4d4-478a-92d1-86675499f00a",
+    "name": "swiss chard",
+    "fdcId": "169991",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "84cc0f07-c008-4510-8ff6-1c30406de40a",
+        "name": "chard"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "8c17a4e1-f65d-4792-83f4-49ddaa8c2ab3",
+    "name": "portobello mushroom",
+    "fdcId": "169255",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "44757170-d1a3-4846-b2f4-efe2e81a0f5d",
+        "name": "portabella mushroom"
+      },
+      {
+        "id": "3c2c2d07-1eb0-4231-84f7-ba7af170bce0",
+        "name": "portobello"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "252dc512-4b6c-4253-a8ca-370d525f73d0",
+    "name": "shiitake mushroom",
+    "fdcId": "169242",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "986b5ab2-55a2-4284-9982-80b7cde2fe23",
+        "name": "shiitake"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "dc0a2b91-da57-4931-88b0-4fdd8dd94ac3",
+    "name": "oyster mushroom",
+    "fdcId": "168580",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [],
+    "conversions": []
+  },
+  {
+    "id": "3f3d292c-3a6a-4764-8e07-fa529708e287",
+    "name": "cremini mushroom",
+    "fdcId": "168434",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "75a66554-839a-4498-843c-715020ccad39",
+        "name": "crimini mushroom"
+      },
+      {
+        "id": "46dc4252-fa30-44ea-85c1-ce9a4e72229c",
+        "name": "baby bella"
+      },
+      {
+        "id": "73deb8df-a40f-4981-987e-0a93ef4edc84",
+        "name": "chestnut mushroom"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "e2227dfd-0b95-4366-910d-6ee72da21201",
+    "name": "lemongrass",
+    "fdcId": "168573",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "827444ec-8dea-4b56-a117-61bbf6881b6d",
+        "name": "lemon grass"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "39bcb045-6415-4c65-9136-5a714bd29c21",
+    "name": "cilantro",
+    "fdcId": "169997",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "66b879c2-30bd-404c-b8b1-2070da8c6e0f",
+        "name": "coriander"
+      },
+      {
+        "id": "3e1419b0-4e8e-4f1b-9631-dcc531606051",
+        "name": "fresh coriander"
+      },
+      {
+        "id": "3c430af1-d0cc-447f-89be-4251f455f620",
+        "name": "coriander leaves"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "34e73ae1-245c-4bdd-b488-bd8c7deb3302",
+    "name": "dill",
+    "fdcId": "172233",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "6e14e1ea-5f7a-4d1d-b2bf-658f2e2c82b5",
+        "name": "fresh dill"
+      }
+    ],
+    "conversions": []
+  },
+  {
+    "id": "01cc0660-5b5b-4c51-9978-27a1e4ae79c9",
+    "name": "mint",
+    "fdcId": "173475",
+    "preferredKind": "mass",
+    "shoppingCategory": "Produce",
+    "aliases": [
+      {
+        "id": "576b8dc5-a9a4-4949-8527-5c51ad6e77ba",
+        "name": "fresh mint"
+      },
+      {
+        "id": "5f41582d-5a48-4ddd-b88a-5058fbb43e5f",
+        "name": "spearmint"
       }
     ],
     "conversions": []

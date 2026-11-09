@@ -95,15 +95,22 @@ export function replanRegistry(tx: Tx, ctx: CallerContext) {
   } as Replan;
 
   async function finish(): Promise<string[]> {
-    for (const { scope, options } of pending)
-      register(await servicesInScope(tx, ctx.ownerId, scope), options);
+    // Read-only lookups, so they can run together; each is registered in the order it was asked for.
+    const found = await Promise.all(
+      pending.map(({ scope }) => servicesInScope(tx, ctx.ownerId, scope)),
+    );
+    pending.forEach(({ options }, i) => register(found[i], options));
     // Code-point order, as Postgres orders uuids, so the re-plans run in the lock order (D6).
     const ids = [...merged.keys()].sort((a, b) => Number(a > b) - Number(a < b));
     await lockServices(
       tx,
       ids.filter((id) => !locked.has(id)),
     );
-    for (const id of ids) await replanOne(tx, ctx, id, keepOf(merged.get(id)!));
+    // One at a time, in id order: each re-plan takes row locks of its own (Batches, placements).
+    await ids.reduce(
+      (previous, id) => previous.then(() => replanOne(tx, ctx, id, keepOf(merged.get(id)!))),
+      Promise.resolve(),
+    );
     return ids;
   }
 

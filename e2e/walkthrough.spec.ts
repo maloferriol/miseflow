@@ -382,7 +382,7 @@ test("4. the Plan: the stock is one Batch on Thursday, the pastry on Friday, the
   for (const step of ["Roast the bones", "Simmer the stock", "Strain the stock"])
     expect(thursday).toContain(`${stockLabel} · ${step}`);
   // One Batch: no other day makes the stock.
-  expect(await plan.getByText(/Chicken stock ×/).count()).toBe(3);
+  await expect(plan.getByText(/Chicken stock ×/)).toHaveCount(3);
 
   const friday = await texts(week.friday);
   expect(friday).toContain("Pastry ×1 · for: Tarte tatin · Make the pastry");

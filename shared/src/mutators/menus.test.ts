@@ -11,7 +11,7 @@ import {
 } from "../../test/walkthrough.ts";
 import { batchId } from "../plan/batch-rows.ts";
 import { readPlan } from "../plan/read.ts";
-import { lockService } from "../plan/replan.ts";
+import { lockService } from "../plan/rows.ts";
 import { schedule } from "../scheduler/schedule.ts";
 import {
   batches,

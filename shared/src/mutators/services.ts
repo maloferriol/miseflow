@@ -4,14 +4,13 @@ import { ownerSchema } from "../task/owner.ts";
 import type { Hours } from "../plan/model.ts";
 import { smallestOverride } from "../plan/more-time.ts";
 import {
-  findLiveService,
-  loadPlanRows,
   lockCook,
   lockServices,
   replan,
   replanAffected,
   replanFromScratchOf,
 } from "../plan/replan.ts";
+import { findLiveService, loadPlanRows } from "../plan/rows.ts";
 import { toTimeColumn } from "../plan/time.ts";
 import { taskKey } from "../scheduler/types.ts";
 import {

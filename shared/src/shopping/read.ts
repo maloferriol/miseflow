@@ -4,7 +4,7 @@ import { visibleTo } from "../catalog/visibility.ts";
 import type { Tx } from "../mutators/define.ts";
 import { loadScaleRows } from "../plan/batch-rows.ts";
 import { deriveScale } from "../plan/model.ts";
-import { findLiveService } from "../plan/replan.ts";
+import { findLiveService } from "../plan/rows.ts";
 import type { RecipeSnapshot } from "../recipe/snapshot.ts";
 import { conversions, kitchenSettings, shoppingCategories, shoppingMarks } from "../schema.ts";
 import { type ConversionRow, deriveShoppingList, type ShoppingList } from "./list.ts";

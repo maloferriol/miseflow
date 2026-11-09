@@ -6,7 +6,7 @@ import {
   shoppingCategories,
 } from "@miseflow/shared";
 import { asc, eq, isNull, sql } from "drizzle-orm";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -185,11 +185,20 @@ describe("readSeed", () => {
 
   it("merges the category files into the whole seed", () => {
     const seed = readSeed();
+    // Every category file read directly, so the seed-growth tickets don't each move a total.
+    const dir = fileURLToPath(new URL("../seed/ingredients", import.meta.url));
+    const rows = readdirSync(dir)
+      .filter((file) => file.endsWith(".json"))
+      .flatMap((file) => JSON.parse(readFileSync(join(dir, file), "utf8")) as SeedIngredient[]);
 
     expect(seed.shoppingCategories).toHaveLength(9);
-    expect(seed.ingredients).toHaveLength(72);
-    expect(seed.ingredients.flatMap((i) => i.aliases)).toHaveLength(79);
-    expect(seed.ingredients.flatMap((i) => i.conversions)).toHaveLength(3);
+    expect(seed.ingredients).toHaveLength(rows.length);
+    expect(seed.ingredients.flatMap((i) => i.aliases)).toHaveLength(
+      rows.flatMap((i) => i.aliases).length,
+    );
+    expect(seed.ingredients.flatMap((i) => i.conversions)).toHaveLength(
+      rows.flatMap((i) => i.conversions).length,
+    );
   });
 
   it("refuses an id used in two category files", async () => {

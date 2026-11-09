@@ -1,43 +1,16 @@
-import { and, asc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
-import { NotFoundError, type MutatorContext, type Tx } from "../mutators/define.ts";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { ensureCook } from "../kitchen/availability.ts";
+import type { MutatorContext, Tx } from "../mutators/define.ts";
 import { schedule } from "../scheduler/schedule.ts";
-import { taskKey, type PreviousPlacement, type TaskKey } from "../scheduler/types.ts";
-import {
-  availabilityOverrides,
-  availabilityWeekly,
-  cooks,
-  courses,
-  dishes,
-  kitchenSettings,
-  menus,
-  services,
-  stepEvents,
-  taskPlacements,
-} from "../schema.ts";
-import {
-  loadBatchRows,
-  loadScaleRows,
-  recipeAndAncestors,
-  reconcileBatches,
-} from "./batch-rows.ts";
-import { diffPlacements, placementId, type StoredPlacement } from "./diff.ts";
-import { deriveScale, type Hours, type PlanRows, toPlanningModel } from "./model.ts";
-import { stepKey, stepStates } from "./progress.ts";
-import { fromTimeColumn, type LocalDate } from "./time.ts";
+import type { PreviousPlacement, TaskKey } from "../scheduler/types.ts";
+import { cooks, courses, dishes, menus, services, taskPlacements } from "../schema.ts";
+import { loadBatchRows, recipeAndAncestors, reconcileBatches } from "./batch-rows.ts";
+import { diffPlacements, placementId } from "./diff.ts";
+import { deriveScale, toPlanningModel } from "./model.ts";
+import { stepKey } from "./progress.ts";
+import { loadPlanRows, loadStored, lockService } from "./rows.ts";
 
 // Re-plan against the database: read a Service's rows, run the pure scheduler, write the diff.
-
-/**
- * The implicit Cook's id: the owner's id (D1), so one row per owner is guaranteed by the primary
- * key and the browser can compute it too. One atomic insert; an existing row is left untouched.
- */
-export async function ensureCook(tx: Tx, ownerId: string): Promise<string> {
-  await tx
-    .insert(cooks)
-    .values({ id: ownerId, ownerId, name: "Me" })
-    .onConflictDoNothing({ target: cooks.id });
-  return ownerId;
-}
 
 /** The implicit Cook, row-locked, so Availability saves of one owner run one after another (D10). */
 export async function lockCook(tx: Tx, ownerId: string): Promise<string> {
@@ -48,229 +21,6 @@ export async function lockCook(tx: Tx, ownerId: string): Promise<string> {
     .where(and(eq(cooks.id, cookId), eq(cooks.ownerId, ownerId)))
     .for("no key update");
   return cookId;
-}
-
-export type Availability = {
-  weekly: ({ id: string; weekday: number } & Hours)[];
-  overrides: { id: string; date: LocalDate; hours: Hours | null }[];
-};
-
-/** The implicit Cook's live weekly hours and overrides (from `overridesFrom` on, when given), in order. */
-export async function loadAvailability(
-  tx: Tx,
-  ownerId: string,
-  overridesFrom?: LocalDate,
-): Promise<Availability> {
-  const weekly = await tx
-    .select({
-      id: availabilityWeekly.id,
-      weekday: availabilityWeekly.weekday,
-      startTime: availabilityWeekly.startTime,
-      endTime: availabilityWeekly.endTime,
-    })
-    .from(availabilityWeekly)
-    .where(
-      and(
-        eq(availabilityWeekly.cookId, ownerId),
-        eq(availabilityWeekly.ownerId, ownerId),
-        isNull(availabilityWeekly.deletedAt),
-      ),
-    )
-    .orderBy(
-      asc(availabilityWeekly.weekday),
-      asc(availabilityWeekly.startTime),
-      asc(availabilityWeekly.id),
-    );
-  const overrides = await tx
-    .select({
-      id: availabilityOverrides.id,
-      date: availabilityOverrides.date,
-      startTime: availabilityOverrides.startTime,
-      endTime: availabilityOverrides.endTime,
-    })
-    .from(availabilityOverrides)
-    .where(
-      and(
-        eq(availabilityOverrides.cookId, ownerId),
-        eq(availabilityOverrides.ownerId, ownerId),
-        isNull(availabilityOverrides.deletedAt),
-        ...(overridesFrom ? [gte(availabilityOverrides.date, overridesFrom)] : []),
-      ),
-    )
-    .orderBy(asc(availabilityOverrides.date), asc(availabilityOverrides.id));
-  return {
-    weekly: weekly.map((w) => ({
-      id: w.id,
-      weekday: w.weekday,
-      start: fromTimeColumn(w.startTime),
-      end: fromTimeColumn(w.endTime),
-    })),
-    overrides: overrides.map((o) => ({
-      id: o.id,
-      date: o.date,
-      hours:
-        o.startTime === null || o.endTime === null
-          ? null
-          : { start: fromTimeColumn(o.startTime), end: fromTimeColumn(o.endTime) },
-    })),
-  };
-}
-
-/** With no setting, the default Service time is 19:00 (D8, spec §3's example). */
-export const BUILT_IN_SERVICE_TIME = 19 * 60;
-
-/** The kitchen's default Service time, and whether it is the built-in one. */
-export async function loadDefaultServiceTime(
-  tx: Tx,
-  ownerId: string,
-): Promise<{ minuteOfDay: number; builtIn: boolean }> {
-  const [row] = await tx
-    .select({ time: kitchenSettings.defaultServiceTime })
-    .from(kitchenSettings)
-    .where(
-      and(
-        eq(kitchenSettings.ownerId, ownerId),
-        isNull(kitchenSettings.deletedAt),
-        isNotNull(kitchenSettings.defaultServiceTime),
-      ),
-    )
-    .orderBy(asc(kitchenSettings.id))
-    .limit(1);
-  return row?.time
-    ? { minuteOfDay: fromTimeColumn(row.time), builtIn: false }
-    : { minuteOfDay: BUILT_IN_SERVICE_TIME, builtIn: true };
-}
-
-type ServiceRow = { id: string; menuId: string; date: LocalDate; time: string | null };
-
-// The caller's live Service on a live Menu, row-locked when asked (D6); anything else is missing.
-// FOR NO KEY UPDATE: rows that reference the Service (Step events, placements, Batches) take
-// FOR KEY SHARE on it when inserted, which FOR UPDATE would wait on (#88 owner decision 1).
-async function findService(
-  tx: Tx,
-  ownerId: string,
-  serviceId: string,
-  { lock = false } = {},
-): Promise<ServiceRow> {
-  const query = tx
-    .select({ id: services.id, menuId: services.menuId, date: services.date, time: services.time })
-    .from(services)
-    .where(
-      and(eq(services.id, serviceId), eq(services.ownerId, ownerId), isNull(services.deletedAt)),
-    );
-  const [service] = lock ? await query.for("no key update") : await query;
-  if (!service) throw new NotFoundError("Service");
-  const [menu] = await tx
-    .select({ id: menus.id })
-    .from(menus)
-    .where(and(eq(menus.id, service.menuId), eq(menus.ownerId, ownerId), isNull(menus.deletedAt)));
-  if (!menu) throw new NotFoundError("Service");
-  return service;
-}
-
-/** The caller's live Service on a live Menu, read without a row lock; anything else is missing. */
-export function findLiveService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
-  return findService(tx, ownerId, serviceId);
-}
-
-/** The caller's live Service, row-locked (D6), for a mutator that writes before re-planning it. */
-export function lockService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
-  return findService(tx, ownerId, serviceId, { lock: true });
-}
-
-export type LoadedRows = PlanRows & {
-  service: PlanRows["service"] & { menuId: string; timeIsDefault: boolean };
-};
-
-/** Everything one Service's re-plan reads. Reads only: the implicit Cook's id is the owner's (D1). */
-export async function loadPlanRows(
-  tx: Tx,
-  ownerId: string,
-  service: ServiceRow,
-): Promise<LoadedRows> {
-  const cookId = ownerId;
-  const defaultTime = await loadDefaultServiceTime(tx, ownerId);
-  const availability = await loadAvailability(tx, ownerId);
-  const scale = await loadScaleRows(tx, ownerId, service.menuId);
-  const stored = await loadStored(tx, service.id);
-  return {
-    service: {
-      id: service.id,
-      menuId: service.menuId,
-      date: service.date,
-      time: service.time === null ? null : fromTimeColumn(service.time),
-      timeIsDefault: service.time === null,
-    },
-    defaultServiceTime: defaultTime.minuteOfDay,
-    cookId,
-    weekly: availability.weekly,
-    overrides: availability.overrides,
-    ...scale,
-    batches: await loadBatchRows(tx, service.id),
-    previous: stored
-      .filter((p) => p.live)
-      .map(({ key, start, cookId, pinned }) => ({ key, start, cookId, pinned })),
-    progress: await loadProgress(tx, service.id),
-  };
-}
-
-// Every Step event of the Service, reduced to each Step's state. Events of a removed Step, Dish
-// or Batch match no Task and are ignored downstream.
-async function loadProgress(tx: Tx, serviceId: string) {
-  const events = await tx
-    .select({
-      id: stepEvents.id,
-      dishId: stepEvents.dishId,
-      batchId: stepEvents.batchId,
-      stepId: stepEvents.stepId,
-      kind: stepEvents.kind,
-      at: stepEvents.at,
-    })
-    .from(stepEvents)
-    .where(eq(stepEvents.serviceId, serviceId));
-  return stepStates(
-    events.map((e) => ({
-      id: e.id,
-      owner:
-        e.dishId !== null
-          ? { kind: "dish" as const, dishId: e.dishId }
-          : { kind: "batch" as const, batchId: e.batchId! },
-      stepId: e.stepId,
-      kind: e.kind,
-      at: e.at,
-    })),
-  );
-}
-
-// Every placement row of the Service, soft-deleted ones too (a Task's row is unique across them).
-async function loadStored(tx: Tx, serviceId: string): Promise<StoredPlacement[]> {
-  const rows = await tx
-    .select({
-      id: taskPlacements.id,
-      dishId: taskPlacements.dishId,
-      batchId: taskPlacements.batchId,
-      firstStepId: taskPlacements.firstStepId,
-      start: taskPlacements.startMinute,
-      cookId: taskPlacements.cookId,
-      pinned: taskPlacements.pinned,
-      deletedAt: taskPlacements.deletedAt,
-    })
-    .from(taskPlacements)
-    .where(eq(taskPlacements.serviceId, serviceId))
-    .orderBy(asc(taskPlacements.id));
-  return rows.map((r) => ({
-    id: r.id,
-    key: taskKey(
-      r.dishId !== null
-        ? { kind: "dish", dishId: r.dishId }
-        : { kind: "batch", batchId: r.batchId! },
-      r.firstStepId,
-    ),
-    start: r.start,
-    cookId: r.cookId ?? "",
-    pinned: r.pinned,
-    live: r.deletedAt === null,
-  }));
 }
 
 /**
@@ -309,7 +59,7 @@ async function replanWith(
   serviceId: string,
   opts: { keep?: (p: PreviousPlacement, progressed: Set<TaskKey>) => boolean },
 ) {
-  const service = await findService(tx, ctx.ownerId, serviceId, { lock: true });
+  const service = await lockService(tx, ctx.ownerId, serviceId);
   // Placements reference the Cook row.
   await ensureCook(tx, ctx.ownerId);
   const rows = await loadPlanRows(tx, ctx.ownerId, service);

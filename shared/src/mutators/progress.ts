@@ -1,7 +1,8 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { ownerSchema } from "../task/owner.ts";
-import { lockService, replan } from "../plan/replan.ts";
+import { replan } from "../plan/replan.ts";
+import { lockService } from "../plan/rows.ts";
 import { batches, courses, dishes, stepEvents, steps } from "../schema.ts";
 import { defineMutator, NotFoundError, type MutatorContext, type Tx } from "./define.ts";
 

@@ -23,6 +23,8 @@ export * from "./plan/diff.ts";
 export * from "./plan/reasons.ts";
 export * from "./plan/read.ts";
 export * from "./plan/replan.ts";
+export { findLiveService, loadPlanRows, type LoadedRows, lockService } from "./plan/rows.ts";
+export * from "./kitchen/availability.ts";
 export * from "./shopping/list.ts";
 export * from "./shopping/read.ts";
 export * from "./plan/progress.ts";

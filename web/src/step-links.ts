@@ -1,6 +1,7 @@
 import { normaliseName, searchCatalog } from "@miseflow/shared/src/catalog/match.ts";
 import { parseStepText, type StepTextPart } from "@miseflow/shared/src/recipe/tokens.ts";
 import { createIntent, type Intent } from "./intent.ts";
+import type { MutationCall } from "./mutation-call.ts";
 
 export type Ref = Extract<StepTextPart, { type: "ref" }>;
 
@@ -127,7 +128,7 @@ export function stepSaveArgs(
 }
 
 /** Sends one mutation to `/mutate` (api.ts `mutate`); throws when it fails. */
-export type Send = (id: string, name: string, args: Record<string, unknown>) => Promise<void>;
+export type Send = (call: MutationCall) => Promise<void>;
 
 /**
  * The catalog the Step editor links against: Ingredients by name or alias, and the kitchen's
@@ -174,8 +175,11 @@ export async function sendStepSave(save: {
     revisionId: id("revision"),
     ...stepSaveArgs(save.parts, save.refs, id),
   };
-  if (save.editing) await save.send(id("mutation"), "editStep", args);
-  else await save.send(id("mutation"), "addStep", { recipeId: save.recipeId, ...args });
+  await save.send(
+    save.editing
+      ? { id: id("mutation"), name: "editStep", args }
+      : { id: id("mutation"), name: "addStep", args: { recipeId: save.recipeId, ...args } },
+  );
   save.intent.reset();
 }
 
@@ -261,8 +265,8 @@ export function linkChoiceMutation(
 
 /** Sends a chosen link (see `linkChoiceMutation`) and returns the target to link the wording to. */
 export async function sendLinkChoice(intent: Intent, choice: ChosenLink, send: Send) {
-  const { id, name, args, target } = linkChoiceMutation(intent, choice);
-  await send(id, name, args);
+  const { target, ...call } = linkChoiceMutation(intent, choice);
+  await send(call);
   intent.reset();
   return target;
 }

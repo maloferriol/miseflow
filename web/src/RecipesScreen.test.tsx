@@ -25,7 +25,8 @@ beforeEach(() => {
 });
 
 // The args of the mutation sent with this name.
-const sent = (name: string) => vi.mocked(mutate).mock.calls.find((call) => call[1] === name)?.[2];
+const sent = (name: string) =>
+  vi.mocked(mutate).mock.calls.find((call) => call[0].name === name)?.[0].args;
 
 // A save that stays pending until the test fails it.
 function failLater() {
@@ -52,7 +53,7 @@ describe("Recipes list hook", () => {
     await waitFor(() => expect(onOpen).toHaveBeenCalledOnce());
     const args = sent("createRecipe");
     expect(args).toEqual({ recipeId: anId, revisionId: anId, name: "Tarte tatin" });
-    expect(vi.mocked(mutate).mock.calls[0][0]).toEqual(anId);
+    expect(vi.mocked(mutate).mock.calls[0][0].id).toEqual(anId);
     expect(onOpen).toHaveBeenCalledWith(args?.recipeId);
     expect(onOpen).toHaveReturned();
   });
@@ -64,9 +65,9 @@ describe("Recipes list hook", () => {
     act(() => result.current.onCreate("Tarte tatin"));
     await waitFor(() => expect(mutate).toHaveBeenCalledTimes(2));
     const [first, second] = vi.mocked(mutate).mock.calls;
-    expect(second[0]).not.toBe(first[0]);
-    expect(second[2].recipeId).not.toBe(first[2].recipeId);
-    expect(second[2].revisionId).not.toBe(first[2].revisionId);
+    expect(second[0].id).not.toBe(first[0].id);
+    expect(second[0].args.recipeId).not.toBe(first[0].args.recipeId);
+    expect(second[0].args.revisionId).not.toBe(first[0].args.revisionId);
   });
 
   it("returns the create as pending, then its error, without opening a Recipe", async () => {

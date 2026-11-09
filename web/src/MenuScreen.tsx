@@ -43,7 +43,7 @@ function MenuList() {
 export function useNewMenu(onCreated: (menuId: string) => void) {
   const createMenu = useMutation({
     mutationFn: async (args: { menuId: string; name: string; guestCount: number }) =>
-      mutate(crypto.randomUUID(), "createMenu", args),
+      mutate({ id: crypto.randomUUID(), name: "createMenu", args }),
     onSuccess: (_, { menuId }) => {
       window.history.replaceState(null, "", `?menu=${menuId}`);
       onCreated(menuId);
@@ -68,7 +68,11 @@ export function useMenu(menuId: string) {
   const onChanged = () => queryClient.invalidateQueries({ queryKey: ["menu", menuId] });
   const addCourse = useMutation({
     mutationFn: async (name: string) =>
-      mutate(crypto.randomUUID(), "addCourse", { courseId: crypto.randomUUID(), menuId, name }),
+      mutate({
+        id: crypto.randomUUID(),
+        name: "addCourse",
+        args: { courseId: crypto.randomUUID(), menuId, name },
+      }),
     onSuccess: onChanged,
   });
   return {
@@ -97,15 +101,15 @@ export function useCourse(course: Menu["courses"][number], onChanged: () => Prom
   const addDish = useMutation({
     mutationFn: async (name: string) => {
       const recipeId = crypto.randomUUID();
-      await mutate(crypto.randomUUID(), "createRecipe", {
-        recipeId,
-        revisionId: crypto.randomUUID(),
-        name,
+      await mutate({
+        id: crypto.randomUUID(),
+        name: "createRecipe",
+        args: { recipeId, revisionId: crypto.randomUUID(), name },
       });
-      await mutate(crypto.randomUUID(), "addDish", {
-        dishId: crypto.randomUUID(),
-        courseId: course.id,
-        recipeId,
+      await mutate({
+        id: crypto.randomUUID(),
+        name: "addDish",
+        args: { dishId: crypto.randomUUID(), courseId: course.id, recipeId },
       });
     },
     onSuccess: onChanged,

@@ -41,9 +41,9 @@ beforeEach(() => {
 const sent = (name: string) =>
   vi
     .mocked(mutate)
-    .mock.calls.filter((call) => call[1] === name)
-    .at(-1)?.[2];
-const ids = () => vi.mocked(mutate).mock.calls.map((call) => call[0]);
+    .mock.calls.filter((call) => call[0].name === name)
+    .at(-1)?.[0].args;
+const ids = () => vi.mocked(mutate).mock.calls.map((call) => call[0].id);
 
 // A save that stays pending until the test fails it.
 function failLater() {
@@ -82,8 +82,10 @@ describe("Availability hook", () => {
     const { result, client } = await renderLoaded();
     act(() => result.current.onSaveDefault(at("19:30")));
     await expectReplanned(client);
-    expect(mutate).toHaveBeenCalledExactlyOnceWith(anId, "setKitchenSettings", {
-      defaultServiceTime: at("19:30"),
+    expect(mutate).toHaveBeenCalledExactlyOnceWith({
+      id: anId,
+      name: "setKitchenSettings",
+      args: { defaultServiceTime: at("19:30") },
     });
   });
 
@@ -93,11 +95,15 @@ describe("Availability hook", () => {
     const saturday = { weekday: 6, start: at("09:00"), end: 1440 };
     act(() => result.current.onSaveWeek([thursday, saturday]));
     await expectReplanned(client);
-    expect(mutate).toHaveBeenCalledExactlyOnceWith(anId, "setWeeklyAvailability", {
-      hours: [
-        { availabilityId: anId, ...thursday },
-        { availabilityId: anId, ...saturday },
-      ],
+    expect(mutate).toHaveBeenCalledExactlyOnceWith({
+      id: anId,
+      name: "setWeeklyAvailability",
+      args: {
+        hours: [
+          { availabilityId: anId, ...thursday },
+          { availabilityId: anId, ...saturday },
+        ],
+      },
     });
   });
 
@@ -106,9 +112,10 @@ describe("Availability hook", () => {
     const off = { date: "2026-10-29", availability: { kind: "off" as const } };
     act(() => result.current.onSaveOverride(off));
     await expectReplanned(client);
-    expect(mutate).toHaveBeenCalledExactlyOnceWith(anId, "setAvailabilityOverride", {
-      overrideId: anId,
-      ...off,
+    expect(mutate).toHaveBeenCalledExactlyOnceWith({
+      id: anId,
+      name: "setAvailabilityOverride",
+      args: { overrideId: anId, ...off },
     });
   });
 
@@ -116,9 +123,10 @@ describe("Availability hook", () => {
     const { result, client } = await renderLoaded();
     act(() => result.current.onRemoveOverride("2026-10-30"));
     await expectReplanned(client);
-    expect(mutate).toHaveBeenCalledExactlyOnceWith(anId, "setAvailabilityOverride", {
-      overrideId: anId,
-      ...removeOverride("2026-10-30"),
+    expect(mutate).toHaveBeenCalledExactlyOnceWith({
+      id: anId,
+      name: "setAvailabilityOverride",
+      args: { overrideId: anId, ...removeOverride("2026-10-30") },
     });
   });
 
@@ -206,8 +214,10 @@ describe("Availability screen", () => {
     type(await screen.findByLabelText("Default Service time"), "19:30");
     fireEvent.submit(button("Save default"));
     await waitFor(() =>
-      expect(mutate).toHaveBeenCalledWith(anId, "setKitchenSettings", {
-        defaultServiceTime: at("19:30"),
+      expect(mutate).toHaveBeenCalledWith({
+        id: anId,
+        name: "setKitchenSettings",
+        args: { defaultServiceTime: at("19:30") },
       }),
     );
   });

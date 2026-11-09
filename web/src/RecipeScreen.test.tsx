@@ -21,8 +21,9 @@ vi.mock("./api.ts", () => ({
 const anId: unknown = expect.any(String);
 
 // The calls sent with this mutation name: [id, name, args].
-const sentCalls = (name: string) => vi.mocked(mutate).mock.calls.filter((call) => call[1] === name);
-const sent = (name: string) => sentCalls(name).at(-1)?.[2];
+const sentCalls = (name: string) =>
+  vi.mocked(mutate).mock.calls.filter((call) => call[0].name === name);
+const sent = (name: string) => sentCalls(name).at(-1)?.[0].args;
 
 const tarteLink = "/?view=recipe&recipe=r-tarte";
 
@@ -317,8 +318,8 @@ describe("Recipe screen hook", () => {
     await waitFor(() => expect(result.current.editError).toBeNull());
     await waitFor(() => expect(client.getQueryState(["recipes"])?.isInvalidated).toBe(true));
     const [first, retry] = sentCalls("editRecipe");
-    expect(retry[0]).toBe(first[0]);
-    expect(retry[2]).toEqual(first[2]);
+    expect(retry[0].id).toBe(first[0].id);
+    expect(retry[0].args).toEqual(first[0].args);
   });
 
   it("opens on the mode in the link, and tells the view which Steps are ticked", async () => {
@@ -346,10 +347,14 @@ describe("Yield field hook", () => {
 
     act(() => result.current.onSave("1.5 L"));
     await waitFor(() => expect(client.getQueryState(["recipes"])?.isInvalidated).toBe(true));
-    expect(mutate).toHaveBeenCalledWith(anId, "setYield", {
-      recipeId: "r-stock",
-      revisionId: anId,
-      yield: "1.5 L",
+    expect(mutate).toHaveBeenCalledWith({
+      id: anId,
+      name: "setYield",
+      args: {
+        recipeId: "r-stock",
+        revisionId: anId,
+        yield: "1.5 L",
+      },
     });
     expect(client.getQueryState(["recipe", "r-stock"])?.isInvalidated).toBe(true);
   });
@@ -368,9 +373,9 @@ describe("Yield field hook", () => {
       expect(client.getQueryState(["recipe", "r-stock"])?.isInvalidated).toBe(true),
     );
     const [first, retry] = sentCalls("setYield");
-    expect(retry[0]).toBe(first[0]);
-    expect(retry[2]).toEqual({ recipeId: "r-stock", revisionId: anId, yield: null });
-    expect(retry[2]).toEqual(first[2]);
+    expect(retry[0].id).toBe(first[0].id);
+    expect(retry[0].args).toEqual({ recipeId: "r-stock", revisionId: anId, yield: null });
+    expect(retry[0].args).toEqual(first[0].args);
   });
   it("saves the same yield again as a new save once the first went through", async () => {
     const { result } = renderQueryHook(() => useYieldField("r-stock"));
@@ -381,7 +386,7 @@ describe("Yield field hook", () => {
     act(() => result.current.onSave("1.5 L"));
     await waitFor(() => expect(sentCalls("setYield")).toHaveLength(2));
     const [first, again] = sentCalls("setYield");
-    expect(again[0]).not.toBe(first[0]);
+    expect(again[0].id).not.toBe(first[0].id);
   });
 });
 
@@ -407,14 +412,18 @@ describe("Extract to sub-recipe hook", () => {
 
     act(() => result.current.onExtract(args));
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
-    expect(mutate).toHaveBeenCalledWith(anId, "extractToSubRecipe", {
-      recipeId: "r-tarte",
-      revisionId: anId,
-      subRecipeId: anId,
-      subRecipeRevisionId: anId,
-      stepId: anId,
-      lineId: anId,
-      ...args,
+    expect(mutate).toHaveBeenCalledWith({
+      id: anId,
+      name: "extractToSubRecipe",
+      args: {
+        recipeId: "r-tarte",
+        revisionId: anId,
+        subRecipeId: anId,
+        subRecipeRevisionId: anId,
+        stepId: anId,
+        lineId: anId,
+        ...args,
+      },
     });
     expect(result.current).toMatchObject({ name: "", amount: "1" });
     expect(client.getQueryState(["recipe", "r-tarte"])?.isInvalidated).toBe(true);
@@ -435,8 +444,8 @@ describe("Extract to sub-recipe hook", () => {
     act(() => result.current.onExtract(args));
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
     const [first, retry] = sentCalls("extractToSubRecipe");
-    expect(retry[0]).toBe(first[0]);
-    expect(retry[2]).toEqual(first[2]);
+    expect(retry[0].id).toBe(first[0].id);
+    expect(retry[0].args).toEqual(first[0].args);
   });
   it("extracts the same Steps again as a new extract once the first went through", async () => {
     const onDone = vi.fn();
@@ -447,7 +456,7 @@ describe("Extract to sub-recipe hook", () => {
     act(() => result.current.onExtract(args));
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(2));
     const [first, again] = sentCalls("extractToSubRecipe");
-    expect(again[0]).not.toBe(first[0]);
-    expect(again[2]).not.toEqual(first[2]);
+    expect(again[0].id).not.toBe(first[0].id);
+    expect(again[0].args).not.toEqual(first[0].args);
   });
 });

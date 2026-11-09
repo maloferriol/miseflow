@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 // Each mutation sent, as [name, args].
-const sent = () => vi.mocked(mutate).mock.calls.map(([, name, args]) => [name, args]);
+const sent = () => vi.mocked(mutate).mock.calls.map(([{ name, args }]) => [name, args]);
 
 // A mutation that stays pending until the test settles it.
 function settleLater() {

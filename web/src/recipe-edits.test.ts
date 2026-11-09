@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { recipeEdits } from "./recipe-edits.ts";
+import type { MutationCall } from "./mutation-call.ts";
 
 // A /mutate that records what was sent, losing the first response after "applying" it.
 function server() {
   const sent: { id: string; name: string; args: Record<string, unknown> }[] = [];
   let lose = true;
-  const send = (id: string, name: string, args: Record<string, unknown>) => {
+  const send = ({ id, name, args }: MutationCall) => {
     sent.push({ id, name, args });
     if (!lose) return Promise.resolve();
     lose = false;

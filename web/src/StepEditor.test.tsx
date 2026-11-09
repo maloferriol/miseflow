@@ -80,7 +80,8 @@ beforeEach(() => {
 });
 
 // The args of the mutation sent with this name.
-const sent = (name: string) => vi.mocked(mutate).mock.calls.find((call) => call[1] === name)?.[2];
+const sent = (name: string) =>
+  vi.mocked(mutate).mock.calls.find((call) => call[0].name === name)?.[0].args;
 
 function renderStepForm(opened?: RecipeStep) {
   const onDone = vi.fn();

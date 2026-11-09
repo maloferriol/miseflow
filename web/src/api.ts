@@ -1,5 +1,6 @@
 import type { AppType } from "@miseflow/server";
 import { hc } from "hono/client";
+import type { MutationCall } from "./mutation-call.ts";
 import { supabase } from "./supabase.ts";
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -28,16 +29,16 @@ export type Menu = Awaited<ReturnType<typeof fetchMenu>>;
  * Posts one named mutation (ADR 0007). The caller makes `id` once per user intent, so a
  * retry of the same intent is applied only once.
  */
-export async function mutate(id: string, name: string, args: Record<string, unknown>) {
+export async function mutate(call: MutationCall) {
   const res = await fetch("/api/mutate", {
     method: "POST",
     headers: { ...(await authHeaders()), "content-type": "application/json" },
-    body: JSON.stringify({ id, name, args }),
+    body: JSON.stringify(call),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => undefined)) as
       { error?: { message?: string } } | undefined;
-    throw new Error(body?.error?.message ?? `${name} failed (${res.status})`);
+    throw new Error(body?.error?.message ?? `${call.name} failed (${res.status})`);
   }
 }
 

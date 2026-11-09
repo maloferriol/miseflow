@@ -74,7 +74,8 @@ beforeEach(() => {
 });
 
 // The args of the mutation sent with this name.
-const sent = (name: string) => vi.mocked(mutate).mock.calls.find((call) => call[1] === name)?.[2];
+const sent = (name: string) =>
+  vi.mocked(mutate).mock.calls.find((call) => call[0].name === name)?.[0].args;
 
 // A save that stays pending until the test fails it.
 function failLater() {
@@ -180,7 +181,7 @@ describe("Course hook", () => {
       courseId: "c-starter",
       recipeId: recipe?.recipeId,
     });
-    expect(vi.mocked(mutate).mock.calls.map((call) => call[1])).toEqual([
+    expect(vi.mocked(mutate).mock.calls.map((call) => call[0].name)).toEqual([
       "createRecipe",
       "addDish",
     ]);
@@ -236,7 +237,7 @@ describe("Dish scale hook", () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
     save();
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(2));
-    const [failed, retried, later] = vi.mocked(mutate).mock.calls.map((call) => call[0]);
+    const [failed, retried, later] = vi.mocked(mutate).mock.calls.map((call) => call[0].id);
     expect(retried).toBe(failed);
     expect(later).not.toBe(failed);
   });

@@ -36,10 +36,10 @@ export function useAddAlias(ingredientId: string) {
   const queryClient = useQueryClient();
   const addAlias = useMutation({
     mutationFn: async (name: string) =>
-      mutate(crypto.randomUUID(), "addAlias", {
-        aliasId: crypto.randomUUID(),
-        ingredientId,
-        name,
+      mutate({
+        id: crypto.randomUUID(),
+        name: "addAlias",
+        args: { aliasId: crypto.randomUUID(), ingredientId, name },
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ingredients"] }),
   });
@@ -67,9 +67,10 @@ export function useNewIngredient(onCreated: (name: string) => void) {
   });
   const createIngredient = useMutation({
     mutationFn: async (args: NewIngredientInput) =>
-      mutate(crypto.randomUUID(), "createIngredient", {
-        ingredientId: crypto.randomUUID(),
-        ...args,
+      mutate({
+        id: crypto.randomUUID(),
+        name: "createIngredient",
+        args: { ingredientId: crypto.randomUUID(), ...args },
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({ queryKey: ["ingredients"] });

@@ -30,8 +30,8 @@ beforeEach(() => {
 const sentAll = (name: string) =>
   vi
     .mocked(mutate)
-    .mock.calls.filter((call) => call[1] === name)
-    .map((call) => ({ id: call[0], args: call[2] }));
+    .mock.calls.filter((call) => call[0].name === name)
+    .map((call) => ({ id: call[0].id, args: call[0].args }));
 const sent = (name: string) => sentAll(name)[0]?.args;
 
 // Saves that stay pending until the test fails or settles them, one per call.

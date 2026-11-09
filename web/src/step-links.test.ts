@@ -257,7 +257,7 @@ describe("stepSaveArgs", () => {
 function server() {
   const sent: { id: string; name: string; args: Record<string, unknown> }[] = [];
   let lose = false;
-  const send: Send = (id, name, args) => {
+  const send: Send = ({ id, name, args }) => {
     sent.push({ id, name, args });
     if (lose) {
       lose = false;

@@ -184,7 +184,7 @@ describe("Link choice hook", () => {
   });
 
   // The mutation the hook sent, by name.
-  const sent = (name: string) => vi.mocked(mutate).mock.calls.find((call) => call[1] === name);
+  const sent = (name: string) => vi.mocked(mutate).mock.calls.find((call) => call[0].name === name);
 
   it("returns the Shopping categories it fetched", async () => {
     const { result } = renderQueryHook(() => useLinkChoice("chicken stock", () => {}));
@@ -198,7 +198,7 @@ describe("Link choice hook", () => {
 
     act(() => result.current.onUseNearMatch(butter));
     await waitFor(() => expect(onLinked).toHaveBeenCalledWith({ ingredientId: "butter-id" }));
-    expect(sent("addAlias")?.[2]).toEqual({
+    expect(sent("addAlias")?.[0].args).toEqual({
       aliasId: anId,
       ingredientId: "butter-id",
       name: "chicken stock",
@@ -219,7 +219,7 @@ describe("Link choice hook", () => {
       }),
     );
     await waitFor(() => expect(onLinked).toHaveBeenCalledOnce());
-    const args = sent("createIngredient")?.[2];
+    const args = sent("createIngredient")?.[0].args;
     expect(args).toEqual({
       ingredientId: anId,
       name: "chicken stock",
@@ -237,7 +237,7 @@ describe("Link choice hook", () => {
 
     act(() => result.current.onCreateSubRecipe("Chicken stock"));
     await waitFor(() => expect(onLinked).toHaveBeenCalledOnce());
-    const args = sent("createSubRecipe")?.[2];
+    const args = sent("createSubRecipe")?.[0].args;
     expect(args).toEqual({
       recipeId: anId,
       revisionId: anId,
@@ -290,7 +290,7 @@ describe("Link choice hook", () => {
 
     fireEvent.click(button("Create Ingredient"));
     await waitFor(() => expect(onLinked).toHaveBeenCalledOnce());
-    expect(sent("createIngredient")?.[2]).toMatchObject({
+    expect(sent("createIngredient")?.[0].args).toMatchObject({
       name: "chicken stock",
       preferredKind: "volume",
       shoppingCategoryId: "other-id",

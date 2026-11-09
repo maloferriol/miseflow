@@ -1,0 +1,21 @@
+# Mutations register re-plans; one lock order
+
+A mutator never re-plans. It names what its write affects through `ctx.replan`, and `applyMutation` (ADR 0007's one entry point, used by `/mutate` and the tests) re-plans each affected Service once, at the end of the mutation's transaction. A scope is `{ recipeId }`, `{ menuId }`, `{ serviceId }` or `{ allServices, onlyDefaultTime? }`. There are two calls. `lock(scope, { cook? })` turns the scope into Services and locks them straight away, then the Cook if asked. It is for a mutator that reads something that must not change before it writes: a Step's latest event, the Service time that bounds a pin, the Cook's hours. `after(scope, { release?, fromScratch? })` only records the scope, and it is turned into Services once the write is done, so a Dish the write added counts. At the end, the Services not locked yet are locked in id order, and each Service in the set is re-planned once, in id order. When a Service is registered more than once, from scratch wins over a normal re-plan and released Tasks add up. `applyMutation` returns the re-planned Service ids.
+
+The lock order is the one decided on [#86](https://github.com/maloferriol/miseflow/issues/86) (D6): the changed Recipe or Dish row first, then Services in id order, then the Cook, all `FOR NO KEY UPDATE`. The mutator takes its own row lock; the Re-plan module (`shared/src/plan/replan.ts`) takes every lock from the Services on. Both patterns fit: `lock` takes the Services before the mutator writes, and `after` takes them after the mutator has locked its row.
+
+We moved the re-plan out of the mutators because every mutator that changed a Task repeated a protocol by hand. About 30 call sites each picked one of four re-plan functions, and the ones that had to lock first also called `lockService`, `lockServices` and `lockCook` themselves, in the right order. That order was written down only as a comment copied into seven places. Some mutators looked up the same Services twice (`giveCookMoreTime` locked them, then queried them again to re-plan them), and a mutation that reached a Service twice re-planned it twice. The module itself had no test of its own: its scope branches, `onlyDefaultTime` and a Recipe reached through a sub-recipe among them, were covered only by whichever mutator used them. Decided in the spec [#243](https://github.com/maloferriol/miseflow/issues/243), from the 8 Nov 2026 architecture review.
+
+## Considered Options
+
+- **Keep the re-plan calls in the mutators**, with the lock order in a shared helper. The helper would remove the copied comment, but not the repeated protocol, the double lookups, the double re-plans or the missing tests: the module would still be tested only through mutators.
+- **A wrapper around each mutator** (`withReplan(scope, mutator)`), which locks and re-plans around `run`. The scope is often known only after the write, or from a row the mutator reads under its own lock: `addDish` learns its Menu from the Course, `removeDish` from the Dish, a Step edit from the Step's Recipe. A wrapper would have to read those rows again, outside the mutator's lock.
+- **The scope declared on the mutator** (`defineMutator({ ..., replans: (args) => scope })`). It has the same problem: args alone don't name the Menu or Recipe, and the declaration can't see what the write did, such as a Dish it added.
+
+## Consequences
+
+- A new mutator states its scope with `lock` or `after` and can't take Service or Cook locks in the wrong order. `lock` returns the Service ids, and the Cook's id when asked; a mutator that needs the Service row reads it after `lock`.
+- A `{ serviceId }` scope that isn't the caller's live Service fails the mutation with NotFound, as the direct re-plan did.
+- The Re-plan module has its own tests (`replan.test.ts`), through `applyMutation` with small test mutators: each scope kind, `after` resolving after the write, the lock order, one re-plan per Service, and the options. Mutator tests check only what the cook sees.
+- `lock` followed by `after` on other Services can lock a Service with a lower id after a higher one. Today no mutator does that; one that needs to should lock the whole scope with `lock`.
+- The `/mutate` response doesn't change. Reporting the re-planned Services to the browser is a separate decision.

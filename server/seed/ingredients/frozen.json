@@ -2,7 +2,7 @@
   {
     "id": "60e48fab-5d38-4369-993a-deb1f4101b99",
     "name": "puff pastry",
-    "fdcId": null,
+    "fdcId": "172790",
     "preferredKind": "mass",
     "shoppingCategory": "Frozen",
     "aliases": [
@@ -16,7 +16,7 @@
   {
     "id": "b404cc7d-2ffc-4c61-a4f7-c24ff1b848ba",
     "name": "frozen peas",
-    "fdcId": null,
+    "fdcId": "170016",
     "preferredKind": "mass",
     "shoppingCategory": "Frozen",
     "aliases": [
@@ -25,6 +25,183 @@
         "name": "petits pois"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "a5750e8e-ad0b-4724-9a20-dc34c434a57e",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 134,
+        "fdcId": "170016"
+      }
+    ]
+  },
+  {
+    "id": "5516b512-1899-428a-8178-9aa95ce55b94",
+    "name": "frozen spinach",
+    "fdcId": "169287",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [
+      {
+        "id": "6dccca41-ef56-4139-984b-1ba6273b8e20",
+        "name": "frozen leaf spinach"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "7118e8e2-b46c-4262-82b2-04a6f58f2a1f",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 156,
+        "fdcId": "169287"
+      }
+    ]
+  },
+  {
+    "id": "62057c7f-7131-4db8-9f9f-9ab8588401e0",
+    "name": "frozen sweetcorn",
+    "fdcId": "168398",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [
+      {
+        "id": "16cfac8e-8242-4713-8a32-8d99d05f859d",
+        "name": "frozen corn"
+      },
+      {
+        "id": "b1aa2a3b-05ce-48f7-829e-4f16f50d8647",
+        "name": "frozen corn kernels"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "cb04415a-235f-45a7-bd8f-09013860a6e2",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 136,
+        "fdcId": "168398"
+      }
+    ]
+  },
+  {
+    "id": "fe034532-8d4b-4f4d-b244-d1d6c7743c7d",
+    "name": "frozen green beans",
+    "fdcId": "169962",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [
+      {
+        "id": "ecc61459-97d0-4a48-8169-aec5a32bd0f1",
+        "name": "frozen french beans"
+      },
+      {
+        "id": "895210de-7940-4b4b-bffb-ab3403098432",
+        "name": "frozen snap beans"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "8df981f3-0f6b-45c6-96ba-9c7efd6953cf",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 121,
+        "fdcId": "169962"
+      }
+    ]
+  },
+  {
+    "id": "4e502e93-d510-4748-9a42-2dca018c09bd",
+    "name": "frozen broccoli",
+    "fdcId": "169968",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [
+      {
+        "id": "d66406d8-0a06-44ea-b6a4-c675d6dd646d",
+        "name": "frozen broccoli florets"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "c524ef41-f9cd-480d-bc5c-4298ffa50a8e",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 156,
+        "fdcId": "169968"
+      }
+    ]
+  },
+  {
+    "id": "c862f4c7-5f15-487a-a896-2260499e9dd1",
+    "name": "frozen cauliflower",
+    "fdcId": "170398",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [
+      {
+        "id": "76a3a591-0f7c-403f-b9e9-c7a05ed164fe",
+        "name": "frozen cauliflower florets"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "56921cd0-5021-415c-bee0-37e24c56bb1d",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 132,
+        "fdcId": "170398"
+      }
+    ]
+  },
+  {
+    "id": "ea4d58c2-6b1c-4fc9-999f-a04e3bfebb1e",
+    "name": "frozen blueberries",
+    "fdcId": "173950",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "cb2eb830-c0b1-4761-bdf9-4ac496e32646",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 155,
+        "fdcId": "173950"
+      }
+    ]
+  },
+  {
+    "id": "4281c22c-c950-45b8-92a9-426db5809b65",
+    "name": "frozen raspberries",
+    "fdcId": "168209",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "98e7df93-8361-449d-920f-77aaf2650c9d",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 140,
+        "fdcId": "168209"
+      }
+    ]
+  },
+  {
+    "id": "0923ac74-abfb-4147-b7f8-a30b42468b78",
+    "name": "frozen strawberries",
+    "fdcId": "168173",
+    "preferredKind": "mass",
+    "shoppingCategory": "Frozen",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "3343f146-d720-42fa-977d-db2429644072",
+        "fromUnit": "cup",
+        "toUnit": "g",
+        "factor": 149,
+        "fdcId": "168173"
+      }
+    ]
   }
 ]

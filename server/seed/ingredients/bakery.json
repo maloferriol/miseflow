@@ -2,7 +2,7 @@
   {
     "id": "11dbb3f9-6731-4980-b243-ab331e461f4c",
     "name": "bread",
-    "fdcId": null,
+    "fdcId": "174924",
     "preferredKind": "count",
     "shoppingCategory": "Bakery",
     "aliases": [
@@ -11,12 +11,20 @@
         "name": "loaf"
       }
     ],
-    "conversions": []
+    "conversions": [
+      {
+        "id": "cb75a6b2-034c-4b5f-bad5-3f123ce887aa",
+        "fromUnit": "slice",
+        "toUnit": "g",
+        "factor": 29,
+        "fdcId": "174924"
+      }
+    ]
   },
   {
     "id": "94b99817-baa2-436f-beaf-00442ebc48e3",
     "name": "baguette",
-    "fdcId": null,
+    "fdcId": "172675",
     "preferredKind": "count",
     "shoppingCategory": "Bakery",
     "aliases": [
@@ -26,5 +34,186 @@
       }
     ],
     "conversions": []
+  },
+  {
+    "id": "dff4a1f1-0b5d-4b6a-b968-ac0a341e8557",
+    "name": "whole wheat bread",
+    "fdcId": "172688",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [
+      {
+        "id": "6d31f821-3dd4-4a4b-bcb0-48672880d654",
+        "name": "wholemeal bread"
+      },
+      {
+        "id": "6f0e5e4b-6148-4168-9016-0c0434018ab5",
+        "name": "brown bread"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "da8e1006-fb67-4306-9845-5adc5f922e86",
+        "fromUnit": "slice",
+        "toUnit": "g",
+        "factor": 32,
+        "fdcId": "172688"
+      }
+    ]
+  },
+  {
+    "id": "29f06e06-bb43-4a7f-a485-774a9cb32655",
+    "name": "rye bread",
+    "fdcId": "172684",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "051ecc1b-94ac-4311-8dd6-e2a2263335e6",
+        "fromUnit": "slice",
+        "toUnit": "g",
+        "factor": 32,
+        "fdcId": "172684"
+      }
+    ]
+  },
+  {
+    "id": "424c4eb4-30b0-45c8-9098-918872fc9959",
+    "name": "pita bread",
+    "fdcId": "174915",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [
+      {
+        "id": "8823bc31-578c-4298-98e6-ca81131885e4",
+        "name": "pitta"
+      },
+      {
+        "id": "51715447-cccf-4f91-8d74-452ec6104497",
+        "name": "pitta bread"
+      },
+      {
+        "id": "7c328b99-0835-4563-a803-7a49f0d64956",
+        "name": "pita"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "8c0c91e2-6c29-4bd8-bddb-0e7024d3f132",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 60,
+        "fdcId": "174915"
+      }
+    ]
+  },
+  {
+    "id": "387d3671-beb2-4c00-9787-e259107cfc2c",
+    "name": "naan",
+    "fdcId": "171845",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [
+      {
+        "id": "271ed2c1-4a5c-47cf-bfab-cf852eba0ef5",
+        "name": "naan bread"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "05cd0b65-880e-4162-9149-c140694052c6",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 90,
+        "fdcId": "171845"
+      }
+    ]
+  },
+  {
+    "id": "63c70b05-375c-4a8a-a105-ee9ea5eafb94",
+    "name": "croissant",
+    "fdcId": "174987",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "5ac0e21a-a34a-46a0-85d8-d9d13cc11ca8",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 57,
+        "fdcId": "174987"
+      }
+    ]
+  },
+  {
+    "id": "d0f80bd5-317a-4e7e-890c-4a6a571e837e",
+    "name": "bagel",
+    "fdcId": "174899",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [],
+    "conversions": [
+      {
+        "id": "ebcd5b57-e76b-4699-8d7b-9b1815763a8c",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 99,
+        "fdcId": "174899"
+      }
+    ]
+  },
+  {
+    "id": "6c9ed5f1-734c-4b0a-a27d-0d310b8e52bf",
+    "name": "bread roll",
+    "fdcId": "172793",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [
+      {
+        "id": "8a539259-6ad4-4728-bcaf-9f3738539aee",
+        "name": "dinner roll"
+      },
+      {
+        "id": "59cae52a-8c94-4dbc-9766-ab1781516eb0",
+        "name": "roll"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "ea651e21-6b77-4cf4-9a87-8d975876c71c",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 28,
+        "fdcId": "172793"
+      }
+    ]
+  },
+  {
+    "id": "a1367ce2-d756-43ea-b3ad-f2233804f37c",
+    "name": "flour tortilla",
+    "fdcId": "173242",
+    "preferredKind": "count",
+    "shoppingCategory": "Bakery",
+    "aliases": [
+      {
+        "id": "b8031ff6-195a-432d-8708-b865c6b93d67",
+        "name": "wrap"
+      },
+      {
+        "id": "017456f5-618b-4a02-be65-9516dc9e19d6",
+        "name": "tortilla wrap"
+      }
+    ],
+    "conversions": [
+      {
+        "id": "705b2827-8672-475c-a5aa-d1356b31aec9",
+        "fromUnit": "each",
+        "toUnit": "g",
+        "factor": 32,
+        "fdcId": "173242"
+      }
+    ]
   }
 ]

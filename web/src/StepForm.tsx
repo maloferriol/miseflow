@@ -76,7 +76,7 @@ export function StepFormView({
           fixes a quantity.
         </small>
       </p>
-      {pickerAt !== null && <Slot render={renderPicker} with={(pick) => insert(pickerAt, pick)} />}
+      {pickerAt !== null && <Slot render={renderPicker} value={(pick) => insert(pickerAt, pick)} />}
       {unmatched.map((u) => (
         <Fragment key={normaliseName(u.name)}>{renderLinkChoice(u)}</Fragment>
       ))}
@@ -93,6 +93,6 @@ export function StepFormView({
 
 // Renders a slot as its own component, so `insert` (which moves the caret through the textarea's
 // ref) is handed over as a prop for the picker to call later, not called during this render.
-function Slot<T>({ render, with: value }: { render: (value: T) => ReactNode; with: T }) {
+function Slot<T>({ render, value }: { render: (value: T) => ReactNode; value: T }) {
   return render(value);
 }

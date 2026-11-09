@@ -44,6 +44,8 @@ export function CatalogView({
         />
       </label>
       {results.error && <p role="alert">{results.error.message}</p>}
+      {!results.data && !results.error && <p>Loading…</p>}
+      {results.data?.length === 0 && <p>No Ingredients found</p>}
       <ul aria-label="Ingredients">
         {results.data?.map((ingredient) => (
           <Fragment key={ingredient.id}>{renderIngredient(ingredient)}</Fragment>

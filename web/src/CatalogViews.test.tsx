@@ -67,19 +67,31 @@ describe("Catalog view", () => {
     expect(onQueryChange).toHaveBeenCalledWith("onio");
   });
 
-  it("shows an empty list while the search loads, and when it finds nothing", () => {
-    const view = renderView(catalogView({ results: { data: undefined, error: null } }));
+  it("says it is loading while the search loads", () => {
+    renderView(catalogView({ results: { data: undefined, error: null } }));
+    expect(screen.getByText("Loading…")).toBeTruthy();
     expect(within(list()).queryAllByRole("listitem")).toEqual([]);
     expect(screen.queryByRole("alert")).toBeNull();
+  });
 
-    view.rerender(catalogView({ results: { data: [], error: null } }));
+  it("says no Ingredients were found when the search finds nothing", () => {
+    renderView(catalogView({ results: { data: [], error: null } }));
+    expect(screen.getByText("No Ingredients found")).toBeTruthy();
     expect(within(list()).queryAllByRole("listitem")).toEqual([]);
+    expect(screen.queryByText("Loading…")).toBeNull();
+  });
+
+  it("says neither loading nor empty once Ingredients are found", () => {
+    renderView(catalogView());
+    expect(screen.queryByText("Loading…")).toBeNull();
+    expect(screen.queryByText("No Ingredients found")).toBeNull();
   });
 
   it("shows why the search failed", () => {
     const error = new Error("Could not search the Ingredients (500)");
     renderView(catalogView({ results: { data: undefined, error } }));
     expect(screen.getByRole("alert").textContent).toBe("Could not search the Ingredients (500)");
+    expect(screen.queryByText("Loading…")).toBeNull();
   });
 });
 

@@ -219,4 +219,17 @@ describe("Ingredient picker", () => {
     renderPicker();
     expect((await screen.findByRole("alert")).textContent).toBe("Could not search (500)");
   });
+
+  it("shows why the Recipes didn't load, still listing the Ingredients found", async () => {
+    vi.mocked(fetchRecipes).mockRejectedValue(new Error("Could not load the Recipes (500)"));
+    renderPicker();
+    type("on");
+    expect((await screen.findByRole("alert")).textContent).toBe("Could not load the Recipes (500)");
+    const ingredients = await screen.findByRole("group", { name: "Ingredients" });
+    expect(
+      within(ingredients)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["onion", "shallot (alias)"]);
+  });
 });

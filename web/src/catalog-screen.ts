@@ -30,7 +30,10 @@ export function ingredientDetails(
   >,
 ): string {
   const category = ingredient.shoppingCategory?.name ?? "No category";
-  const unit = ingredient.mainUnit ?? `kitchen ${ingredient.preferredKind ?? ""} unit`;
+  const kitchenUnit = ingredient.preferredKind
+    ? `kitchen ${ingredient.preferredKind} unit`
+    : "kitchen unit";
+  const unit = ingredient.mainUnit ?? kitchenUnit;
   const yours = ingredient.source === "own" ? " · yours" : "";
   const aliases = ingredient.aliases.length > 0 ? ` · also: ${ingredient.aliases.join(", ")}` : "";
   return `${category} · ${unit}${yours}${aliases}`;

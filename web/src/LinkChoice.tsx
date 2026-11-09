@@ -1,3 +1,4 @@
+import type { Kind } from "@miseflow/shared/src/catalog/units.ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { type Action, toAction } from "./action.ts";
@@ -25,7 +26,7 @@ type LinkChoiceProps = {
   onLinked: (target: Target) => void;
 };
 
-type NewIngredient = { name: string; preferredKind: string; shoppingCategoryId: string };
+type NewIngredient = { name: string; preferredKind: Kind; shoppingCategoryId: string };
 
 export type LinkChoiceViewProps = LinkChoiceProps & {
   categories: { id: string; name: string }[] | undefined;
@@ -123,7 +124,7 @@ export function LinkChoiceView({
       </label>
       <label>
         Kind of measure{" "}
-        <select value={kind} onChange={(e) => setKind(e.target.value)}>
+        <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
           <option value="mass">mass</option>
           <option value="volume">volume</option>
           <option value="count">count</option>

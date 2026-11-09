@@ -1,4 +1,5 @@
 import { normaliseName, searchCatalog } from "@miseflow/shared/src/catalog/match.ts";
+import type { Kind } from "@miseflow/shared/src/catalog/units.ts";
 import { parseStepText, type StepTextPart } from "@miseflow/shared/src/recipe/tokens.ts";
 import { createIntent, type Intent } from "./intent.ts";
 import type { MutationCall } from "./mutation-call.ts";
@@ -220,7 +221,7 @@ export type ChosenLink =
       action: "createIngredient";
       wording: string;
       name: string;
-      preferredKind: string;
+      preferredKind: Kind;
       shoppingCategoryId: string;
     }
   | { action: "createSubRecipe"; wording: string; name: string };
@@ -285,7 +286,7 @@ export function linkChoices(wording: string, send: Send) {
       match.exact
         ? Promise.resolve({ ingredientId: match.id })
         : sendLinkChoice(alias, { action: "addAlias", wording, ingredientId: match.id }, send),
-    createIngredient: (args: { name: string; preferredKind: string; shoppingCategoryId: string }) =>
+    createIngredient: (args: { name: string; preferredKind: Kind; shoppingCategoryId: string }) =>
       sendLinkChoice(ingredient, { action: "createIngredient", wording, ...args }, send),
     createSubRecipe: (name: string) =>
       sendLinkChoice(subRecipe, { action: "createSubRecipe", wording, name }, send),

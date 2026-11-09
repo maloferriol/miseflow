@@ -1,11 +1,13 @@
 // Sign-in (ADR 0008, ADR 0011): its hook, its view, and the SignIn that wires them.
 import { type SubmitEvent, useState } from "react";
 import { fieldText } from "./form-fields.ts";
+import { signInFailureMessage } from "./sign-in.ts";
 import { supabase } from "./supabase.ts";
 
 /**
  * Signs in with an email and password: pending while Supabase checks, then its error message, if
- * any. A success shows nothing here; the app shell hears of the new session.
+ * any, or a "Could not sign in" message if the request fails outright. A success shows nothing
+ * here; the app shell hears of the new session.
  */
 export function useSignIn() {
   const [error, setError] = useState<string | null>(null);
@@ -14,9 +16,14 @@ export function useSignIn() {
   async function signIn(email: string, password: string) {
     setPending(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setPending(false);
-    setError(error?.message ?? null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setError(error?.message ?? null);
+    } catch (thrown) {
+      setError(signInFailureMessage(thrown));
+    } finally {
+      setPending(false);
+    }
   }
 
   return {

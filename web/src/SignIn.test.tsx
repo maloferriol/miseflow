@@ -56,6 +56,14 @@ describe("the sign-in hook", () => {
     expect(result.current.pending).toBe(false);
   });
 
+  it("stops checking and says so when Supabase can't be reached", async () => {
+    auth.signInWithPassword.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { result } = renderQueryHook(useSignIn);
+    act(() => result.current.onSignIn("cook@miseflow.test", "a-password"));
+    await waitFor(() => expect(result.current.error).toBe("Could not sign in (Failed to fetch)"));
+    expect(result.current.pending).toBe(false);
+  });
+
   it("clears the last error while it checks again", async () => {
     const { result } = renderQueryHook(useSignIn);
     act(() => result.current.onSignIn("cook@miseflow.test", "wrong"));

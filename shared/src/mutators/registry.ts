@@ -25,7 +25,7 @@ import { markGot, unmarkGot } from "./shopping.ts";
 import { addStep, editStep, moveStep, removeStep } from "./steps.ts";
 import { createSubRecipe, extractToSubRecipe, setYield } from "./subrecipes.ts";
 
-export type { AnyMutator, Mutator, MutatorContext, Tx } from "./define.ts";
+export type { AnyMutator, CallerContext, Mutator, MutatorContext, Tx } from "./define.ts";
 export { ConflictError, defineMutator, InvalidArgsError, NotFoundError } from "./define.ts";
 
 // Every named mutation the server accepts on POST /mutate (ADR 0007). `satisfies` keeps the

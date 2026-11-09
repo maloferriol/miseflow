@@ -1,8 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { ownerSchema } from "../task/owner.ts";
-import { replan } from "../plan/replan.ts";
-import { lockService } from "../plan/rows.ts";
+import { findLiveService } from "../plan/rows.ts";
 import { batches, courses, dishes, stepEvents, steps } from "../schema.ts";
 import { defineMutator, NotFoundError, type MutatorContext, type Tx } from "./define.ts";
 
@@ -52,8 +51,9 @@ async function ownerRecipe(tx: Tx, ownerId: string, menuId: string, args: Args):
 }
 
 async function appendEvent(tx: Tx, args: Args, ctx: MutatorContext, kind: "done" | "undone") {
-  // Lock order Service first (D6), so the latest event below can't change under us.
-  const service = await lockService(tx, ctx.ownerId, args.serviceId);
+  // Locked first, so the latest event below can't change under us.
+  await ctx.replan.lock({ serviceId: args.serviceId });
+  const service = await findLiveService(tx, ctx.ownerId, args.serviceId);
   const recipeId = await ownerRecipe(tx, ctx.ownerId, service.menuId, args);
   const [step] = await tx
     .select({ id: steps.id })
@@ -95,7 +95,6 @@ async function appendEvent(tx: Tx, args: Args, ctx: MutatorContext, kind: "done"
     kind,
     at,
   });
-  await replan(tx, ctx, args.serviceId);
 }
 
 /** Ticks a Step done: appends `done`, then re-plans its Service (a late tick moves what follows). */

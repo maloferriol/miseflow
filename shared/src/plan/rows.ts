@@ -13,22 +13,21 @@ import { fromTimeColumn, type LocalDate } from "./time.ts";
 
 type ServiceRow = { id: string; menuId: string; date: LocalDate; time: string | null };
 
-// The caller's live Service on a live Menu, row-locked when asked (D6); anything else is missing.
-// FOR NO KEY UPDATE: rows that reference the Service (Step events, placements, Batches) take
-// FOR KEY SHARE on it when inserted, which FOR UPDATE would wait on (#88 owner decision 1).
-async function findService(
+/**
+ * The caller's live Service on a live Menu, read without a row lock; anything else is missing.
+ * A mutator that must hold the Service locks it through `ctx.replan.lock` first.
+ */
+export async function findLiveService(
   tx: Tx,
   ownerId: string,
   serviceId: string,
-  { lock = false } = {},
 ): Promise<ServiceRow> {
-  const query = tx
+  const [service] = await tx
     .select({ id: services.id, menuId: services.menuId, date: services.date, time: services.time })
     .from(services)
     .where(
       and(eq(services.id, serviceId), eq(services.ownerId, ownerId), isNull(services.deletedAt)),
     );
-  const [service] = lock ? await query.for("no key update") : await query;
   if (!service) throw new NotFoundError("Service");
   const [menu] = await tx
     .select({ id: menus.id })
@@ -36,16 +35,6 @@ async function findService(
     .where(and(eq(menus.id, service.menuId), eq(menus.ownerId, ownerId), isNull(menus.deletedAt)));
   if (!menu) throw new NotFoundError("Service");
   return service;
-}
-
-/** The caller's live Service on a live Menu, read without a row lock; anything else is missing. */
-export function findLiveService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
-  return findService(tx, ownerId, serviceId);
-}
-
-/** The caller's live Service, row-locked (D6), for a mutator that writes before re-planning it. */
-export function lockService(tx: Tx, ownerId: string, serviceId: string): Promise<ServiceRow> {
-  return findService(tx, ownerId, serviceId, { lock: true });
 }
 
 export type LoadedRows = PlanRows & {

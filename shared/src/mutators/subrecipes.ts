@@ -1,6 +1,5 @@
 import { and, asc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { replanAffected } from "../plan/replan.ts";
 import { stepGroups } from "../recipe/planning.ts";
 import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
 import { loadRecipeSnapshot } from "../recipe/snapshot.ts";
@@ -227,7 +226,7 @@ export const extractToSubRecipe = defineMutator({
       snapshot: await loadRecipeSnapshot(tx, ownerId, args.subRecipeId),
     });
     await appendRevision(tx, ownerId, args.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: args.recipeId });
+    ctx.replan.after({ recipeId: args.recipeId });
   },
 });
 

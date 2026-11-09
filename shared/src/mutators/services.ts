@@ -3,13 +3,6 @@ import { z } from "zod";
 import { ownerSchema } from "../task/owner.ts";
 import type { Hours } from "../plan/model.ts";
 import { smallestOverride } from "../plan/more-time.ts";
-import {
-  lockCook,
-  lockServices,
-  replan,
-  replanAffected,
-  replanFromScratchOf,
-} from "../plan/replan.ts";
 import { findLiveService, loadPlanRows } from "../plan/rows.ts";
 import { toTimeColumn } from "../plan/time.ts";
 import { taskKey } from "../scheduler/types.ts";
@@ -66,7 +59,7 @@ export const createService = defineMutator({
       date: args.date,
       time: args.time === null ? null : toTimeColumn(args.time),
     });
-    await replan(tx, ctx, args.serviceId);
+    ctx.replan.after({ serviceId: args.serviceId });
   },
 });
 
@@ -91,7 +84,7 @@ export const setServiceTime = defineMutator({
       )
       .returning({ id: services.id });
     if (!updated.length) throw new NotFoundError("Service");
-    await replan(tx, ctx, args.serviceId);
+    ctx.replan.after({ serviceId: args.serviceId });
   },
 });
 
@@ -99,8 +92,9 @@ export const setServiceTime = defineMutator({
 export const replanService = defineMutator({
   name: "replanService",
   args: z.strictObject({ serviceId: z.uuid() }),
-  async run(tx, args, ctx) {
-    await replan(tx, ctx, args.serviceId);
+  run(_tx, args, ctx) {
+    ctx.replan.after({ serviceId: args.serviceId });
+    return Promise.resolve();
   },
 });
 
@@ -111,8 +105,9 @@ export const replanService = defineMutator({
 export const replanFromScratch = defineMutator({
   name: "replanFromScratch",
   args: z.strictObject({ serviceId: z.uuid() }),
-  async run(tx, args, ctx) {
-    await replanFromScratchOf(tx, ctx, args.serviceId);
+  run(_tx, args, ctx) {
+    ctx.replan.after({ serviceId: args.serviceId }, { fromScratch: true });
+    return Promise.resolve();
   },
 });
 
@@ -135,7 +130,7 @@ export const setKitchenSettings = defineMutator({
       .returning({ id: kitchenSettings.id });
     if (!written.length) throw new ConflictError("A row with one of these ids already exists");
     // Only Services without their own time follow the default.
-    await replanAffected(tx, ctx, { allServices: true, onlyDefaultTime: true });
+    ctx.replan.after({ allServices: true, onlyDefaultTime: true });
   },
 });
 
@@ -170,9 +165,8 @@ export const setWeeklyAvailability = defineMutator({
   }),
   async run(tx, args, ctx) {
     const { ownerId } = ctx;
-    // Lock order Service, then Cook (D6); every Service follows the Cook's Availability.
-    const serviceIds = await lockServices(tx, ownerId, { allServices: true });
-    const cookId = await lockCook(tx, ownerId);
+    // Every Service follows the Cook's Availability.
+    const { cookId } = await ctx.replan.lock({ allServices: true }, { cook: true });
     await tx
       .update(availabilityWeekly)
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
@@ -204,7 +198,6 @@ export const setWeeklyAvailability = defineMutator({
         .returning({ id: availabilityWeekly.id });
       if (!written.length) throw new ConflictError("A row with one of these ids already exists");
     }
-    for (const id of serviceIds) await replan(tx, ctx, id);
   },
 });
 
@@ -266,9 +259,8 @@ export const setAvailabilityOverride = defineMutator({
   }),
   async run(tx, args, ctx) {
     const { ownerId } = ctx;
-    // Lock order Service, then Cook (D6); every Service follows the Cook's Availability.
-    const serviceIds = await lockServices(tx, ownerId, { allServices: true });
-    const cookId = await lockCook(tx, ownerId);
+    // Every Service follows the Cook's Availability.
+    const { cookId } = await ctx.replan.lock({ allServices: true }, { cook: true });
     await writeOverride(
       tx,
       ownerId,
@@ -277,7 +269,6 @@ export const setAvailabilityOverride = defineMutator({
       args.date,
       overrideHours(args.availability),
     );
-    for (const id of serviceIds) await replan(tx, ctx, id);
   },
 });
 
@@ -307,9 +298,8 @@ export const giveCookMoreTime = defineMutator({
   }),
   async run(tx, args, ctx) {
     const { ownerId } = ctx;
-    // Lock order Service, then Cook (D6), as setAvailabilityOverride.
-    const serviceIds = await lockServices(tx, ownerId, { allServices: true });
-    const cookId = await lockCook(tx, ownerId);
+    // Every Service is locked, so the Plan the search reads can't change under it.
+    const { serviceIds, cookId } = await ctx.replan.lock({ allServices: true }, { cook: true });
     if (!serviceIds.includes(args.serviceId)) throw new NotFoundError("Service");
     const rows = await loadPlanRows(
       tx,
@@ -328,6 +318,5 @@ export const giveCookMoreTime = defineMutator({
       start: proposal.start,
       end: proposal.end,
     });
-    await replanAffected(tx, ctx, { allServices: true });
   },
 });

@@ -1,7 +1,6 @@
 import { and, asc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireVisibleIngredients } from "../catalog/visibility.ts";
-import { replanAffected } from "../plan/replan.ts";
 import { isValidQuantity, parseQuantity } from "../recipe/quantity.ts";
 import { stepBodySchema, type StepToken } from "../recipe/tokens.ts";
 import { ingredientLines, stepDependencies, steps } from "../schema.ts";
@@ -97,7 +96,7 @@ export const addStep = defineMutator({
     });
     await writeLines(tx, ownerId, args.recipeId, args.stepId, args.body, args.lines);
     await appendRevision(tx, ownerId, args.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: args.recipeId });
+    ctx.replan.after({ recipeId: args.recipeId });
   },
 });
 
@@ -116,7 +115,7 @@ export const editStep = defineMutator({
       .where(eq(steps.id, args.stepId));
     await writeLines(tx, ownerId, step.recipeId, args.stepId, args.body, args.lines);
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: step.recipeId });
+    ctx.replan.after({ recipeId: step.recipeId });
   },
 });
 
@@ -152,7 +151,7 @@ export const moveStep = defineMutator({
       ...(nextAtSlot ? [nextAtSlot.id] : []),
     ]);
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: step.recipeId });
+    ctx.replan.after({ recipeId: step.recipeId });
   },
 });
 
@@ -185,7 +184,7 @@ export const removeStep = defineMutator({
       .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
       .where(eq(steps.id, args.stepId));
     await appendRevision(tx, ownerId, step.recipeId, args.revisionId);
-    await replanAffected(tx, ctx, { recipeId: step.recipeId });
+    ctx.replan.after({ recipeId: step.recipeId });
   },
 });
 

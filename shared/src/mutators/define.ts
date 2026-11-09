@@ -1,17 +1,24 @@
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type { z } from "zod";
+import type { Replan } from "../plan/replan.ts";
 
 // A Drizzle transaction (or database). Mutators are server-only for the MVP: ADR 0007 also
 // wants them to run optimistically in the browser, which needs a store interface later.
 export type Tx = PgDatabase<PgQueryResultHKT>;
 
-export type MutatorContext = {
+/** What the caller of `applyMutation` supplies. */
+export type CallerContext = {
   /** The signed-in user's id (the token's `sub`), stamped on every row written. */
   ownerId: string;
   /** The kitchen's IANA time zone (KITCHEN_TIME_ZONE), for Service times and Availability. */
   timeZone: string;
   /** The server's clock, injected so no mutator reads the wall clock (#88): stamps Step events. */
   now: () => Date;
+};
+
+export type MutatorContext = CallerContext & {
+  /** Where the mutator registers the Services its write affects (ADR 0013); added by `applyMutation`. */
+  replan: Replan;
 };
 
 export type Mutator<Args = unknown> = {

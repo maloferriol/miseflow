@@ -38,9 +38,9 @@ describe("ingredientDetails", () => {
     );
   });
 
-  it("leaves the kind out of the kitchen's unit when the Ingredient has no kind", () => {
+  it("says kitchen unit, with single spaces, when the Ingredient has no kind", () => {
     expect(ingredientDetails({ ...seedOnion, mainUnit: null, preferredKind: null })).toBe(
-      "Vegetables · kitchen  unit",
+      "Vegetables · kitchen unit",
     );
   });
 

@@ -1,4 +1,5 @@
 import "../../scripts/load-env.ts";
+import { devPorts } from "../../scripts/checkout-ports.ts";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { createDb } from "./db.ts";
@@ -16,7 +17,8 @@ const app = createApp({
   db: createDb(databaseUrlFromEnv()),
   timeZone: kitchenTimeZoneFromEnv(),
 });
-const port = Number(process.env.PORT ?? 8787);
+// This checkout's API port: API_PORT, else its .dev-ports.json or the main checkout's 8787/8788.
+const port = devPorts().api;
 
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`MiseFlow API listening on http://localhost:${info.port}`);

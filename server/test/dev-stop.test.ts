@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { parsePs, planDevStop, processesToResolve } from "../../scripts/dev-stop-plan.ts";
-import { appPorts } from "../../scripts/preflight-checks.ts";
+import { mainCheckoutPorts } from "../../scripts/dev-ports-plan.ts";
+import { appPortsOf } from "../../scripts/preflight-checks.ts";
 
 // `npm run dev:stop` stops what this decides; the script itself only gathers the facts and signals.
 describe("dev:stop", () => {
   const here = "/Users/cook/miseflow/.claude/worktrees/menus";
-  const [api, web] = appPorts;
+  const [api, web] = appPortsOf(mainCheckoutPorts);
 
   it("reads pid, parent and process group from ps", () => {
     expect(parsePs("    1     0     1\n41133 41100 41100\n")).toEqual([

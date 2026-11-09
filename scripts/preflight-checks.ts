@@ -1,5 +1,6 @@
 // The pass-or-fail decisions behind `npm run preflight` (scripts/preflight.ts). The script gathers
 // the facts (versions, file times, port listeners) and these decide, so the tests need no machine.
+import type { CheckoutPorts } from "./dev-ports-plan.ts";
 
 /** package.json "engines". */
 const minimumNodeMajor = 24;
@@ -33,11 +34,26 @@ export function dependenciesNeedInstall(times: {
 /** A port a dev server listens on. */
 export type AppPort = { port: number; name: string };
 
-/** The app ports, checked by preflight and freed by `npm run dev:stop`. */
-export const appPorts: AppPort[] = [
-  { port: 8787, name: "API" },
-  { port: 5173, name: "web" },
-];
+/** "8787, 5173, 8788 and 5174", or with `or` as the last joiner. */
+export function listPorts(ports: AppPort[], last: "and" | "or" = "and"): string {
+  const numbers = ports.map((p) => p.port);
+  return numbers.length < 2
+    ? `${numbers.join("")}`
+    : `${numbers.slice(0, -1).join(", ")} ${last} ${numbers.at(-1)}`;
+}
+
+/**
+ * A checkout's app ports, test and prod (scripts/checkout-ports.ts), checked by preflight and freed
+ * by `npm run dev:stop`.
+ */
+export function appPortsOf(ports: CheckoutPorts): AppPort[] {
+  return [
+    { port: ports.test.api, name: "API" },
+    { port: ports.test.web, name: "web" },
+    { port: ports.prod.api, name: "prod API" },
+    { port: ports.prod.web, name: "prod web" },
+  ];
+}
 
 /** One process from `lsof -F`: its pid, and the command (`c`) or file name (`n`) fields asked for. */
 export type LsofProcess = { pid: number; command?: string; name?: string };

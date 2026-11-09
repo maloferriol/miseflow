@@ -1,4 +1,5 @@
-// `npm run dev:stop`: stops this checkout's dev servers on the app ports, each with its whole
+// `npm run dev:stop`: stops this checkout's dev servers on its app ports (test and prod, from
+// scripts/checkout-ports.ts), each with its whole
 // `npm run dev:*` chain, and leaves other checkouts' running. The permission check refuses `kill`
 // because it can't tell who started a process; this can. The SessionEnd hook runs it with
 // --quiet, which prints only what it stopped or failed to stop.
@@ -10,7 +11,8 @@ import {
   processesToResolve,
   type ProcessInfo,
 } from "./dev-stop-plan.ts";
-import { appPorts } from "./preflight-checks.ts";
+import { checkoutPorts } from "./checkout-ports.ts";
+import { appPortsOf, listPorts } from "./preflight-checks.ts";
 import { capture, checkoutOf, checkoutRoot, listenersOn, workingDirectories } from "./processes.ts";
 
 const quiet = process.argv.includes("--quiet");
@@ -23,6 +25,7 @@ if (capture("lsof", ["-v"]).missing) {
 }
 
 const root = checkoutRoot();
+const appPorts = appPortsOf(checkoutPorts());
 const ports = appPorts.map((port) => ({ port, listeners: listenersOn(port.port) }));
 const psRows = parsePs(capture("ps", ["-A", "-o", "pid=,ppid=,pgid="]).stdout);
 const toResolve = new Set(processesToResolve(ports, psRows, root));
@@ -44,7 +47,7 @@ if (plan.watch.length === 0) {
   if (!quiet)
     console.log(
       `Nothing to stop: no dev server from this checkout is listening on ` +
-        `${appPorts.map((p) => p.port).join(" or ")}.`,
+        `${listPorts(appPorts, "or")}.`,
     );
   process.exit(0);
 }

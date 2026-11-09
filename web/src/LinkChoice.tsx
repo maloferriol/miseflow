@@ -45,26 +45,22 @@ export function useLinkChoice(name: string, onLinked: (target: Target) => void) 
   });
   // Each action replays on a retry after a lost response, with its own ids (#127 D).
   const [choices] = useState(() => linkChoices(name, mutate));
+  // Refetches what the link added to, then links the name to its target.
+  const linked = async (queryKey: string[], target: Target) => {
+    await queryClient.invalidateQueries({ queryKey });
+    onLinked(target);
+  };
   const addAlias = useMutation({
     mutationFn: choices.useNearMatch,
-    onSuccess: async (target) => {
-      await queryClient.invalidateQueries({ queryKey: ["ingredients"] });
-      onLinked(target);
-    },
+    onSuccess: (target) => linked(["ingredients"], target),
   });
   const createIngredient = useMutation({
     mutationFn: choices.createIngredient,
-    onSuccess: async (target) => {
-      await queryClient.invalidateQueries({ queryKey: ["ingredients"] });
-      onLinked(target);
-    },
+    onSuccess: (target) => linked(["ingredients"], target),
   });
   const createSubRecipe = useMutation({
     mutationFn: choices.createSubRecipe,
-    onSuccess: async (target) => {
-      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
-      onLinked(target);
-    },
+    onSuccess: (target) => linked(["recipes"], target),
   });
   return {
     categories: categories.data,

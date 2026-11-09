@@ -1,6 +1,7 @@
 // The Menu screen (ADR 0011): each part's hook, and the part that renders its view with it.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { toAction } from "./action.ts";
 import { fetchAvailability, fetchMenu, fetchMenus, type Menu, mutate } from "./api.ts";
 import { useIntent } from "./intent.ts";
 import { type DishScale, dishScaleSave, type ServiceInput, serviceSave } from "./menu-screen.ts";
@@ -42,19 +43,17 @@ function MenuList() {
 /** Creates a Menu and opens it. Only a mutation hook: no branches. */
 export function useNewMenu(onCreated: (menuId: string) => void) {
   const createMenu = useMutation({
-    mutationFn: async (args: { menuId: string; name: string; guestCount: number }) =>
-      mutate({ id: crypto.randomUUID(), name: "createMenu", args }),
-    onSuccess: (_, { menuId }) => {
+    mutationFn: async (menu: { name: string; guestCount: number }) => {
+      const menuId = crypto.randomUUID();
+      await mutate({ id: crypto.randomUUID(), name: "createMenu", args: { menuId, ...menu } });
+      return menuId;
+    },
+    onSuccess: (menuId) => {
       window.history.replaceState(null, "", `?menu=${menuId}`);
       onCreated(menuId);
     },
   });
-  return {
-    createPending: createMenu.isPending,
-    createError: createMenu.error,
-    onCreate: (menu: { name: string; guestCount: number }) =>
-      createMenu.mutate({ menuId: crypto.randomUUID(), ...menu }),
-  };
+  return { create: toAction(createMenu) };
 }
 
 function NewMenu({ onCreated }: { onCreated: (menuId: string) => void }) {
@@ -77,9 +76,7 @@ export function useMenu(menuId: string) {
   });
   return {
     menu,
-    addCoursePending: addCourse.isPending,
-    addCourseError: addCourse.error,
-    onAddCourse: (name: string) => addCourse.mutate(name),
+    addCourse: toAction(addCourse),
     onChanged,
   };
 }
@@ -114,11 +111,7 @@ export function useCourse(course: Menu["courses"][number], onChanged: () => Prom
     },
     onSuccess: onChanged,
   });
-  return {
-    addDishPending: addDish.isPending,
-    addDishError: addDish.error,
-    onAddDish: (name: string) => addDish.mutate(name),
-  };
+  return { addDish: toAction(addDish) };
 }
 
 function Course({
@@ -149,11 +142,7 @@ export function useDishScale(dishId: string, onChanged: () => Promise<void>) {
     (scale: DishScale, i) => dishScaleSave(dishId, scale, i),
     () => Promise.all([onChanged(), queryClient.invalidateQueries({ queryKey: ["plan"] })]),
   );
-  return {
-    savePending: save.isPending,
-    saveError: save.error,
-    onSave: (scale: DishScale) => save.mutate(scale),
-  };
+  return { save: toAction(save) };
 }
 
 function DishScaleForm({
@@ -182,9 +171,7 @@ export function useServiceForm(menuId: string, service: Menu["service"]) {
   );
   return {
     availability: availability.data,
-    savePending: save.isPending,
-    saveError: save.error,
-    onSave: (input: ServiceInput) => save.mutate(input),
+    save: toAction(save),
   };
 }
 

@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { action } from "../test/action.ts";
 import { renderQueryHook, renderView, renderWired } from "../test/render-view.tsx";
 import {
   type CatalogIngredient,
@@ -57,15 +58,9 @@ function renderLinkChoice(props: Partial<LinkChoiceViewProps> = {}) {
     nearRecipes: [],
     onLinked: () => {},
     categories,
-    aliasPending: false,
-    ingredientPending: false,
-    subRecipePending: false,
-    aliasError: null,
-    ingredientError: null,
-    subRecipeError: null,
-    onUseNearMatch: () => {},
-    onCreateIngredient: () => {},
-    onCreateSubRecipe: () => {},
+    alias: action(),
+    ingredient: action(),
+    subRecipe: action(),
     ...props,
   };
   return renderView(<LinkChoiceView {...view} />);
@@ -76,7 +71,7 @@ const button = (name: string) => screen.getByRole("button", { name });
 describe("Link choice", () => {
   it("offers each near match, which hands that Ingredient back to teach the alias", () => {
     const onUseNearMatch = vi.fn();
-    renderLinkChoice({ near: [butter], onUseNearMatch });
+    renderLinkChoice({ near: [butter], alias: action({ run: onUseNearMatch }) });
     expect(screen.getByRole("list", { name: "Near matches for chicken stock" })).toBeTruthy();
 
     fireEvent.click(button("Use butter"));
@@ -98,7 +93,7 @@ describe("Link choice", () => {
 
   it("creates the name as an Ingredient, with its kind of measure from the amount, under Other", () => {
     const onCreateIngredient = vi.fn();
-    renderLinkChoice({ onCreateIngredient });
+    renderLinkChoice({ ingredient: action({ run: onCreateIngredient }) });
     expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "Kind of measure" }).value).toBe(
       "volume",
     );
@@ -113,7 +108,7 @@ describe("Link choice", () => {
 
   it("creates the Ingredient with the name, kind and Shopping category the cook picks", () => {
     const onCreateIngredient = vi.fn();
-    renderLinkChoice({ onCreateIngredient });
+    renderLinkChoice({ ingredient: action({ run: onCreateIngredient }) });
     fireEvent.change(screen.getByRole("textbox", { name: "New Ingredient name" }), {
       target: { value: "  stock  " },
     });
@@ -140,7 +135,7 @@ describe("Link choice", () => {
 
   it("creates the name as a sub-recipe, capitalised, or as the name the cook types", () => {
     const onCreateSubRecipe = vi.fn();
-    renderLinkChoice({ onCreateSubRecipe });
+    renderLinkChoice({ subRecipe: action({ run: onCreateSubRecipe }) });
     fireEvent.click(button("Create sub-recipe"));
     expect(onCreateSubRecipe).toHaveBeenLastCalledWith("Chicken stock");
 
@@ -152,12 +147,16 @@ describe("Link choice", () => {
   });
 
   it("disables each choice while its own link is pending", () => {
-    const view = renderLinkChoice({ near: [butter], aliasPending: true });
+    const view = renderLinkChoice({ near: [butter], alias: action({ pending: true }) });
     expect(button("Use butter").hasAttribute("disabled")).toBe(true);
     expect(button("Create Ingredient").hasAttribute("disabled")).toBe(false);
 
     view.unmount();
-    renderLinkChoice({ near: [butter], ingredientPending: true, subRecipePending: true });
+    renderLinkChoice({
+      near: [butter],
+      ingredient: action({ pending: true }),
+      subRecipe: action({ pending: true }),
+    });
     expect(button("Use butter").hasAttribute("disabled")).toBe(false);
     expect(button("Create Ingredient").hasAttribute("disabled")).toBe(true);
     expect(button("Create sub-recipe").hasAttribute("disabled")).toBe(true);
@@ -165,9 +164,9 @@ describe("Link choice", () => {
 
   it("shows each failed link as an alert with its message", () => {
     renderLinkChoice({
-      aliasError: new Error("Could not add the alias (500)"),
-      ingredientError: new Error("Could not create the Ingredient (409)"),
-      subRecipeError: new Error("Could not create the sub-recipe (500)"),
+      alias: action({ error: new Error("Could not add the alias (500)") }),
+      ingredient: action({ error: new Error("Could not create the Ingredient (409)") }),
+      subRecipe: action({ error: new Error("Could not create the sub-recipe (500)") }),
     });
     expect(screen.getAllByRole("alert").map((alert) => alert.textContent)).toEqual([
       "Could not add the alias (500)",
@@ -196,7 +195,7 @@ describe("Link choice hook", () => {
     const { result, client } = renderQueryHook(() => useLinkChoice("chicken stock", onLinked));
     client.setQueryData(["ingredients", "chicken"], [butter]);
 
-    act(() => result.current.onUseNearMatch(butter));
+    act(() => result.current.alias.run(butter));
     await waitFor(() => expect(onLinked).toHaveBeenCalledWith({ ingredientId: "butter-id" }));
     expect(sent("addAlias")?.[0].args).toEqual({
       aliasId: anId,
@@ -212,7 +211,7 @@ describe("Link choice hook", () => {
     client.setQueryData(["ingredients", "chicken"], []);
 
     act(() =>
-      result.current.onCreateIngredient({
+      result.current.ingredient.run({
         name: "chicken stock",
         preferredKind: "volume",
         shoppingCategoryId: "other-id",
@@ -235,7 +234,7 @@ describe("Link choice hook", () => {
     const { result, client } = renderQueryHook(() => useLinkChoice("chicken stock", onLinked));
     client.setQueryData(["recipes"], [stock]);
 
-    act(() => result.current.onCreateSubRecipe("Chicken stock"));
+    act(() => result.current.subRecipe.run("Chicken stock"));
     await waitFor(() => expect(onLinked).toHaveBeenCalledOnce());
     const args = sent("createSubRecipe")?.[0].args;
     expect(args).toEqual({
@@ -248,32 +247,29 @@ describe("Link choice hook", () => {
   });
 
   type Choice = ReturnType<typeof useLinkChoice>;
-  it.each<[string, (c: Choice) => void, keyof Choice, keyof Choice]>([
-    ["near match", (c) => c.onUseNearMatch(butter), "aliasPending", "aliasError"],
+  it.each<[string, (c: Choice) => void, "alias" | "ingredient" | "subRecipe"]>([
+    ["near match", (c) => c.alias.run(butter), "alias"],
     [
       "new Ingredient",
-      (c) =>
-        c.onCreateIngredient({ name: "stock", preferredKind: "volume", shoppingCategoryId: "x" }),
-      "ingredientPending",
-      "ingredientError",
+      (c) => c.ingredient.run({ name: "stock", preferredKind: "volume", shoppingCategoryId: "x" }),
+      "ingredient",
     ],
-    ["new sub-recipe", (c) => c.onCreateSubRecipe("Stock"), "subRecipePending", "subRecipeError"],
-  ])(
-    "returns a %s as pending while it sends, then its error",
-    async (_, choose, pending, error) => {
-      let fail: (error: Error) => void = () => {};
-      vi.mocked(mutate).mockReturnValue(new Promise((_, reject) => (fail = reject)));
-      const onLinked = vi.fn();
-      const { result } = renderQueryHook(() => useLinkChoice("chicken stock", onLinked));
+    ["new sub-recipe", (c) => c.subRecipe.run("Stock"), "subRecipe"],
+  ])("returns a %s as pending while it sends, then its error", async (_, choose, choice) => {
+    let fail: (error: Error) => void = () => {};
+    vi.mocked(mutate).mockReturnValue(new Promise((_, reject) => (fail = reject)));
+    const onLinked = vi.fn();
+    const { result } = renderQueryHook(() => useLinkChoice("chicken stock", onLinked));
 
-      act(() => choose(result.current));
-      await waitFor(() => expect(result.current[pending]).toBe(true));
-      act(() => fail(new Error("Could not link (500)")));
-      await waitFor(() => expect(result.current[error]).toEqual(new Error("Could not link (500)")));
-      expect(result.current[pending]).toBe(false);
-      expect(onLinked).not.toHaveBeenCalled();
-    },
-  );
+    act(() => choose(result.current));
+    await waitFor(() => expect(result.current[choice].pending).toBe(true));
+    act(() => fail(new Error("Could not link (500)")));
+    await waitFor(() =>
+      expect(result.current[choice].error).toEqual(new Error("Could not link (500)")),
+    );
+    expect(result.current[choice].pending).toBe(false);
+    expect(onLinked).not.toHaveBeenCalled();
+  });
 
   it("wires the view to the hook: Create Ingredient sends it and links the name", async () => {
     const onLinked = vi.fn();

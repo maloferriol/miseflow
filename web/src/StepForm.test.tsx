@@ -1,6 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { action } from "../test/action.ts";
 import { renderView } from "../test/render-view.tsx";
 import { blockingSave, type Inserted, pickerOpensAt, withLink } from "./step-editor.ts";
 import { StepFormView, type StepFormViewProps } from "./StepForm.tsx";
@@ -11,11 +12,9 @@ function stepForm(props: Partial<StepFormViewProps> = {}) {
     text: "Sweat the shallots",
     pickerAt: null,
     unmatched: [],
-    savePending: false,
-    saveError: null,
+    save: action(),
     onEdit: () => {},
     onInsert: () => {},
-    onSave: () => {},
     onCancel: () => {},
     renderPicker: () => <p>Ingredient picker</p>,
     renderLinkChoice: (u) => <p>Link {u.name}</p>,
@@ -29,7 +28,7 @@ const save = () => screen.getByRole("button", { name: "Save" });
 
 describe("Step form", () => {
   it("disables Save while a save is pending", () => {
-    renderStepForm({ savePending: true });
+    renderStepForm({ save: action({ pending: true }) });
     expect(save().hasAttribute("disabled")).toBe(true);
   });
 
@@ -47,7 +46,7 @@ describe("Step form", () => {
   });
 
   it("shows a failed save as an alert with its message", () => {
-    renderStepForm({ saveError: new Error("Could not save the Step (500)") });
+    renderStepForm({ save: action({ error: new Error("Could not save the Step (500)") }) });
     expect(screen.getByRole("alert").textContent).toBe("Could not save the Step (500)");
   });
 
@@ -98,7 +97,7 @@ describe("Step form", () => {
 
   it("saves when the cook presses Save", () => {
     const onSave = vi.fn();
-    renderStepForm({ onSave });
+    renderStepForm({ save: action({ run: onSave }) });
     fireEvent.click(save());
     expect(onSave).toHaveBeenCalledOnce();
   });
@@ -106,7 +105,7 @@ describe("Step form", () => {
   it("calls back on Cancel without saving", () => {
     const onCancel = vi.fn();
     const onSave = vi.fn();
-    renderStepForm({ onCancel, onSave });
+    renderStepForm({ onCancel, save: action({ run: onSave }) });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalledOnce();
     expect(onSave).not.toHaveBeenCalled();

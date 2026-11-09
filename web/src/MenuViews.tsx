@@ -1,6 +1,7 @@
 // The Menu screen's views (ADR 0011): props only, so their tests render them without the API.
 import { formatFactor } from "@miseflow/shared/src/plan/batches.ts";
 import { Fragment, type ReactNode, type SubmitEvent, useState } from "react";
+import type { Action } from "./action.ts";
 import type { Availability, fetchMenus, Menu } from "./api.ts";
 import { fieldText } from "./form-fields.ts";
 import {
@@ -61,16 +62,12 @@ export function MenuListView({ menus }: Readonly<{ menus: QueryState<MenuListIte
   );
 }
 
-export type NewMenuViewProps = {
-  createPending: boolean;
-  createError: Error | null;
-  onCreate: (menu: { name: string; guestCount: number }) => void;
-};
+export type NewMenuViewProps = { create: Action<{ name: string; guestCount: number }> };
 
-export function NewMenuView({ createPending, createError, onCreate }: Readonly<NewMenuViewProps>) {
+export function NewMenuView({ create }: Readonly<NewMenuViewProps>) {
   const onSubmit = sendThenClear((form) => {
     const menu = newMenuInput(fieldText(form, "name"), fieldText(form, "guestCount"));
-    if (menu) onCreate(menu);
+    if (menu) create.run(menu);
     return menu !== null;
   });
 
@@ -83,19 +80,17 @@ export function NewMenuView({ createPending, createError, onCreate }: Readonly<N
       <label>
         Guests <input name="guestCount" type="number" min={1} step={1} defaultValue={2} required />
       </label>
-      <button type="submit" disabled={createPending}>
+      <button type="submit" disabled={create.pending}>
         Create Menu
       </button>
-      {createError && <p role="alert">{createError.message}</p>}
+      {create.error && <p role="alert">{create.error.message}</p>}
     </form>
   );
 }
 
 export type MenuViewProps = {
   menu: QueryState<Menu>;
-  addCoursePending: boolean;
-  addCourseError: Error | null;
-  onAddCourse: (name: string) => void;
+  addCourse: Action<string>;
   /** The form for the Menu's one Service, remade when the saved Service changes. */
   renderServiceForm: (service: Menu["service"]) => ReactNode;
   renderCourse: (course: Menu["courses"][number]) => ReactNode;
@@ -104,9 +99,7 @@ export type MenuViewProps = {
 /** One Menu: its guests, its Service, its Courses and their Batches, and a form to add a Course. */
 export function MenuView({
   menu,
-  addCoursePending,
-  addCourseError,
-  onAddCourse,
+  addCourse,
   renderServiceForm,
   renderCourse,
 }: Readonly<MenuViewProps>) {
@@ -134,14 +127,14 @@ export function MenuView({
       ) : (
         <p>No Batches</p>
       )}
-      <form onSubmit={sendName(onAddCourse)}>
+      <form onSubmit={sendName(addCourse.run)}>
         <label>
           Course name <input name="name" required />
         </label>
-        <button type="submit" disabled={addCoursePending}>
+        <button type="submit" disabled={addCourse.pending}>
           Add Course
         </button>
-        {addCourseError && <p role="alert">{addCourseError.message}</p>}
+        {addCourse.error && <p role="alert">{addCourse.error.message}</p>}
       </form>
     </section>
   );
@@ -153,9 +146,7 @@ type Dish = Course["dishes"][number];
 export type CourseViewProps = {
   menuId: string;
   course: Course;
-  addDishPending: boolean;
-  addDishError: Error | null;
-  onAddDish: (name: string) => void;
+  addDish: Action<string>;
   /** The form that sets one Dish's scale. */
   renderDishScale: (dish: Dish) => ReactNode;
 };
@@ -164,9 +155,7 @@ export type CourseViewProps = {
 export function CourseView({
   menuId,
   course,
-  addDishPending,
-  addDishError,
-  onAddDish,
+  addDish,
   renderDishScale,
 }: Readonly<CourseViewProps>) {
   // A full load: App reads the view from the URL. ?menu= stays for the way back.
@@ -196,14 +185,14 @@ export function CourseView({
           </li>
         ))}
       </ul>
-      <form onSubmit={sendName(onAddDish)}>
+      <form onSubmit={sendName(addDish.run)}>
         <label>
           Recipe name <input name="name" required />
         </label>
-        <button type="submit" disabled={addDishPending}>
+        <button type="submit" disabled={addDish.pending}>
           Add Dish
         </button>
-        {addDishError && <p role="alert">{addDishError.message}</p>}
+        {addDish.error && <p role="alert">{addDish.error.message}</p>}
       </form>
     </article>
   );
@@ -211,24 +200,17 @@ export function CourseView({
 
 export type DishScaleViewProps = {
   dish: Pick<Dish, "recipe" | "scale">;
-  savePending: boolean;
-  saveError: Error | null;
-  onSave: (scale: DishScale) => void;
+  save: Action<DishScale>;
 };
 
 /** A Dish's Scale factor: the guest count over servings, a portion count, or a factor (units spec §5). */
-export function DishScaleView({
-  dish,
-  savePending,
-  saveError,
-  onSave,
-}: Readonly<DishScaleViewProps>) {
+export function DishScaleView({ dish, save }: Readonly<DishScaleViewProps>) {
   // What the cook picked, opening on the Dish's saved scale.
   const [kind, setKind] = useState(() => openingScaleKind(dish.scale));
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSave(dishScale(kind, fieldText(new FormData(event.currentTarget), "value")));
+    save.run(dishScale(kind, fieldText(new FormData(event.currentTarget), "value")));
   }
 
   return (
@@ -258,10 +240,10 @@ export function DishScaleView({
           required
         />
       )}
-      <button type="submit" disabled={savePending}>
+      <button type="submit" disabled={save.pending}>
         Save scale
       </button>
-      {saveError && <p role="alert">{saveError.message}</p>}
+      {save.error && <p role="alert">{save.error.message}</p>}
     </form>
   );
 }
@@ -271,9 +253,7 @@ export type ServiceFormViewProps = {
   service: Menu["service"];
   /** The kitchen's default Service time, once loaded. */
   availability: Pick<Availability, "defaultServiceTime"> | undefined;
-  savePending: boolean;
-  saveError: Error | null;
-  onSave: (input: ServiceInput) => void;
+  save: Action<ServiceInput>;
 };
 
 /**
@@ -284,15 +264,13 @@ export function ServiceFormView({
   menuId,
   service,
   availability,
-  savePending,
-  saveError,
-  onSave,
+  save,
 }: Readonly<ServiceFormViewProps>) {
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const input = serviceInput(fieldText(form, "date"), fieldText(form, "time"));
-    if (input) onSave(input);
+    if (input) save.run(input);
   }
 
   const defaultTime = availability && timeValue(availability.defaultServiceTime);
@@ -312,7 +290,7 @@ export function ServiceFormView({
           title={defaultTime && `Empty: the kitchen's default, ${defaultTime}`}
         />
       </label>
-      <button type="submit" disabled={savePending}>
+      <button type="submit" disabled={save.pending}>
         {service ? "Save Service" : "Add Service"}
       </button>
       {service && (
@@ -327,7 +305,7 @@ export function ServiceFormView({
           Open Shopping list
         </a>
       )}
-      {saveError && <p role="alert">{saveError.message}</p>}
+      {save.error && <p role="alert">{save.error.message}</p>}
     </form>
   );
 }

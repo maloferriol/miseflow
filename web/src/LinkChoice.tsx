@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { type Action, toAction } from "./action.ts";
 import {
   type CatalogIngredient,
   fetchShoppingCategories,
@@ -28,15 +29,11 @@ type NewIngredient = { name: string; preferredKind: string; shoppingCategoryId: 
 
 export type LinkChoiceViewProps = LinkChoiceProps & {
   categories: { id: string; name: string }[] | undefined;
-  aliasPending: boolean;
-  ingredientPending: boolean;
-  subRecipePending: boolean;
-  aliasError: Error | null;
-  ingredientError: Error | null;
-  subRecipeError: Error | null;
-  onUseNearMatch: (ingredient: CatalogIngredient) => void;
-  onCreateIngredient: (ingredient: NewIngredient) => void;
-  onCreateSubRecipe: (name: string) => void;
+  /** Use a near match: teaches the name as its alias. */
+  alias: Action<CatalogIngredient>;
+  ingredient: Action<NewIngredient>;
+  /** Create a sub-recipe with this name. */
+  subRecipe: Action<string>;
 };
 
 /** The Shopping categories and the three link mutations. No branches. */
@@ -71,15 +68,9 @@ export function useLinkChoice(name: string, onLinked: (target: Target) => void) 
   });
   return {
     categories: categories.data,
-    aliasPending: addAlias.isPending,
-    ingredientPending: createIngredient.isPending,
-    subRecipePending: createSubRecipe.isPending,
-    aliasError: addAlias.error,
-    ingredientError: createIngredient.error,
-    subRecipeError: createSubRecipe.error,
-    onUseNearMatch: (ingredient: CatalogIngredient) => addAlias.mutate(ingredient),
-    onCreateIngredient: (ingredient: NewIngredient) => createIngredient.mutate(ingredient),
-    onCreateSubRecipe: (recipeName: string) => createSubRecipe.mutate(recipeName),
+    alias: toAction<CatalogIngredient>(addAlias),
+    ingredient: toAction<NewIngredient>(createIngredient),
+    subRecipe: toAction<string>(createSubRecipe),
   };
 }
 
@@ -93,15 +84,9 @@ export function LinkChoiceView({
   nearRecipes,
   onLinked,
   categories,
-  aliasPending,
-  ingredientPending,
-  subRecipePending,
-  aliasError,
-  ingredientError,
-  subRecipeError,
-  onUseNearMatch,
-  onCreateIngredient,
-  onCreateSubRecipe,
+  alias,
+  ingredient,
+  subRecipe,
 }: LinkChoiceViewProps) {
   // What the cook types, set from the name on open. Inside the Step's form, so these are plain
   // fields rather than a nested <form>.
@@ -116,14 +101,10 @@ export function LinkChoiceView({
       <legend>Link ‘{name}’</legend>
       {near.length > 0 && (
         <ul aria-label={`Near matches for ${name}`}>
-          {near.map((ingredient) => (
-            <li key={ingredient.id}>
-              <button
-                type="button"
-                disabled={aliasPending}
-                onClick={() => onUseNearMatch(ingredient)}
-              >
-                Use {ingredient.name}
+          {near.map((match) => (
+            <li key={match.id}>
+              <button type="button" disabled={alias.pending} onClick={() => alias.run(match)}>
+                Use {match.name}
               </button>
             </li>
           ))}
@@ -166,9 +147,9 @@ export function LinkChoiceView({
       )}
       <button
         type="button"
-        disabled={ingredientPending || !chosenCategory}
+        disabled={ingredient.pending || !chosenCategory}
         onClick={() =>
-          onCreateIngredient({
+          ingredient.run({
             name: newIngredientName(newName, name),
             preferredKind: kind,
             shoppingCategoryId: chosenCategory!,
@@ -183,14 +164,14 @@ export function LinkChoiceView({
       </label>
       <button
         type="button"
-        disabled={subRecipePending}
-        onClick={() => onCreateSubRecipe(newSubRecipeName(recipeName, name))}
+        disabled={subRecipe.pending}
+        onClick={() => subRecipe.run(newSubRecipeName(recipeName, name))}
       >
         Create sub-recipe
       </button>
-      {aliasError && <p role="alert">{aliasError.message}</p>}
-      {ingredientError && <p role="alert">{ingredientError.message}</p>}
-      {subRecipeError && <p role="alert">{subRecipeError.message}</p>}
+      {alias.error && <p role="alert">{alias.error.message}</p>}
+      {ingredient.error && <p role="alert">{ingredient.error.message}</p>}
+      {subRecipe.error && <p role="alert">{subRecipe.error.message}</p>}
     </fieldset>
   );
 }

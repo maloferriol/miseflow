@@ -100,7 +100,7 @@ describe("New Menu hook", () => {
     const onCreated = vi.fn();
     const { result } = renderQueryHook(() => useNewMenu(onCreated));
 
-    act(() => result.current.onCreate({ name: "Saturday dinner", guestCount: 6 }));
+    act(() => result.current.create.run({ name: "Saturday dinner", guestCount: 6 }));
     await waitFor(() => expect(onCreated).toHaveBeenCalledOnce());
     const args = sent("createMenu");
     expect(args).toEqual({ menuId: anId, name: "Saturday dinner", guestCount: 6 });
@@ -113,13 +113,13 @@ describe("New Menu hook", () => {
     const onCreated = vi.fn();
     const { result } = renderQueryHook(() => useNewMenu(onCreated));
 
-    act(() => result.current.onCreate({ name: "Saturday dinner", guestCount: 6 }));
-    await waitFor(() => expect(result.current.createPending).toBe(true));
+    act(() => result.current.create.run({ name: "Saturday dinner", guestCount: 6 }));
+    await waitFor(() => expect(result.current.create.pending).toBe(true));
     fail(new Error("Could not create the Menu (500)"));
     await waitFor(() =>
-      expect(result.current.createError).toEqual(new Error("Could not create the Menu (500)")),
+      expect(result.current.create.error).toEqual(new Error("Could not create the Menu (500)")),
     );
-    expect(result.current.createPending).toBe(false);
+    expect(result.current.create.pending).toBe(false);
     expect(onCreated).not.toHaveBeenCalled();
     expect(window.location.search).toBe("");
   });
@@ -132,7 +132,7 @@ describe("Menu hook", () => {
     const { result } = renderMenu();
     await waitFor(() => expect(result.current.menu.data).toEqual(saturdayDinner));
     expect(fetchMenu).toHaveBeenCalledWith("m-dinner");
-    expect(result.current).toMatchObject({ addCoursePending: false, addCourseError: null });
+    expect(result.current).toMatchObject({ addCourse: { pending: false, error: null } });
   });
 
   it("adds a Course to this Menu, then refetches the Menu", async () => {
@@ -140,7 +140,7 @@ describe("Menu hook", () => {
     await waitFor(() => expect(result.current.menu.status).toBe("success"));
 
     // The Menu is on screen, so invalidating it refetches it at once.
-    act(() => result.current.onAddCourse("Starter"));
+    act(() => result.current.addCourse.run("Starter"));
     await waitFor(() => expect(fetchMenu).toHaveBeenCalledTimes(2));
     expect(sent("addCourse")).toEqual({ courseId: anId, menuId: "m-dinner", name: "Starter" });
   });
@@ -157,13 +157,13 @@ describe("Menu hook", () => {
     const fail = failLater();
     const { result } = renderMenu();
 
-    act(() => result.current.onAddCourse("Starter"));
-    await waitFor(() => expect(result.current.addCoursePending).toBe(true));
+    act(() => result.current.addCourse.run("Starter"));
+    await waitFor(() => expect(result.current.addCourse.pending).toBe(true));
     fail(new Error("Could not add the Course (500)"));
     await waitFor(() =>
-      expect(result.current.addCourseError).toEqual(new Error("Could not add the Course (500)")),
+      expect(result.current.addCourse.error).toEqual(new Error("Could not add the Course (500)")),
     );
-    expect(result.current.addCoursePending).toBe(false);
+    expect(result.current.addCourse.pending).toBe(false);
   });
 });
 
@@ -172,7 +172,7 @@ describe("Course hook", () => {
     const onChanged = vi.fn(() => Promise.resolve());
     const { result } = renderQueryHook(() => useCourse(starter, onChanged));
 
-    act(() => result.current.onAddDish("Velouté"));
+    act(() => result.current.addDish.run("Velouté"));
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
     const recipe = sent("createRecipe");
     expect(recipe).toEqual({ recipeId: anId, revisionId: anId, name: "Velouté" });
@@ -192,13 +192,13 @@ describe("Course hook", () => {
     const onChanged = vi.fn(() => Promise.resolve());
     const { result } = renderQueryHook(() => useCourse(starter, onChanged));
 
-    act(() => result.current.onAddDish("Velouté"));
-    await waitFor(() => expect(result.current.addDishPending).toBe(true));
+    act(() => result.current.addDish.run("Velouté"));
+    await waitFor(() => expect(result.current.addDish.pending).toBe(true));
     fail(new Error("Could not add the Dish (500)"));
     await waitFor(() =>
-      expect(result.current.addDishError).toEqual(new Error("Could not add the Dish (500)")),
+      expect(result.current.addDish.error).toEqual(new Error("Could not add the Dish (500)")),
     );
-    expect(result.current.addDishPending).toBe(false);
+    expect(result.current.addDish.pending).toBe(false);
     expect(onChanged).not.toHaveBeenCalled();
   });
 });
@@ -215,7 +215,7 @@ describe("Dish scale hook", () => {
   it("sets the Dish's scale, then reports the change and refetches the Plan", async () => {
     const { result, client, onChanged } = renderDishScale();
 
-    act(() => result.current.onSave({ kind: "portions", portions: 8 }));
+    act(() => result.current.save.run({ kind: "portions", portions: 8 }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
     expect(sent("setDishScale")).toEqual({
       dishId: "d-veloute",
@@ -227,11 +227,11 @@ describe("Dish scale hook", () => {
   it("retries a failed save with the same mutation id, and a later save with a fresh one", async () => {
     vi.mocked(mutate).mockRejectedValueOnce(new Error("Could not set the scale (500)"));
     const { result, onChanged } = renderDishScale();
-    const save = () => act(() => result.current.onSave({ kind: "factor", factor: 1.5 }));
+    const save = () => act(() => result.current.save.run({ kind: "factor", factor: 1.5 }));
 
     save();
     await waitFor(() =>
-      expect(result.current.saveError).toEqual(new Error("Could not set the scale (500)")),
+      expect(result.current.save.error).toEqual(new Error("Could not set the scale (500)")),
     );
     save();
     await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
@@ -246,13 +246,13 @@ describe("Dish scale hook", () => {
     const fail = failLater();
     const { result, onChanged } = renderDishScale();
 
-    act(() => result.current.onSave({ kind: "guests" }));
-    await waitFor(() => expect(result.current.savePending).toBe(true));
+    act(() => result.current.save.run({ kind: "guests" }));
+    await waitFor(() => expect(result.current.save.pending).toBe(true));
     fail(new Error("Could not set the scale (500)"));
     await waitFor(() =>
-      expect(result.current.saveError).toEqual(new Error("Could not set the scale (500)")),
+      expect(result.current.save.error).toEqual(new Error("Could not set the scale (500)")),
     );
-    expect(result.current.savePending).toBe(false);
+    expect(result.current.save.pending).toBe(false);
     expect(onChanged).not.toHaveBeenCalled();
   });
 });
@@ -271,13 +271,13 @@ describe("Service form hook", () => {
   it("returns the kitchen's Availability it fetched", async () => {
     const { result } = renderServiceForm(null);
     await waitFor(() => expect(result.current.availability).toEqual(availability));
-    expect(result.current).toMatchObject({ savePending: false, saveError: null });
+    expect(result.current).toMatchObject({ save: { pending: false, error: null } });
   });
 
   it("creates the Menu's Service, then refetches the Menu and the Plan", async () => {
     const hook = renderServiceForm(null);
 
-    act(() => hook.result.current.onSave({ date: "2026-10-31", time: saturday.time }));
+    act(() => hook.result.current.save.run({ date: "2026-10-31", time: saturday.time }));
     await waitFor(() => expect(invalidated(hook, ["plan", "s-saturday"])).toBe(true));
     expect(sent("createService")).toEqual({
       serviceId: anId,
@@ -291,7 +291,7 @@ describe("Service form hook", () => {
   it("sets a saved Service's date and time, then refetches the Menu and the Plan", async () => {
     const hook = renderServiceForm(saturday);
 
-    act(() => hook.result.current.onSave({ date: "2026-11-01", time: null }));
+    act(() => hook.result.current.save.run({ date: "2026-11-01", time: null }));
     await waitFor(() => expect(invalidated(hook, ["plan", "s-saturday"])).toBe(true));
     expect(sent("setServiceTime")).toEqual({
       serviceId: "s-saturday",
@@ -305,13 +305,13 @@ describe("Service form hook", () => {
     const fail = failLater();
     const hook = renderServiceForm(null);
 
-    act(() => hook.result.current.onSave({ date: "2026-10-31", time: null }));
-    await waitFor(() => expect(hook.result.current.savePending).toBe(true));
+    act(() => hook.result.current.save.run({ date: "2026-10-31", time: null }));
+    await waitFor(() => expect(hook.result.current.save.pending).toBe(true));
     fail(new Error("Could not save the Service (500)"));
     await waitFor(() =>
-      expect(hook.result.current.saveError).toEqual(new Error("Could not save the Service (500)")),
+      expect(hook.result.current.save.error).toEqual(new Error("Could not save the Service (500)")),
     );
-    expect(hook.result.current.savePending).toBe(false);
+    expect(hook.result.current.save.pending).toBe(false);
   });
 });
 
